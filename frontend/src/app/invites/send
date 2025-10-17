@@ -1,0 +1,22 @@
+// Example of a form component
+function InviteForm() {
+    const [email, setEmail] = useState("");
+
+    const handleInvite = async () => {
+        // This calls the backend to send the email
+        await fetch(`/api/invites/send?email=${email}`, { method: 'POST' });
+        // Show success message
+    };
+
+    return (
+        <div>
+            <input 
+                type="email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                placeholder="teammate@example.com"
+            />
+            <button onClick={handleInvite}>Send Invitation</button>
+        </div>
+    );
+}

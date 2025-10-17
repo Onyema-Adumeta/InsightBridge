@@ -1,0 +1,135 @@
+/* Tailwind v4 entrypoint */
+@import "tailwindcss";
+
+/* Tell Tailwind where to scan (v4) */
+@source "./src/**/*.{js,ts,jsx,tsx,mdx}";
+
+/* Tokens */
+:root {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 210 40% 98%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 212.7 26.8% 83.9%;
+  --radius: 0.5rem;
+}
+
+/* Map tokens + set typography scale */
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --ring: hsl(var(--ring));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* ⬆️ Slightly larger type scale */
+  --font-size-xs: 0.8rem;        /* ~12.8px */
+  --font-size-sm: 0.9375rem;     /* 15px */
+  --font-size-base: 1.0625rem;   /* 17px */
+  --font-size-lg: 1.1875rem;     /* 19px */
+  --font-size-xl: 1.375rem;      /* 22px */
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
+
+  /* Make all base text inherit the larger scale */
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+}
+
+/* ===== Semantic utilities (v4 uses @utility) ===== */
+
+@utility card {
+  @apply relative rounded-lg border border-border bg-card text-card-foreground p-6 shadow-sm;
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--color-secondary) 35%, transparent),
+    color-mix(in oklab, var(--color-background) 85%, transparent)
+  );
+  /* Slight bump for readability inside cards */
+  font-size: 1rem; /* inherits from body (~17px), this anchors card content */
+}
+
+@utility stat-card {
+  @apply rounded-lg border border-border bg-card text-card-foreground p-4 shadow-sm;
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in oklab, var(--color-secondary) 25%, transparent),
+    color-mix(in oklab, var(--color-background) 90%, transparent)
+  );
+  font-size: 1rem;
+}
+
+@utility input {
+  @apply w-full rounded-md border border-border bg-background px-3 py-2
+         text-foreground placeholder-muted-foreground
+         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)];
+  font-size: 0.95rem;
+}
+
+@utility btn-base {
+  @apply inline-flex items-center justify-center gap-2 rounded-md font-medium
+         transition-colors focus-visible:outline-none focus-visible:ring-2
+         focus-visible:ring-[var(--ring)] disabled:opacity-50 disabled:cursor-not-allowed;
+  font-size: 0.95rem;
+  padding: 0.625rem 1.25rem; /* 10px x 20px */
+}
+
+@utility btn-primary {
+  @apply btn-base text-primary-foreground;
+  background-image: linear-gradient(135deg, var(--ring), var(--color-primary));
+}
+.btn-primary:hover { opacity: .9; }
+
+@utility btn-secondary {
+  @apply btn-base border border-border bg-secondary text-secondary-foreground;
+}
+.btn-secondary:hover { @apply bg-muted; }
+
+@utility badge {
+  @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold border;
+}
+@utility badge-success { @apply badge border-emerald-500/30 text-emerald-300 bg-emerald-500/15; }
+@utility badge-warning { @apply badge border-amber-500/30 text-amber-300 bg-amber-500/15; }
+@utility badge-danger  { @apply badge border-rose-500/30   text-rose-300  bg-rose-500/15; }
+
+/* Helpers */
+@utility section { @apply card mb-6; }
+@utility section-title { @apply text-xl font-semibold mb-3; } /* was text-lg */
+@utility muted { @apply text-muted-foreground; }
+@utility tooltip { @apply card p-3 text-sm; } /* was text-xs -> text-sm */
