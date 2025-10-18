@@ -19,7 +19,8 @@ import {
   ChevronRight,
   Award,
   Activity,
-  Users
+  Users,
+  CheckCircle  // Add this import for reconciliation icon
 } from "lucide-react";
 
 interface NavItemProps {
@@ -144,6 +145,13 @@ export default function AppSidebar() {
             badge="NEW"
           />
           <NavItem
+            href="/reconciliation"
+            icon={CheckCircle}
+            label="Reconciliation"
+            badge="NEW"
+            isActive={pathname === "/reconciliation"}
+          />
+          <NavItem
             href="#kpis"
             icon={Activity}
             label="KPI Overview"
@@ -171,7 +179,7 @@ export default function AppSidebar() {
             isActive={pathname === "/actions-hub"}
           />
           <NavItem
-            href="/workflows"  // ← Add this new link
+            href="/workflows"  
             icon={Zap}
             label="Workflows"
             isActive={pathname === "/workflows"}

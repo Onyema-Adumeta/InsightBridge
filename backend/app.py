@@ -46,6 +46,7 @@ from routes.finance_terms import finance_terms_bp
 from routes.team import team_router
 from routes.workflows import workflows_router
 from routes.company_context import company_context_router
+from routes.reconciliation import router as reconciliation_router
 
 # Include routers
 app.include_router(main_api_router, prefix="/api/v1/main", tags=["main"])
@@ -72,6 +73,8 @@ logger.info("✓ Workflows router included")
 app.include_router(company_context_router, tags=["company-context"])
 logger.info("✓ Company context router included")
 
+app.include_router(reconciliation_router, prefix="/api/v1/reconciliation", tags=["reconciliation"])
+logger.info("✓ Reconciliation router included at /api/v1/reconciliation")
 
 # Root endpoints
 @app.get("/")

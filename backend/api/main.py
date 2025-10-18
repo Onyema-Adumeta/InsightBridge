@@ -3009,6 +3009,36 @@ async def upload_and_analyze(
         logger.info(f"✅ Analysis complete for {user_id}")
         logger.info(f"📊 Chart Data: {len(kpi_chart_data)} points")
         
+        # ============== AUTO-RECONCILIATION ==============
+        # Auto-run reconciliation after successful upload
+        try:
+            logger.info("🔄 Running auto-reconciliation...")
+            from reconciliation_engine import ReconciliationEngine
+            from database import get_db_connection
+            
+            conn = get_db_connection()
+            engine = ReconciliationEngine(conn)
+            match_result = engine.auto_match_transactions(user_id)
+            conn.close()
+            
+            # Add reconciliation summary to response
+            full_analysis["reconciliation"] = {
+                "matches_found": match_result["matches_found"],
+                "high_confidence": match_result["high_confidence"],
+                "medium_confidence": match_result["medium_confidence"],
+                "low_confidence": match_result["low_confidence"],
+                "auto_run": True
+            }
+            logger.info(f"✅ Auto-reconciliation complete: {match_result['matches_found']} matches found")
+        except Exception as recon_error:
+            logger.warning(f"⚠️ Auto-reconciliation failed (non-critical): {recon_error}")
+            # Don't fail the entire upload if reconciliation fails
+            full_analysis["reconciliation"] = {
+                "auto_run": False,
+                "error": str(recon_error)
+            }
+        # ============== END AUTO-RECONCILIATION ==============
+        
         return JSONResponse(content=full_analysis)
     
     except ValueError as ve:
@@ -3018,7 +3048,6 @@ async def upload_and_analyze(
         logger.error(f"❌ Analysis failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"An internal error occurred: {str(e)}")
     
-
 @router.get("/test")
 async def test_endpoint():
     return {
