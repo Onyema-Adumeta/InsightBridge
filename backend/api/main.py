@@ -24,11 +24,16 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-client = AzureOpenAI(
-    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-    api_version="2024-02-01",  # A stable version is recommended
-    azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-)
+try:
+    client = AzureOpenAI(
+        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+        api_version="2024-02-01",
+        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+    )
+    logger.info("✅ Azure OpenAI client initialized")
+except Exception as e:
+    logger.warning(f"⚠️ Azure OpenAI not available: {e}")
+    client = None  # Set to None so app can still run
 
 AZURE_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
 
