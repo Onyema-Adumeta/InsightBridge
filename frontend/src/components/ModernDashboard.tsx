@@ -15,7 +15,7 @@ import {
 } from "@/components/DashboardEnhancements";
 import BalanceSheetPieChart from './BalanceSheetpieChart';
 import CashFlowBarChart from './CashFlowBarChart';
-import CashFlowSankey from './CashflowSankey';
+import CashflowSankey from './CashflowSankey';
 import dynamic from 'next/dynamic';
 import AdaptiveFinancialChart from '@/components/AdaptiveFinancialChart';
 import MiniTrendCard from './MiniTrends';
