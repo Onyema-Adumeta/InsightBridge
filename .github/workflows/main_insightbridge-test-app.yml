@@ -29,7 +29,9 @@ jobs:
 
       - name: Build Frontend App
         working-directory: ./frontend
-        run: npm run build
+        run: |
+          rm -rf .next
+          npm run build
         env:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
@@ -130,4 +132,5 @@ jobs:
       - name: Start Azure Web App (Optional - ensure running)
         run: |
           az webapp start --name insightbridge-test-app --resource-group InsightBridge-Test-RG
+
 
