@@ -59,28 +59,36 @@ jobs:
       #-------------------------------------
       - name: Zip artifact for deployment
         run: |
-          # Create a deployment package directory
-          mkdir deploy_package
-
+        # Create a deployment package directory
+          mkdir -p deploy_package/frontend
+          mkdir -p deploy_package/backend
+    
           # Copy backend files (excluding venv, pycache, etc.)
           echo "Copying backend files..."
           rsync -av --progress backend/ deploy_package/backend/ --exclude venv --exclude __pycache__ --exclude '*.pyc' --exclude '*.db'
-
-          # Copy essential frontend files for running Next.js (standalone output)
+    
+          # Copy essential frontend files for running Next.js
           echo "Copying frontend files..."
-          rsync -av --progress frontend/.next/ deploy_package/frontend/.next/
-          rsync -av --progress frontend/public/ deploy_package/frontend/public/
+          if [ -d "frontend/.next" ]; then
+            rsync -av --progress frontend/.next/ deploy_package/frontend/.next/
+          else
+            echo "Warning: .next folder not found"
+          fi
+    
+          if [ -d "frontend/public" ]; then
+            rsync -av --progress frontend/public/ deploy_package/frontend/public/
+          fi
+    
           cp frontend/package.json deploy_package/frontend/package.json
+    
           # Copy next.config.js or .mjs depending on your file name
           if [ -f "frontend/next.config.js" ]; then cp frontend/next.config.js deploy_package/frontend/; fi
           if [ -f "frontend/next.config.mjs" ]; then cp frontend/next.config.mjs deploy_package/frontend/; fi
-          # Include node_modules if not using standalone output or if needed for custom server
-          # rsync -av --progress frontend/node_modules/ deploy_package/frontend/node_modules/
-
+    
           # Copy the startup script (assuming it's in the root)
           if [ -f "startup.sh" ]; then cp startup.sh deploy_package/; fi
           if [ -f "ecosystem.config.js" ]; then cp ecosystem.config.js deploy_package/; fi
-
+    
           # Zip the combined package
           echo "Zipping deployment package..."
           cd deploy_package
@@ -132,5 +140,6 @@ jobs:
       - name: Start Azure Web App (Optional - ensure running)
         run: |
           az webapp start --name insightbridge-test-app --resource-group InsightBridge-Test-RG
+
 
 
