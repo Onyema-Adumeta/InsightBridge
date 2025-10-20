@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useAnalysis } from '../context/AnalysisContext';
-import SimulationChart from '../components/SimulationChart'; // Import the reusable chart
+import { useAnalysis } from '../../context/AnalysisContext';
+import SimulationChart from '../../components/SimulationChart';
 
 // Type for the Q&A strategy plan
 interface StrategyPoint {
