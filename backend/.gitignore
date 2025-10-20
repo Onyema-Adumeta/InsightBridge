@@ -32,3 +32,33 @@ htmlcov/
 .DS_Store
 Thumbs.db
 *.log
+
+# Test files (don't commit)
+backend/test_*.py
+backend/debug_*.py
+backend/Bank-Statement-Example.pdf
+backend/reconciliation.db
+backend/*.db
+
+# Environment files
+.env
+.env.local
+*.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+venv/
+env/
+
+# Node
+node_modules/
+.next/
+out/
+
+# IDE
+.vscode/
+.idea/

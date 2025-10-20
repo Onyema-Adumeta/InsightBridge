@@ -15,7 +15,7 @@ const Plot = dynamic(() => import('react-plotly.js'), {
     )
 });
 
-const CashFlowSankey = ({ userId }) => {
+const CashflowSankey = ({ userId }) => {
     const [sankeyData, setSankeyData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -27,7 +27,7 @@ const CashFlowSankey = ({ userId }) => {
                 const baseUrl = 'http://localhost:8000/api/v1/main/financial-flow';
                 const url = userId ? `${baseUrl}?user_id=${userId}` : baseUrl;
                 
-                console.log('[CashFlowSankey] Fetching data from:', url);
+                console.log('[CashflowSankey] Fetching data from:', url);
                 
                 const response = await fetch(url);
                 
@@ -36,7 +36,7 @@ const CashFlowSankey = ({ userId }) => {
                 }
                 
                 const data = await response.json();
-                console.log('[CashFlowSankey] Data received:', data);
+                console.log('[CashflowSankey] Data received:', data);
 
                 if (!data || !data.nodes || !data.links) {
                     throw new Error('Data from API is not in the expected format.');
@@ -44,7 +44,7 @@ const CashFlowSankey = ({ userId }) => {
 
                 // Check if we have actual data
                 if (data.nodes.length === 0 || data.links.length === 0) {
-                    console.warn('[CashFlowSankey] No transaction data available');
+                    console.warn('[CashflowSankey] No transaction data available');
                     setSankeyData(null);
                     setLoading(false);
                     return;
@@ -89,9 +89,9 @@ const CashFlowSankey = ({ userId }) => {
                 };
                 
                 setSankeyData([formattedData]);
-                console.log('[CashFlowSankey] Sankey data formatted successfully');
+                console.log('[CashflowSankey] Sankey data formatted successfully');
             } catch (error) {
-                console.error("[CashFlowSankey] Failed to fetch Sankey data:", error);
+                console.error("[CashflowSankey] Failed to fetch Sankey data:", error);
                 setError(error.message);
             } finally {
                 setLoading(false);
@@ -201,4 +201,4 @@ const CashFlowSankey = ({ userId }) => {
     );
 };
 
-export default CashFlowSankey;
+export default CashflowSankey;

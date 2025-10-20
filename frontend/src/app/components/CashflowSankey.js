@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 // We can use a standard import here now
 import Plot from 'react-plotly.js'; 
 
-const CashFlowSankey = () => {
+const CashflowSankey = () => {
     const [sankeyData, setSankeyData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -85,4 +85,4 @@ const CashFlowSankey = () => {
     );
 };
 
-export default CashFlowSankey;
+export default CashflowSankey;

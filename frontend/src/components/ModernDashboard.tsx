@@ -103,7 +103,7 @@ const ProfessionalKpiCard = ({ title, value, change, trend, icon: Icon, sparklin
   );
 };
 
-const CashFlowSankey = dynamic(() => import('./CashFlowSankey'), {
+const CashflowSankey = dynamic(() => import('./CashflowSankey'), {
   ssr: false,
   loading: () => (
     <div className="flex items-center justify-center h-96 bg-slate-50 rounded-lg">
