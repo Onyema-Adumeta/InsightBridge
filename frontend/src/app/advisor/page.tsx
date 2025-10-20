@@ -1,10 +1,10 @@
 "use client";
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAnalysis } from '../../context/AnalysisContext';
 import SimulationChart from '../../components/SimulationChart';
-
-export const dynamic = 'force-dynamic';
 
 // Type for the Q&A strategy plan
 interface StrategyPoint {
