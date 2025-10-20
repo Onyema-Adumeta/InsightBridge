@@ -5,6 +5,9 @@ import { useUser } from '@clerk/nextjs';
 import DynamicClientDashboard from '@/components/ClientDashboard';
 import LoadingDashboard from '@/components/LoadingDashboard';
 
+
+export const dynamic = 'force-dynamic';
+
 // Define the shape of your data
 interface AnalysisData {
   company?: string;
