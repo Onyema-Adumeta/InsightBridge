@@ -29,9 +29,12 @@ jobs:
 
       - name: Build Frontend App
         working-directory: ./frontend
-        run: npm run build # Or yarn build / pnpm build
-        env: # Add any build-time environment variables needed by Next.js
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }} # Example
+        run: npm run build
+        env:
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_API_TIMEOUT: ${{ secrets.NEXT_PUBLIC_API_TIMEOUT }}
 
       #-------------------------------------
       # Backend Build Steps
@@ -128,10 +131,3 @@ jobs:
         run: |
           az webapp start --name insightbridge-test-app --resource-group InsightBridge-Test-RG
 
-      - name: Build
-        run: npm run build
-        env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_API_TIMEOUT: ${{ secrets.NEXT_PUBLIC_API_TIMEOUT }}
