@@ -1,4 +1,4 @@
-name: Build and deploy Python app to Azure Web App - insightbridge-test-app
+name: Build and deploy Fullstack app to Azure Web App - insightbridge-test-app
 
 on:
   push:
@@ -10,53 +10,103 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: read # Required for actions/checkout
 
     steps:
       - uses: actions/checkout@v4
 
+      #-------------------------------------
+      # Frontend Build Steps
+      #-------------------------------------
+      - name: Set up Node.js version
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x' # Use your project's Node.js version
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm install # Or yarn install / pnpm install
+
+      - name: Build Frontend App
+        working-directory: ./frontend
+        run: npm run build # Or yarn build / pnpm build
+        env: # Add any build-time environment variables needed by Next.js
+          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }} # Example
+
+      #-------------------------------------
+      # Backend Build Steps
+      #-------------------------------------
       - name: Set up Python version
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Create virtual environment and install dependencies
+      - name: Create virtual environment and install backend dependencies
         working-directory: ./backend
         run: |
-          python -m venv antenv
-          source antenv/bin/activate
+          python -m venv venv
+          source venv/bin/activate
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Zip backend for deployment
+      #-------------------------------------
+      # Package BOTH Frontend and Backend
+      #-------------------------------------
+      - name: Zip artifact for deployment
         run: |
-          cd backend
-          zip -r ../backend.zip . -x "antenv/*" -x "*.pyc" -x "__pycache__/*" -x "*.db" -x "test_*.py" -x "debug_*.py"
+          # Create a deployment package directory
+          mkdir deploy_package
+
+          # Copy backend files (excluding venv, pycache, etc.)
+          echo "Copying backend files..."
+          rsync -av --progress backend/ deploy_package/backend/ --exclude venv --exclude __pycache__ --exclude '*.pyc' --exclude '*.db'
+
+          # Copy essential frontend files for running Next.js (standalone output)
+          echo "Copying frontend files..."
+          rsync -av --progress frontend/.next/ deploy_package/frontend/.next/
+          rsync -av --progress frontend/public/ deploy_package/frontend/public/
+          cp frontend/package.json deploy_package/frontend/package.json
+          # Copy next.config.js or .mjs depending on your file name
+          if [ -f "frontend/next.config.js" ]; then cp frontend/next.config.js deploy_package/frontend/; fi
+          if [ -f "frontend/next.config.mjs" ]; then cp frontend/next.config.mjs deploy_package/frontend/; fi
+          # Include node_modules if not using standalone output or if needed for custom server
+          # rsync -av --progress frontend/node_modules/ deploy_package/frontend/node_modules/
+
+          # Copy the startup script (assuming it's in the root)
+          if [ -f "startup.sh" ]; then cp startup.sh deploy_package/; fi
+          if [ -f "ecosystem.config.js" ]; then cp ecosystem.config.js deploy_package/; fi
+
+          # Zip the combined package
+          echo "Zipping deployment package..."
+          cd deploy_package
+          zip -r ../release.zip .
           cd ..
 
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
-          name: python-app
-          path: backend.zip
+          name: fullstack-app # Changed artifact name for clarity
+          path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write
+      id-token: write # Required for Azure login using OIDC
       contents: read
+
+    environment: # Optional: Define environment for secrets/variables
+      name: production # Or 'testing' etc.
+      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
 
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: python-app
+          name: fullstack-app # Use the new artifact name
 
       - name: Unzip artifact for deployment
-        run: |
-          unzip backend.zip
-          rm backend.zip
+        run: unzip release.zip -d deploy_temp && rm release.zip
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -66,11 +116,14 @@ jobs:
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_AE47FA43E61244FBA1DDA149B94CFF81 }}
 
       - name: Deploy to Azure Web App
+        id: deploy-to-webapp # Added ID for environment URL
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'insightbridge-test-app'
           slot-name: 'Production'
-        # ADD THIS NEW STEP:
-      - name: Start Azure Web App
+          package: deploy_temp # Deploy the unzipped folder content
+
+      # This step might not be needed if deployment restarts the app, but good for ensuring it's running
+      - name: Start Azure Web App (Optional - ensure running)
         run: |
           az webapp start --name insightbridge-test-app --resource-group InsightBridge-Test-RG
