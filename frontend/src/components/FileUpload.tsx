@@ -6,6 +6,8 @@
 import React, { useState, useCallback } from 'react';
 import { useAnalysis } from '../context/AnalysisContext';
 
+export const dynamic = 'force-dynamic';
+
 const UploadCloudIcon = () => (
     <svg className="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-4-4V7a4 4 0 014-4h.586a1 1 0 01.707.293l2 2a1 1 0 00.707.293H12a4 4 0 014 4v1m-6 4v6m0 0v-6m0 6h.01M6 16a4 4 0 004 4h4a4 4 0 004-4m-6-4v6" /></svg>
 );
