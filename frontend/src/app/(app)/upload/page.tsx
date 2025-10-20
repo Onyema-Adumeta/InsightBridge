@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useRef, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAnalysis } from '@/context/AnalysisContext';
@@ -20,7 +22,6 @@ import {
 } from 'lucide-react';
 
 
-export const dynamic = 'force-dynamic';
 
 export default function UploadPage() {
     const endpoint = '/api/v1/main/upload_and_analyze';

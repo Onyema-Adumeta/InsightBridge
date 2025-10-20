@@ -1,12 +1,14 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useAnalysis } from "@/context/AnalysisContext";
 import SimulationChart from "@/components/SimulationChart";
 
 // Prevent SSR issues with auth in this route tree
-export const dynamic = "force-dynamic";
+
 
 // === TYPES ===
 interface KPIChartItem {

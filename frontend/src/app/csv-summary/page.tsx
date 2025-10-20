@@ -1,9 +1,9 @@
 'use client';
+export const dynamic = 'force-dynamic';
 
 import React from 'react';
 import UploadForm from '../../components/UploadForm';
 
-export const dynamic = 'force-dynamic';
 
 export default function UnifiedUpload() {
   return (
