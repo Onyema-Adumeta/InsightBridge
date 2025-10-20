@@ -13,7 +13,7 @@ import EnhancedTrendAnalysisChart from "@/components/EnhancedTrendAnalysisChart"
 import { 
   ForecastChart, CommentsSection, MicroLearningSection, PredictiveInsightsSection 
 } from "@/components/DashboardEnhancements";
-import BalanceSheetPieChart from './BalanceSheetPieChart';
+import BalanceSheetPieChart from './BalanceSheetPieChart'; // <-- Must be this exact case
 import CashFlowBarChart from './CashFlowBarChart';
 import dynamic from 'next/dynamic';
 import AdaptiveFinancialChart from '@/components/AdaptiveFinancialChart';

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.33.2",
+    "@radix-ui/react-tooltip": "^1.2.8",
     "file-saver": "^2.0.5",
     "lucide-react": "^0.544.0",
     "mssql": "^11.0.1",
