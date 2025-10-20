@@ -729,7 +729,7 @@ export default function ModernDashboard({
                 <h3 className="text-lg font-semibold text-slate-900">Cash Flow River</h3>
                 <p className="text-sm text-slate-600">Interactive visualization of money movement through your business</p>
               </div>
-              <CashFlowSankey userId={userId} />
+              <CashflowSankey userId={userId} />
             </section>
           )}
 
