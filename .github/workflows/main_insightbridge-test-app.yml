@@ -144,6 +144,8 @@ jobs:
           app-name: 'insightbridge-test-app'
           slot-name: 'Production'
           package: deploy_temp
+        env:
+          SCM_DO_BUILD_DURING_DEPLOYMENT: false
 
       - name: Restart Azure Web App
         run: |
