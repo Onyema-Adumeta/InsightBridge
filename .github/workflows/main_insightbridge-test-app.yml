@@ -1,4 +1,7 @@
-name: Build and deploy Fullstack app to Azure Web App - insightbridge-test-app
+# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy Node.js app to Azure Web App - insightbridge-test-app
 
 on:
   push:
@@ -10,138 +13,47 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: read #This is required for actions/checkout
 
     steps:
       - uses: actions/checkout@v4
 
-      #-------------------------------------
-      # Frontend Build Steps
-      #-------------------------------------
       - name: Set up Node.js version
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
           node-version: '20.x'
 
-      - name: Install Frontend Dependencies
-        working-directory: ./frontend
-        run: npm ci
-
-      - name: Build Frontend App
-        working-directory: ./frontend
-        run: npm run build
-        env:
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-          NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
-          NEXT_PUBLIC_API_TIMEOUT: ${{ secrets.NEXT_PUBLIC_API_TIMEOUT }}
-
-      #-------------------------------------
-      # Backend Build Steps
-      #-------------------------------------
-      - name: Set up Python version
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Create virtual environment and install backend dependencies
-        working-directory: ./backend
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      #-------------------------------------
-      # Package BOTH Frontend and Backend
-      #-------------------------------------
-      - name: Create deployment package
-        run: |
-          # Create deployment directory structure
-          mkdir -p deploy_package/frontend
-          mkdir -p deploy_package/backend
-          
-          # Copy backend files (excluding venv, pycache, etc.)
-          echo "Copying backend files..."
-          rsync -av --progress backend/ deploy_package/backend/ --exclude venv --exclude __pycache__ --exclude '*.pyc' --exclude '*.db'
-          
-          # Copy frontend build files
-          echo "Copying frontend files..."
-          if [ -d "frontend/.next" ]; then
-            rsync -av --progress frontend/.next/ deploy_package/frontend/.next/
-          else
-            echo "Warning: .next folder not found"
-          fi
-          
-          if [ -d "frontend/public" ]; then
-            rsync -av --progress frontend/public/ deploy_package/frontend/public/
-          fi
-          
-          # DO NOT copy node_modules - let Azure install them
-          # This reduces deployment package size significantly
-          
-          cp frontend/package.json deploy_package/frontend/package.json
-          cp frontend/package-lock.json deploy_package/frontend/package-lock.json 2>/dev/null || :
-          
-          # Copy next.config files
-          if [ -f "frontend/next.config.js" ]; then cp frontend/next.config.js deploy_package/frontend/; fi
-          if [ -f "frontend/next.config.mjs" ]; then cp frontend/next.config.mjs deploy_package/frontend/; fi
-          
-          # Copy startup script
-          echo "Copying startup script..."
-          cp startup.sh deploy_package/startup.sh
-          chmod +x deploy_package/startup.sh
-          
-          # Create root package.json for Azure detection
-          echo '{"name":"insightbridge-fullstack","version":"1.0.0","scripts":{"start":"bash startup.sh"},"engines":{"node":"20.x"}}' > deploy_package/package.json
-          
-          # Create .deployment file to prevent Oryx from rebuilding
-          echo '[config]' > deploy_package/.deployment
-          echo 'SCM_DO_BUILD_DURING_DEPLOYMENT=false' >> deploy_package/.deployment
-          
-          # Zip everything
-          echo "Creating deployment package..."
-          cd deploy_package
-          zip -r ../release.zip .
-          cd ..
-
-      - name: Upload artifact for deployment
+      - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: fullstack-app
-          path: release.zip
+          name: node-app
+          path: .
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write
-      contents: read
+      id-token: write #This is required for requesting the JWT
+      contents: read #This is required for actions/checkout
 
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: fullstack-app
-
-      - name: Unzip artifact for deployment
-        run: unzip release.zip -d deploy_temp && rm release.zip
-
+          name: node-app
+      
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_C671DC860D2D4CA98A09B82E3C289B76 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_73C0753D16CA485BA2B18C5C91236A87 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_AE47FA43E61244FBA1DDA149B94CFF81 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_1ED5ECF723BB4264A15946E3CE0161E5 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_7AB1BB09FF4948399726CD21B44738D5 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_FEEE5341965E4558B923E20463B508C1 }}
 
-      - name: Deploy to Azure Web App
+      - name: 'Deploy to Azure Web App'
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'insightbridge-test-app'
           slot-name: 'Production'
-          package: deploy_temp
-
-      - name: Restart Azure Web App
-        run: |
-          az webapp restart --name insightbridge-test-app --resource-group InsightBridge-Test-RG
+          package: .
+          
