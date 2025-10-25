@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read # Required for actions/checkout
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -21,11 +21,11 @@ jobs:
       - name: Set up Node.js version
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x' # Use your project's Node.js version
+          node-version: '20.x'
 
       - name: Install Frontend Dependencies
         working-directory: ./frontend
-        run: npm install # Or yarn install / pnpm install
+        run: npm install
 
       - name: Build Frontend App
         working-directory: ./frontend
@@ -57,9 +57,9 @@ jobs:
       #-------------------------------------
       # Package BOTH Frontend and Backend
       #-------------------------------------
-      - name: Zip artifact for deployment
+      - name: Create deployment package
         run: |
-          # Create a deployment package directory
+          # Create deployment directory structure
           mkdir -p deploy_package/frontend
           mkdir -p deploy_package/backend
           
@@ -67,7 +67,7 @@ jobs:
           echo "Copying backend files..."
           rsync -av --progress backend/ deploy_package/backend/ --exclude venv --exclude __pycache__ --exclude '*.pyc' --exclude '*.db'
           
-          # Copy essential frontend files for running Next.js
+          # Copy frontend build files
           echo "Copying frontend files..."
           if [ -d "frontend/.next" ]; then
             rsync -av --progress frontend/.next/ deploy_package/frontend/.next/
@@ -80,17 +80,39 @@ jobs:
           fi
           
           cp frontend/package.json deploy_package/frontend/package.json
+          cp frontend/package-lock.json deploy_package/frontend/package-lock.json 2>/dev/null || :
           
-          # Copy next.config.js or .mjs depending on your file name
+          # Copy next.config files
           if [ -f "frontend/next.config.js" ]; then cp frontend/next.config.js deploy_package/frontend/; fi
           if [ -f "frontend/next.config.mjs" ]; then cp frontend/next.config.mjs deploy_package/frontend/; fi
           
-          # Copy the startup script (assuming it's in the root)
-          if [ -f "startup.sh" ]; then cp startup.sh deploy_package/; fi
-          if [ -f "ecosystem.config.js" ]; then cp ecosystem.config.js deploy_package/; fi
+          # Copy startup script
+          echo "Copying startup script..."
+          cp startup.sh deploy_package/startup.sh
+          chmod +x deploy_package/startup.sh
           
-          # Zip the combined package
-          echo "Zipping deployment package..."
+          # Create root package.json for Azure detection
+          cat > deploy_package/package.json << 'EOF'
+{
+  "name": "insightbridge-fullstack",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "bash startup.sh"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}
+EOF
+          
+          # Create .deployment file to prevent Oryx from rebuilding
+          cat > deploy_package/.deployment << 'EOF'
+[config]
+SCM_DO_BUILD_DURING_DEPLOYMENT=false
+EOF
+          
+          # Zip everything
+          echo "Creating deployment package..."
           cd deploy_package
           zip -r ../release.zip .
           cd ..
@@ -98,21 +120,21 @@ jobs:
       - name: Upload artifact for deployment
         uses: actions/upload-artifact@v4
         with:
-          name: fullstack-app # Changed artifact name for clarity
+          name: fullstack-app
           path: release.zip
 
   deploy:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write # Required for Azure login using OIDC
+      id-token: write
       contents: read
 
     steps:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: fullstack-app # Use the new artifact name
+          name: fullstack-app
 
       - name: Unzip artifact for deployment
         run: unzip release.zip -d deploy_temp && rm release.zip
@@ -125,14 +147,13 @@ jobs:
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_AE47FA43E61244FBA1DDA149B94CFF81 }}
 
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp # Added ID for environment URL
+        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'insightbridge-test-app'
           slot-name: 'Production'
-          package: deploy_temp # Deploy the unzipped folder content
+          package: deploy_temp
 
-      # This step might not be needed if deployment restarts the app, but good for ensuring it's running
-      - name: Start Azure Web App (Optional - ensure running)
+      - name: Restart Azure Web App
         run: |
-          az webapp start --name insightbridge-test-app --resource-group InsightBridge-Test-RG
+          az webapp restart --name insightbridge-test-app --resource-group InsightBridge-Test-RG
