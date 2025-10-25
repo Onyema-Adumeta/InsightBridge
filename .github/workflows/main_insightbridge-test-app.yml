@@ -77,11 +77,8 @@ jobs:
             rsync -av --progress frontend/public/ deploy_package/frontend/public/
           fi
           
-          # Copy node_modules (already installed in build step)
-          echo "Copying node_modules..."
-          if [ -d "frontend/node_modules" ]; then
-            rsync -av --progress frontend/node_modules/ deploy_package/frontend/node_modules/
-          fi
+          # DO NOT copy node_modules - let Azure install them
+          # This reduces deployment package size significantly
           
           cp frontend/package.json deploy_package/frontend/package.json
           cp frontend/package-lock.json deploy_package/frontend/package-lock.json 2>/dev/null || :
@@ -144,8 +141,6 @@ jobs:
           app-name: 'insightbridge-test-app'
           slot-name: 'Production'
           package: deploy_temp
-        env:
-          SCM_DO_BUILD_DURING_DEPLOYMENT: false
 
       - name: Restart Azure Web App
         run: |
