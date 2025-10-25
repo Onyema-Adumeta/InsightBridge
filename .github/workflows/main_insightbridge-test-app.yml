@@ -25,13 +25,11 @@ jobs:
 
       - name: Install Frontend Dependencies
         working-directory: ./frontend
-        run: npm install
+        run: npm ci --production
 
       - name: Build Frontend App
         working-directory: ./frontend
-        run: |
-          rm -rf .next
-          npm run build
+        run: npm run build
         env:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
@@ -77,6 +75,12 @@ jobs:
           
           if [ -d "frontend/public" ]; then
             rsync -av --progress frontend/public/ deploy_package/frontend/public/
+          fi
+          
+          # Copy node_modules (already installed in build step)
+          echo "Copying node_modules..."
+          if [ -d "frontend/node_modules" ]; then
+            rsync -av --progress frontend/node_modules/ deploy_package/frontend/node_modules/
           fi
           
           cp frontend/package.json deploy_package/frontend/package.json
