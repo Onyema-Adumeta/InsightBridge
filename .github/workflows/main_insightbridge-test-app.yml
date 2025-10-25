@@ -92,24 +92,11 @@ jobs:
           chmod +x deploy_package/startup.sh
           
           # Create root package.json for Azure detection
-          cat > deploy_package/package.json << 'EOF'
-{
-  "name": "insightbridge-fullstack",
-  "version": "1.0.0",
-  "scripts": {
-    "start": "bash startup.sh"
-  },
-  "engines": {
-    "node": "20.x"
-  }
-}
-EOF
+          echo '{"name":"insightbridge-fullstack","version":"1.0.0","scripts":{"start":"bash startup.sh"},"engines":{"node":"20.x"}}' > deploy_package/package.json
           
           # Create .deployment file to prevent Oryx from rebuilding
-          cat > deploy_package/.deployment << 'EOF'
-[config]
-SCM_DO_BUILD_DURING_DEPLOYMENT=false
-EOF
+          echo '[config]' > deploy_package/.deployment
+          echo 'SCM_DO_BUILD_DURING_DEPLOYMENT=false' >> deploy_package/.deployment
           
           # Zip everything
           echo "Creating deployment package..."
