@@ -1,0 +1,14 @@
+{
+  "name": "insightbridge-fullstack",
+  "version": "1.0.0",
+  "description": "InsightBridge Fullstack Application",
+  "scripts": {
+    "start": "bash startup.sh",
+    "postinstall": "cd frontend && npm install --production"
+  },
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
+  },
+  "dependencies": {}
+}
