@@ -26,8 +26,9 @@ fi
 if [ -d "/home/site/wwwroot/frontend" ]; then
     cd /home/site/wwwroot/frontend
     
-    # Dependencies already installed during build
-    echo "Using pre-installed frontend dependencies..."
+    # Install production dependencies only (much faster)
+    echo "Installing production dependencies..."
+    npm ci --production --omit=dev
     
     export PORT=${PORT:-8080}
     echo "Starting Next.js frontend on port $PORT..."
