@@ -1,9 +1,5 @@
 /** @type {import('next').NextConfig} */
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
-  enabled: process.env.ANALYZE === 'true',
-});
-
-const nextConfig = {
+let nextConfig = {
   // Add these two lines to ignore linting errors during build
   eslint: {
     ignoreDuringBuilds: true,
@@ -24,4 +20,16 @@ const nextConfig = {
   },
 };
 
-module.exports = withBundleAnalyzer(nextConfig);
+// Only use bundle analyzer if the package is installed
+if (process.env.ANALYZE === 'true') {
+  try {
+    const withBundleAnalyzer = require('@next/bundle-analyzer')({
+      enabled: true,
+    });
+    nextConfig = withBundleAnalyzer(nextConfig);
+  } catch (e) {
+    console.log('Bundle analyzer not installed, skipping...');
+  }
+}
+
+module.exports = nextConfig;
