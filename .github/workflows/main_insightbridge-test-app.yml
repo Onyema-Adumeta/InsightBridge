@@ -25,7 +25,7 @@ jobs:
 
       - name: Install Frontend Dependencies
         working-directory: ./frontend
-        run: npm ci --production
+        run: npm ci
 
       - name: Build Frontend App
         working-directory: ./frontend
