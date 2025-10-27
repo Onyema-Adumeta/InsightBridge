@@ -32,7 +32,8 @@ if [ -d "backend" ]; then
     python3 -m pip install -r requirements.txt --quiet --break-system-packages
     
     echo "Starting Python backend on port 8000..."
-    nohup python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
+    # Changed from main:app to app:app
+    nohup python3 -m uvicorn app:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
     BACKEND_PID=$!
     echo "Backend started with PID: $BACKEND_PID"
     sleep 10
