@@ -5,6 +5,16 @@ echo "========================================"
 echo "Starting InsightBridge Fullstack App"
 echo "========================================"
 
+# Install Python if not present
+if ! command -v python3 &> /dev/null; then
+    echo "Python not found. Installing Python 3.12..."
+    apt-get update -qq
+    apt-get install -y python3 python3-pip python3-venv
+    ln -sf /usr/bin/python3 /usr/bin/python
+fi
+
+echo "Python version: $(python3 --version)"
+
 # Set working directory
 cd /home/site/wwwroot
 
@@ -12,11 +22,11 @@ cd /home/site/wwwroot
 if [ -d "backend" ]; then
     echo "Installing backend dependencies..."
     cd backend
-    python -m pip install --upgrade pip --quiet
-    pip install -r requirements.txt --quiet
+    python3 -m pip install --upgrade pip --quiet
+    pip3 install -r requirements.txt --quiet
     
     echo "Starting Python backend on port 8000..."
-    nohup python -m uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
+    nohup python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
     BACKEND_PID=$!
     echo "Backend started with PID: $BACKEND_PID"
     sleep 10
@@ -26,7 +36,6 @@ fi
 if [ -d "/home/site/wwwroot/frontend" ]; then
     cd /home/site/wwwroot/frontend
     
-    # Install production dependencies only (much faster)
     echo "Installing production dependencies..."
     npm ci --production --omit=dev
     
