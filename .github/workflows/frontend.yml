@@ -65,12 +65,9 @@ jobs:
           name: frontend-build
       
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@v1
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_FRONTEND }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_FRONTEND }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_FRONTEND }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          creds: '{"clientId":"${{ secrets.AZUREAPPSERVICE_CLIENTID_FRONTEND }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_FRONTEND }}","tenantId":"${{ secrets.AZUREAPPSERVICE_TENANTID_FRONTEND }}"}'
       
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
