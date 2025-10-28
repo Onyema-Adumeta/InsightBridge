@@ -1,4 +1,4 @@
-name: Deploy Frontend (Next.js - Optimized)
+name: Deploy Frontend (Next.js)
 
 on:
   push:
@@ -33,48 +33,18 @@ jobs:
       - name: Build Next.js app
         run: npm run build
         env:
-          NEXT_PUBLIC_API_BASE_URL: https://insightbridge-backend.azurewebsites.net
+          NEXT_PUBLIC_API_BASE_URL: https://insightbridge-backend-test.azurewebsites.net
           NODE_ENV: production
       
-      - name: Create standalone deployment package
+      - name: Create deployment package
         run: |
-          # Create deployment directory
-          mkdir -p deploy
-          
-          # Copy standalone build (if using output: 'standalone' in next.config.js)
-          if [ -d ".next/standalone" ]; then
-            cp -r .next/standalone/* deploy/
-            cp -r .next/static deploy/.next/static
-            cp -r public deploy/public
-          else
-            # Standard build
-            cp -r .next deploy/.next
-            cp -r public deploy/public
-            cp package.json deploy/
-            cp package-lock.json deploy/
-            if [ -f "next.config.js" ]; then cp next.config.js deploy/; fi
-            if [ -f "next.config.mjs" ]; then cp next.config.mjs deploy/; fi
-          fi
-          
-          # Create startup script
-          cat > deploy/startup.sh <<'EOF'
-          #!/bin/bash
-          echo "Starting Next.js application..."
-          
-          # Install production dependencies if node_modules doesn't exist
-          if [ ! -d "node_modules" ]; then
-            npm ci --production
-          fi
-          
-          # Start the application
-          npm start
-          EOF
-          
-          chmod +x deploy/startup.sh
-          
-          # Zip the deployment
-          cd deploy
-          zip -r ../frontend.zip . -x ".git/*"
+          zip -r frontend.zip \
+            .next \
+            public \
+            package.json \
+            package-lock.json \
+            next.config.js \
+            -x "node_modules/*" ".git/*"
       
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -86,7 +56,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     permissions:
-      id-token: write
       contents: read
     
     steps:
@@ -101,29 +70,14 @@ jobs:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_FRONTEND }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_FRONTEND }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_FRONTEND }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
       
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: "insightbridge-frontend"
+          app-name: "insightbridge-frontend-test"
           slot-name: "Production"
           package: frontend.zip
-      
-      - name: Set App Service configuration
-        run: |
-          az webapp config set \
-            --resource-group <YOUR_RESOURCE_GROUP> \
-            --name insightbridge-frontend \
-            --startup-file "startup.sh"
-          
-          az webapp config appsettings set \
-            --resource-group <YOUR_RESOURCE_GROUP> \
-            --name insightbridge-frontend \
-            --settings \
-              SCM_DO_BUILD_DURING_DEPLOYMENT=false \
-              WEBSITE_NODE_DEFAULT_VERSION=20-lts \
-              NODE_ENV=production \
-              NEXT_PUBLIC_API_BASE_URL=https://insightbridge-backend.azurewebsites.net
       
       - name: Azure logout
         run: az logout
