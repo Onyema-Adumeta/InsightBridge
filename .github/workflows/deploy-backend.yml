@@ -15,22 +15,20 @@ jobs:
       contents: read
     defaults:
       run:
-        working-directory: backend   # all run-steps below happen inside ./backend
-
+        working-directory: backend
+    
     steps:
       - uses: actions/checkout@v4
-
-      # Create a zip INSIDE the backend folder (no .. usage)
+      
       - name: Zip backend source
         run: |
           zip -r backend.zip . -x ".git/*" "__pycache__/*" ".pytest_cache/*"
-
-      # Upload that single file as an artifact
+      
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: backend-src
-          path: backend/backend.zip   # <-- absolute-from-repo-root path; no ".."
+          path: backend/backend.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -38,24 +36,26 @@ jobs:
     permissions:
       id-token: write
       contents: read
-
+    
     steps:
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: backend-src
-          # This creates ./backend-src/backend.zip by default
-
-      - name: Azure Login (OIDC)
+      
+      - name: Azure Login
         uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_BACKEND }}
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_BACKEND }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_BACKEND }}
-
+      
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: "insightbridge-backend"   # e.g., insightbridge-backend
+          app-name: "insightbridge-backend-test"
           slot-name: "Production"
-          package: backend-src/backend.zip      # matches the downloaded location
+          package: backend.zip
+      
+      - name: Azure logout
+        run: az logout
