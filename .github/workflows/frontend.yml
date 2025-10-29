@@ -40,81 +40,79 @@ jobs:
         run: |
           cd frontend
           
+          # Create package with production dependencies only
           zip -r ../frontend.zip \
             .next \
             public \
             package.json \
             package-lock.json \
             next.config.js \
-            -x ".git/*"
+            -x ".git/*" \
+            -x "*__pycache__*"
           
           cd ..
           echo "✅ Package size: $(du -h frontend.zip | cut -f1)"
       
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: '{"clientId":"${{ secrets.AZUREAPPSERVICE_CLIENTID_FRONTEND }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_FRONTEND }}","tenantId":"${{ secrets.AZUREAPPSERVICE_TENANTID_FRONTEND }}"}'
-      
-      - name: Enable and start app service
+      - name: Deploy via Kudu ZipDeploy API
         run: |
-          echo "Ensuring app is enabled..."
-          az webapp update \
-            --name insightbridge-frontend-test \
-            --resource-group InsightBridge-Test-RG \
-            --set enabled=true
+          echo "🚀 Deploying frontend via Kudu..."
           
-          echo "Starting app..."
-          az webapp start \
-            --name insightbridge-frontend-test \
-            --resource-group InsightBridge-Test-RG
+          # Use async deployment to avoid timeout
+          response=$(curl -X POST \
+            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
+            --data-binary @frontend.zip \
+            -H "Content-Type: application/octet-stream" \
+            -w "\n%{http_code}" \
+            -s \
+            https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy?isAsync=true)
           
-          echo "Waiting for app to be ready..."
-          sleep 30
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n -1)
           
-          # Verify it's running
-          state=$(az webapp show \
-            --name insightbridge-frontend-test \
-            --resource-group InsightBridge-Test-RG \
-            --query "state" -o tsv)
+          echo "Response: $body"
+          echo "Status code: $http_code"
           
-          echo "App state: $state"
+          if [ "$http_code" = "200" ] || [ "$http_code" = "202" ]; then
+            echo "✅ Deployment initiated successfully!"
+          else
+            echo "❌ Deployment failed!"
+            echo "Response body: $body"
+            exit 1
+          fi
       
-      - name: Configure app settings
+      - name: Wait for deployment to complete
         run: |
-          az webapp config appsettings set \
-            --name insightbridge-frontend-test \
-            --resource-group InsightBridge-Test-RG \
-            --settings \
-              SCM_DO_BUILD_DURING_DEPLOYMENT=true \
-              WEBSITE_NODE_DEFAULT_VERSION=~20 \
-              --output none
+          echo "Waiting for deployment to process..."
+          sleep 60
+          
+          echo "Checking deployment status..."
+          curl -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
+            https://insightbridge-frontend-test.scm.azurewebsites.net/api/deployments/latest
       
-      - name: Deploy using Azure CLI
+      - name: Configure app settings for Next.js
         run: |
-          echo "Starting deployment..."
-          az webapp deploy \
-            --resource-group InsightBridge-Test-RG \
-            --name insightbridge-frontend-test \
-            --src-path frontend.zip \
-            --type zip \
-            --timeout 600 \
-            --async false
-      
-      - name: Azure logout
-        run: az logout
-        if: always()
+          echo "Configuring app settings..."
+          curl -X POST \
+            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
+            -H "Content-Type: application/json" \
+            -d '{"SCM_DO_BUILD_DURING_DEPLOYMENT":"true","WEBSITE_NODE_DEFAULT_VERSION":"~20"}' \
+            https://insightbridge-frontend-test.scm.azurewebsites.net/api/settings
       
       - name: Verify deployment
         run: |
-          echo "Waiting for deployment to complete..."
+          echo "Waiting for app to start..."
           sleep 30
           
-          echo "Checking app health..."
-          status_code=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-frontend-test.azurewebsites.net)
+          for i in {1..5}; do
+            status_code=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-frontend-test.azurewebsites.net)
+            echo "Attempt $i: Status $status_code"
+            
+            if [ "$status_code" = "200" ]; then
+              echo "✅ Frontend is live!"
+              exit 0
+            fi
+            
+            sleep 10
+          done
           
-          if [ "$status_code" = "200" ]; then
-            echo "✅ Frontend deployed successfully!"
-          else
-            echo "⚠️  Frontend status: $status_code"
-          fi
+          echo "⚠️ Frontend may need more time to start"
