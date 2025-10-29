@@ -1,5 +1,4 @@
 name: Deploy Backend (FastAPI)
-
 on:
   push:
     branches: [ main ]
@@ -13,32 +12,36 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    defaults:
-      run:
-        working-directory: backend
     
     steps:
       - uses: actions/checkout@v4
       
       - name: Zip backend source
         run: |
-          zip -r ../backend.zip . -x ".git/*" "__pycache__/*" ".pytest_cache/*"
+          cd backend
+          zip -r ../backend.zip . -x ".git/*" "__pycache__/*" ".pytest_cache/*" "*.pyc" ".venv/*" "venv/*"
       
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: '{"clientId":"${{ secrets.AZUREAPPSERVICE_CLIENTID_BACKEND }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_BACKEND }}","tenantId":"${{ secrets.AZUREAPPSERVICE_TENANTID_BACKEND }}"}'
-
+      
       - name: Stop App Service
         run: |
           az webapp stop --name insightbridge-backend-test --resource-group InsightBridge-Test-RG
-
+      
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: "insightbridge-backend-test"
           slot-name: "Production"
           package: backend.zip
+          clean: true
+      
+      - name: Start App Service
+        run: |
+          az webapp start --name insightbridge-backend-test --resource-group InsightBridge-Test-RG
       
       - name: Azure logout
         run: az logout
+        if: always()
