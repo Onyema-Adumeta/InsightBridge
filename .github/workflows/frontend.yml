@@ -40,32 +40,38 @@ jobs:
         run: |
           cd frontend
           
-          # Create package WITHOUT node_modules (much smaller)
           zip -r ../frontend.zip \
             .next \
             public \
             package.json \
             package-lock.json \
             next.config.js \
-            -x ".git/*" \
-            -x "*__pycache__*" \
-            -x "*.cache/*"
+            -x ".git/*"
           
           cd ..
-          echo "✅ Package created ($(du -h frontend.zip | cut -f1))"
-          ls -lh frontend.zip
+          echo "✅ Package size: $(du -h frontend.zip | cut -f1)"
       
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: '{"clientId":"${{ secrets.AZUREAPPSERVICE_CLIENTID_FRONTEND }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_FRONTEND }}","tenantId":"${{ secrets.AZUREAPPSERVICE_TENANTID_FRONTEND }}"}'
       
-      - name: Enable Oryx Build
+      - name: Stop and restart app to clear state
+        run: |
+          echo "Stopping app..."
+          az webapp stop --name insightbridge-frontend-test --resource-group InsightBridge-Test-RG
+          sleep 10
+          
+          echo "Restarting app..."
+          az webapp restart --name insightbridge-frontend-test --resource-group InsightBridge-Test-RG
+          sleep 20
+      
+      - name: Enable build during deployment
         run: |
           az webapp config appsettings set \
             --name insightbridge-frontend-test \
             --resource-group InsightBridge-Test-RG \
-            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true
+            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true WEBSITE_NODE_DEFAULT_VERSION=~20
       
       - name: Deploy using Azure CLI
         run: |
@@ -74,23 +80,28 @@ jobs:
             --name insightbridge-frontend-test \
             --src-path frontend.zip \
             --type zip \
+            --timeout 600 \
             --async false
       
       - name: Azure logout
         run: az logout
         if: always()
       
-      - name: Verify deployment
+      - name: Wait and verify
         run: |
-          echo "Waiting for app to start..."
-          sleep 30
+          echo "Waiting for app to stabilize..."
+          sleep 45
           
-          status_code=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-frontend-test.azurewebsites.net)
+          for i in {1..5}; do
+            status_code=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-frontend-test.azurewebsites.net)
+            echo "Attempt $i: Status $status_code"
+            
+            if [ "$status_code" = "200" ]; then
+              echo "✅ Frontend is live!"
+              exit 0
+            fi
+            
+            sleep 10
+          done
           
-          echo "App status: $status_code"
-          
-          if [ "$status_code" = "200" ]; then
-            echo "✅ App is running!"
-          else
-            echo "⚠️  App returned status: $status_code"
-          fi
+          echo "⚠️  Frontend may need more time to start"
