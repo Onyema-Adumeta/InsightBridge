@@ -15,34 +15,74 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Zip backend source
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
         run: |
           cd backend
-          zip -r ../backend.zip . -x ".git/*" "__pycache__/*" ".pytest_cache/*" "*.pyc" ".venv/*" "venv/*"
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
       
-      - name: Deploy directly via Kudu ZipDeploy API
+      - name: Create deployment package
         run: |
-          echo "Deploying to Kudu..."
+          cd backend
+          
+          # Create clean package excluding unnecessary files
+          zip -r ../backend.zip . \
+            -x "*.git*" \
+            -x "*__pycache__*" \
+            -x "*.pytest_cache*" \
+            -x "*.pyc" \
+            -x "*venv*" \
+            -x "*.venv*" \
+            -x ".env" \
+            -x "*.db" \
+            -x "test*.py" \
+            -x "debug*.py"
+          
+          cd ..
+          echo "✅ Package created"
+          unzip -l backend.zip | head -30
+      
+      - name: Deploy via Kudu API
+        run: |
+          echo "🚀 Starting deployment..."
+          
           response=$(curl -X POST \
             -u '$insightbridge-backend-test:7fpDMWkLmqiWql3Ztqx93quEzpZbKW9p2mD4LngMbfXQrJSCKBw1qztmWi5q' \
             --data-binary @backend.zip \
-            -H "Content-Type: application/zip" \
+            -H "Content-Type: application/octet-stream" \
             -w "\n%{http_code}" \
+            -s \
             https://insightbridge-backend-test.scm.azurewebsites.net/api/zipdeploy)
           
           http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n -1)
           
-          if [ "$http_code" -eq 200 ] || [ "$http_code" -eq 202 ]; then
-            echo "✅ Deployment successful! Status code: $http_code"
+          echo "Response: $body"
+          echo "Status code: $http_code"
+          
+          if [ "$http_code" = "200" ] || [ "$http_code" = "202" ]; then
+            echo "✅ Deployment successful!"
+            exit 0
           else
-            echo "❌ Deployment failed with status code: $http_code"
-            echo "$response"
+            echo "❌ Deployment failed!"
+            echo "Response body: $body"
             exit 1
           fi
+      
+      - name: Verify deployment
+        run: |
+          echo "Waiting for app to start..."
+          sleep 15
           
-          echo "Waiting for deployment to complete..."
-          sleep 20
+          status_code=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-backend-test.azurewebsites.net)
           
-          echo "Checking deployment status..."
-          curl -u '$insightbridge-backend-test:7fpDMWkLmqiWql3Ztqx93quEzpZbKW9p2mD4LngMbfXQrJSCKBw1qztmWi5q' \
-            https://insightbridge-backend-test.scm.azurewebsites.net/api/deployments/latest
+          if [ "$status_code" = "200" ] || [ "$status_code" = "404" ]; then
+            echo "✅ App is responding (Status: $status_code)"
+          else
+            echo "⚠️  App returned status: $status_code"
+          fi
