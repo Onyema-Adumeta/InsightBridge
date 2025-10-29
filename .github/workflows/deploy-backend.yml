@@ -43,12 +43,9 @@ jobs:
           name: backend-src
       
       - name: Azure Login
-        uses: azure/login@v2
+        uses: azure/login@v1
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_BACKEND }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_BACKEND }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_BACKEND }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          creds: '{"clientId":"${{ secrets.AZUREAPPSERVICE_CLIENTID_BACKEND }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_BACKEND }}","tenantId":"${{ secrets.AZUREAPPSERVICE_TENANTID_BACKEND }}"}'
       
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
