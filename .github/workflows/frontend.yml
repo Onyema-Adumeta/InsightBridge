@@ -56,17 +56,29 @@ jobs:
         with:
           creds: '{"clientId":"${{ secrets.AZUREAPPSERVICE_CLIENTID_FRONTEND }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_FRONTEND }}","tenantId":"${{ secrets.AZUREAPPSERVICE_TENANTID_FRONTEND }}"}'
       
-      - name: Ensure app is started
+      - name: Enable and start app service
         run: |
-          echo "Checking app state..."
-          state=$(az webapp show --name insightbridge-frontend-test --resource-group InsightBridge-Test-RG --query "state" -o tsv)
-          echo "Current state: $state"
+          echo "Ensuring app is enabled..."
+          az webapp update \
+            --name insightbridge-frontend-test \
+            --resource-group InsightBridge-Test-RG \
+            --set enabled=true
           
-          if [ "$state" != "Running" ]; then
-            echo "Starting app..."
-            az webapp start --name insightbridge-frontend-test --resource-group InsightBridge-Test-RG
-            sleep 15
-          fi
+          echo "Starting app..."
+          az webapp start \
+            --name insightbridge-frontend-test \
+            --resource-group InsightBridge-Test-RG
+          
+          echo "Waiting for app to be ready..."
+          sleep 30
+          
+          # Verify it's running
+          state=$(az webapp show \
+            --name insightbridge-frontend-test \
+            --resource-group InsightBridge-Test-RG \
+            --query "state" -o tsv)
+          
+          echo "App state: $state"
       
       - name: Configure app settings
         run: |
@@ -104,5 +116,5 @@ jobs:
           if [ "$status_code" = "200" ]; then
             echo "✅ Frontend deployed successfully!"
           else
-            echo "⚠️  Frontend status: $status_code (may need time to warm up)"
+            echo "⚠️  Frontend status: $status_code"
           fi
