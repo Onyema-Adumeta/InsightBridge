@@ -11,8 +11,6 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     defaults:
       run:
         working-directory: frontend
@@ -47,17 +45,9 @@ jobs:
             next.config.js \
             -x "node_modules/*" ".git/*"
       
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: '{"clientId":"${{ secrets.AZUREAPPSERVICE_CLIENTID_FRONTEND }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_FRONTEND }}","tenantId":"${{ secrets.AZUREAPPSERVICE_TENANTID_FRONTEND }}"}'
-      
       - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
+        uses: azure/webapps-deploy@v2
         with:
-          app-name: "insightbridge-frontend-test"
-          slot-name: "Production"
+          app-name: 'insightbridge-frontend-test'
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
           package: frontend.zip
-      
-      - name: Azure logout
-        run: az logout
