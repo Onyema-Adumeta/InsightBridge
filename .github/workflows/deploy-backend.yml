@@ -41,6 +41,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: backend-src
+          path: .
       
       - name: Azure Login
         uses: azure/login@v1
