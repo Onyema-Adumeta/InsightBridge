@@ -19,7 +19,11 @@ jobs:
         run: |
           cd backend
           
-          # Create clean package
+          # Verify startup.sh exists
+          echo "Checking for startup.sh..."
+          ls -la startup.sh
+          
+          # Create clean package including startup.sh
           zip -r ../backend.zip . \
             -x "*.git*" \
             -x "*__pycache__*" \
@@ -34,27 +38,34 @@ jobs:
           
           cd ..
           echo "✅ Package created ($(du -h backend.zip | cut -f1))"
-          echo ""
-          echo "📦 Package contents:"
-          unzip -l backend.zip
-      
-      - name: Get detailed error from Kudu
-        run: |
-          echo "🚀 Attempting deployment with verbose output..."
           
-          curl -v -X POST \
+          echo ""
+          echo "📦 Verifying startup.sh in package:"
+          unzip -l backend.zip | grep startup.sh
+      
+      - name: Deploy via Kudu API
+        run: |
+          echo "🚀 Deploying backend..."
+          
+          response=$(curl -X POST \
             -u '$insightbridge-backend-test:7fpDMWkLmqiWql3Ztqx93quEzpZbKW9p2mD4LngMbfXQrJSCKBw1qztmWi5q' \
             --data-binary @backend.zip \
             -H "Content-Type: application/octet-stream" \
-            -o response.txt \
-            -w "HTTP Status: %{http_code}\n" \
-            https://insightbridge-backend-test.scm.azurewebsites.net/api/zipdeploy 2>&1 | tee deploy.log
+            -w "\n%{http_code}" \
+            -s \
+            https://insightbridge-backend-test.scm.azurewebsites.net/api/zipdeploy)
           
-          echo ""
-          echo "📄 Response body:"
-          cat response.txt
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n -1)
           
-          echo ""
-          echo "🔍 Checking deployment logs..."
-          curl -u '$insightbridge-backend-test:7fpDMWkLmqiWql3Ztqx93quEzpZbKW9p2mD4LngMbfXQrJSCKBw1qztmWi5q' \
-            https://insightbridge-backend-test.scm.azurewebsites.net/api/deployments/latest
+          echo "Response: $body"
+          echo "Status code: $http_code"
+          
+          if [ "$http_code" = "200" ] || [ "$http_code" = "202" ]; then
+            echo "✅ Deployment successful!"
+            exit 0
+          else
+            echo "❌ Deployment failed!"
+            echo "Response body: $body"
+            exit 1
+          fi
