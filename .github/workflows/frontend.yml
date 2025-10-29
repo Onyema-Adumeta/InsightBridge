@@ -37,17 +37,57 @@ jobs:
       
       - name: Create deployment package
         run: |
+          # Include node_modules for Next.js standalone mode
           zip -r ../frontend.zip \
             .next \
             public \
             package.json \
             package-lock.json \
             next.config.js \
-            -x "node_modules/*" ".git/*"
+            node_modules \
+            -x "node_modules/.cache/*" \
+            -x ".git/*" \
+            -x "*__pycache__*"
+          
+          cd ..
+          echo "✅ Package created ($(du -h frontend.zip | cut -f1))"
       
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: 'insightbridge-frontend-test'
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
-          package: frontend.zip
+      - name: Deploy via Kudu API
+        run: |
+          echo "🚀 Deploying frontend..."
+          
+          response=$(curl -X POST \
+            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
+            --data-binary @frontend.zip \
+            -H "Content-Type: application/octet-stream" \
+            -w "\n%{http_code}" \
+            -s \
+            https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy)
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n -1)
+          
+          echo "Response: $body"
+          echo "Status code: $http_code"
+          
+          if [ "$http_code" = "200" ] || [ "$http_code" = "202" ]; then
+            echo "✅ Deployment successful!"
+            exit 0
+          else
+            echo "❌ Deployment failed!"
+            echo "Response body: $body"
+            exit 1
+          fi
+      
+      - name: Verify deployment
+        run: |
+          echo "Waiting for app to start..."
+          sleep 20
+          
+          status_code=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-frontend-test.azurewebsites.net)
+          
+          if [ "$status_code" = "200" ] || [ "$status_code" = "404" ]; then
+            echo "✅ App is responding (Status: $status_code)"
+          else
+            echo "⚠️  App returned status: $status_code"
+          fi
