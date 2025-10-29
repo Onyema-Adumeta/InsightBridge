@@ -26,17 +26,29 @@ jobs:
         with:
           creds: '{"clientId":"${{ secrets.AZUREAPPSERVICE_CLIENTID_BACKEND }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_BACKEND }}","tenantId":"${{ secrets.AZUREAPPSERVICE_TENANTID_BACKEND }}"}'
       
-      - name: Stop App Service
+      - name: Stop App Service and Clear Locks
         run: |
+          echo "Stopping web app..."
           az webapp stop --name insightbridge-backend-test --resource-group InsightBridge-Test-RG
+          
+          echo "Waiting for app to fully stop..."
+          sleep 30
+          
+          echo "Restarting web app to clear any locks..."
+          az webapp start --name insightbridge-backend-test --resource-group InsightBridge-Test-RG
+          sleep 10
+          
+          echo "Stopping again for deployment..."
+          az webapp stop --name insightbridge-backend-test --resource-group InsightBridge-Test-RG
+          sleep 10
       
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: "insightbridge-backend-test"
-          slot-name: "Production"
-          package: backend.zip
-          clean: true
+      - name: Deploy using Azure CLI (Zip Deploy)
+        run: |
+          az webapp deployment source config-zip \
+            --resource-group InsightBridge-Test-RG \
+            --name insightbridge-backend-test \
+            --src backend.zip \
+            --timeout 600
       
       - name: Start App Service
         run: |
