@@ -40,10 +40,6 @@ jobs:
         run: |
           cd frontend
           
-          # Verify startup.sh exists
-          echo "Checking for startup.sh..."
-          ls -la startup.sh
-          
           # Create package with built files and startup script
           zip -r ../frontend.zip \
             .next \
