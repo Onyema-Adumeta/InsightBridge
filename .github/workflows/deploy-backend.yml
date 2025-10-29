@@ -1,4 +1,5 @@
 name: Deploy Backend (FastAPI)
+
 on:
   push:
     branches: [ main ]
@@ -10,8 +11,6 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     
     steps:
       - uses: actions/checkout@v4
@@ -21,28 +20,9 @@ jobs:
           cd backend
           zip -r ../backend.zip . -x ".git/*" "__pycache__/*" ".pytest_cache/*" "*.pyc" ".venv/*" "venv/*"
       
-      - name: Azure Login
-        uses: azure/login@v1
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
         with:
-          creds: '{"clientId":"${{ secrets.AZUREAPPSERVICE_CLIENTID_BACKEND }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_BACKEND }}","tenantId":"${{ secrets.AZUREAPPSERVICE_TENANTID_BACKEND }}"}'
-      
-      - name: Restart app to clear any locks
-        run: |
-          az webapp restart --name insightbridge-backend-test --resource-group InsightBridge-Test-RG
-          echo "Waiting for restart to complete..."
-          sleep 20
-      
-      - name: Deploy using az webapp deploy
-        run: |
-          az webapp deploy \
-            --resource-group InsightBridge-Test-RG \
-            --name insightbridge-backend-test \
-            --src-path backend.zip \
-            --type zip \
-            --async false \
-            --clean true \
-            --restart true
-      
-      - name: Azure logout
-        run: az logout
-        if: always()
+          app-name: 'insightbridge-backend-test'
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_BACKEND }}
+          package: backend.zip
