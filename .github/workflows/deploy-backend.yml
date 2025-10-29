@@ -20,6 +20,29 @@ jobs:
           cd backend
           zip -r ../backend.zip . -x ".git/*" "__pycache__/*" ".pytest_cache/*" "*.pyc" ".venv/*" "venv/*"
       
+      - name: Azure Login for cleanup
+        uses: azure/login@v1
+        with:
+          creds: '{"clientId":"${{ secrets.AZUREAPPSERVICE_CLIENTID_BACKEND }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_BACKEND }}","tenantId":"${{ secrets.AZUREAPPSERVICE_TENANTID_BACKEND }}"}'
+      
+      - name: Force cleanup and restart
+        run: |
+          echo "Stopping app..."
+          az webapp stop --name insightbridge-backend-test --resource-group InsightBridge-Test-RG || true
+          
+          echo "Waiting..."
+          sleep 15
+          
+          echo "Restarting app..."
+          az webapp restart --name insightbridge-backend-test --resource-group InsightBridge-Test-RG || true
+          
+          echo "Waiting for restart..."
+          sleep 15
+      
+      - name: Azure logout
+        run: az logout
+        if: always()
+      
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
