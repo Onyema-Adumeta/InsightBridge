@@ -52,10 +52,6 @@ jobs:
           
           cd ..
           echo "✅ Package size: $(du -h frontend.zip | cut -f1))"
-          
-          echo ""
-          echo "📦 Verifying startup.sh in package:"
-          unzip -l frontend.zip | grep startup.sh
       
       - name: Deploy via Kudu ZipDeploy API
         run: |
