@@ -36,7 +36,7 @@ jobs:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           NODE_ENV: production
       
-      - name: Create lightweight deployment package
+      - name: Create deployment package
         run: |
           cd frontend
           
@@ -56,25 +56,31 @@ jobs:
         with:
           creds: '{"clientId":"${{ secrets.AZUREAPPSERVICE_CLIENTID_FRONTEND }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_FRONTEND }}","tenantId":"${{ secrets.AZUREAPPSERVICE_TENANTID_FRONTEND }}"}'
       
-      - name: Stop and restart app to clear state
+      - name: Ensure app is started
         run: |
-          echo "Stopping app..."
-          az webapp stop --name insightbridge-frontend-test --resource-group InsightBridge-Test-RG
-          sleep 10
+          echo "Checking app state..."
+          state=$(az webapp show --name insightbridge-frontend-test --resource-group InsightBridge-Test-RG --query "state" -o tsv)
+          echo "Current state: $state"
           
-          echo "Restarting app..."
-          az webapp restart --name insightbridge-frontend-test --resource-group InsightBridge-Test-RG
-          sleep 20
+          if [ "$state" != "Running" ]; then
+            echo "Starting app..."
+            az webapp start --name insightbridge-frontend-test --resource-group InsightBridge-Test-RG
+            sleep 15
+          fi
       
-      - name: Enable build during deployment
+      - name: Configure app settings
         run: |
           az webapp config appsettings set \
             --name insightbridge-frontend-test \
             --resource-group InsightBridge-Test-RG \
-            --settings SCM_DO_BUILD_DURING_DEPLOYMENT=true WEBSITE_NODE_DEFAULT_VERSION=~20
+            --settings \
+              SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+              WEBSITE_NODE_DEFAULT_VERSION=~20 \
+              --output none
       
       - name: Deploy using Azure CLI
         run: |
+          echo "Starting deployment..."
           az webapp deploy \
             --resource-group InsightBridge-Test-RG \
             --name insightbridge-frontend-test \
@@ -87,21 +93,16 @@ jobs:
         run: az logout
         if: always()
       
-      - name: Wait and verify
+      - name: Verify deployment
         run: |
-          echo "Waiting for app to stabilize..."
-          sleep 45
+          echo "Waiting for deployment to complete..."
+          sleep 30
           
-          for i in {1..5}; do
-            status_code=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-frontend-test.azurewebsites.net)
-            echo "Attempt $i: Status $status_code"
-            
-            if [ "$status_code" = "200" ]; then
-              echo "✅ Frontend is live!"
-              exit 0
-            fi
-            
-            sleep 10
-          done
+          echo "Checking app health..."
+          status_code=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-frontend-test.azurewebsites.net)
           
-          echo "⚠️  Frontend may need more time to start"
+          if [ "$status_code" = "200" ]; then
+            echo "✅ Frontend deployed successfully!"
+          else
+            echo "⚠️  Frontend status: $status_code (may need time to warm up)"
+          fi
