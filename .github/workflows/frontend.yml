@@ -54,6 +54,7 @@ jobs:
             startup.sh \
             -x ".git/*" \
             -x "*__pycache__*"
+            -x "node_modules/.cache/*"
           
           cd ..
           echo "✅ Package size: $(du -h frontend.zip | cut -f1))"
