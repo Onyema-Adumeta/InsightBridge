@@ -51,10 +51,8 @@ jobs:
             package.json \
             package-lock.json \
             next.config.js \
-            startup.sh \
-            -x ".git/*" \
-            -x "*__pycache__*"
-            -x "node_modules/.cache/*"
+            node_modules \
+            -x ".git/*" "*__pycache__*" "node_modules/.cache/*"
           
           cd ..
           echo "✅ Package size: $(du -h frontend.zip | cut -f1))"
