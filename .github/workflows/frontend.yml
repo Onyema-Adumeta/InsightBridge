@@ -19,103 +19,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
       
-      - name: Install dependencies
-        run: |
-          cd frontend
-          npm ci
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'insightbridge-frontend-test'
+          publish-profile: ${{ secrets.AZURE_FRONTEND_PUBLISH_PROFILE }}
+          package: './frontend'
       
-      - name: Build Next.js app
+      - name: Wait and verify deployment
         run: |
-          echo "⏭️ Skipping local build - Azure will build on deployment"
-          echo "This reduces package size and avoids timeout"
-      
-      - name: Create deployment package
-        run: |
-          echo "📦 Creating deployment package with source code..."
+          echo "⏳ Waiting for app to build and start (this takes 3-5 minutes)..."
+          sleep 180
           
-          # Navigate INTO frontend folder
-          cd frontend
-          
-          # Zip SOURCE CODE only - Azure will build it
-          zip -r ../frontend.zip \
-            src \
-            app \
-            pages \
-            components \
-            styles \
-            public \
-            package.json \
-            package-lock.json \
-            next.config.js \
-            tsconfig.json \
-            tailwind.config.js \
-            postcss.config.js \
-            .env.production \
-            -x ".git/*" \
-            -x "*__pycache__*" \
-            -x "node_modules/*" \
-            -x ".next/*" \
-            -x "*.log" \
-            -x ".env.local" \
-            -x ".env.development"
-          
-          cd ..
-          echo "✅ Package size: $(du -h frontend.zip | cut -f1)"
-          
-          echo ""
-          echo "📋 Package contents:"
-          unzip -l frontend.zip | head -20
-      
-      - name: Deploy to Azure with OneDeploy
-        run: |
-          echo "🚀 Deploying frontend to Azure..."
-          
-          # Use OneDeploy API - Azure will run npm install automatically
-          response=$(curl -X POST \
-            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
-            --data-binary @frontend.zip \
-            -H "Content-Type: application/zip" \
-            -w "\n%{http_code}" \
-            -s \
-            'https://insightbridge-frontend-test.scm.azurewebsites.net/api/publish?type=zip&restart=true&clean=true')
-          
-          http_code=$(echo "$response" | tail -n1)
-          body=$(echo "$response" | head -n -1)
-          
-          echo "HTTP Status: $http_code"
-          
-          if [ "$http_code" = "200" ] || [ "$http_code" = "202" ]; then
-            echo "✅ Deployment accepted by Azure!"
-            echo ""
-            echo "⏳ Waiting for deployment to complete..."
-            sleep 60
+          echo "🔍 Checking application..."
+          for i in {1..10}; do
+            response_code=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-frontend-test.azurewebsites.net)
             
-            echo ""
-            echo "🔍 Checking application health..."
+            if [ "$response_code" = "200" ]; then
+              echo "✅ Frontend is live!"
+              echo "Visit: https://insightbridge-frontend-test.azurewebsites.net"
+              exit 0
+            fi
             
-            for i in {1..10}; do
-              response_code=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-frontend-test.azurewebsites.net)
-              
-              if [ "$response_code" = "200" ]; then
-                echo "✅ Frontend is live and responding!"
-                echo "🎉 Deployment successful!"
-                echo ""
-                echo "View your app at: https://insightbridge-frontend-test.azurewebsites.net"
-                exit 0
-              fi
-              
-              echo "Attempt $i/10: Health check returned $response_code, waiting..."
-              sleep 10
-            done
-            
-            echo "⚠️  Deployment completed but app might still be starting"
-            echo "Check logs at: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
-            exit 0
-          else
-            echo "❌ Deployment failed!"
-            echo "Response: $body"
-            exit 1
-          fi
+            echo "Attempt $i/10: Status $response_code, waiting..."
+            sleep 20
+          done
+          
+          echo "⚠️  Check logs at: https://insightbridge-frontend-test.scm.azurewebsites.net"
