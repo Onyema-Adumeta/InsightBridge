@@ -15,35 +15,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      
-      - name: Create deployment package with dependencies
+      - name: Create deployment package
         run: |
           cd backend
           
-          # Verify requirements.txt and startup.sh exist
+          # Verify requirements.txt exists
           echo "Checking required files..."
           ls -la requirements.txt
-          ls -la startup.sh
+          ls -la app.py
           
-          # Create virtual environment and install dependencies
-          echo "Installing dependencies..."
-          python -m venv antenv
-          source antenv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          deactivate
-          
-          # Create deployment package including virtual environment
+          # Create clean package (let Azure build dependencies)
           echo "Creating deployment package..."
           zip -r ../backend.zip . \
             -x "*.git*" \
             -x "*__pycache__*" \
             -x "*.pytest_cache*" \
             -x "*.pyc" \
+            -x "*venv*" \
+            -x "*.venv*" \
+            -x "*antenv*" \
             -x ".env" \
             -x "*.db" \
             -x "test*.py" \
@@ -53,8 +43,8 @@ jobs:
           echo "✅ Package created ($(du -h backend.zip | cut -f1))"
           
           echo ""
-          echo "📦 Package contents:"
-          unzip -l backend.zip | head -20
+          echo "📦 Key files in package:"
+          unzip -l backend.zip | grep -E '(requirements\.txt|app\.py|\.py$)' | head -15
       
       - name: Deploy via Kudu API
         run: |
