@@ -15,22 +15,35 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Create deployment package
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Create deployment package with dependencies
         run: |
           cd backend
           
-          # Verify startup.sh exists
-          echo "Checking for startup.sh..."
+          # Verify requirements.txt and startup.sh exist
+          echo "Checking required files..."
+          ls -la requirements.txt
           ls -la startup.sh
           
-          # Create clean package including startup.sh
+          # Create virtual environment and install dependencies
+          echo "Installing dependencies..."
+          python -m venv antenv
+          source antenv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          deactivate
+          
+          # Create deployment package including virtual environment
+          echo "Creating deployment package..."
           zip -r ../backend.zip . \
             -x "*.git*" \
             -x "*__pycache__*" \
             -x "*.pytest_cache*" \
             -x "*.pyc" \
-            -x "*venv*" \
-            -x "*.venv*" \
             -x ".env" \
             -x "*.db" \
             -x "test*.py" \
@@ -40,12 +53,12 @@ jobs:
           echo "✅ Package created ($(du -h backend.zip | cut -f1))"
           
           echo ""
-          echo "📦 Verifying startup.sh in package:"
-          unzip -l backend.zip | grep startup.sh
+          echo "📦 Package contents:"
+          unzip -l backend.zip | head -20
       
       - name: Deploy via Kudu API
         run: |
-          echo "🚀 Deploying backend..."
+          echo "🚀 Deploying backend to Azure..."
           
           response=$(curl -X POST \
             -u '$insightbridge-backend-test:7fpDMWkLmqiWql3Ztqx93quEzpZbKW9p2mD4LngMbfXQrJSCKBw1qztmWi5q' \
@@ -69,3 +82,20 @@ jobs:
             echo "Response body: $body"
             exit 1
           fi
+      
+      - name: Wait for deployment to complete
+        run: |
+          echo "⏳ Waiting for app to start..."
+          sleep 30
+          
+          echo "🔍 Checking health endpoint..."
+          for i in {1..5}; do
+            if curl -f -s https://insightbridge-backend-test.azurewebsites.net/api/v1/main/health > /dev/null; then
+              echo "✅ Application is healthy!"
+              exit 0
+            fi
+            echo "Attempt $i failed, waiting..."
+            sleep 10
+          done
+          
+          echo "⚠️ Health check timeout - check logs in Azure Portal"
