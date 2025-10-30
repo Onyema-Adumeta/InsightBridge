@@ -29,39 +29,45 @@ jobs:
       
       - name: Build Next.js app
         run: |
-          cd frontend
-          npm run build
-        env:
-          NEXT_PUBLIC_API_BASE_URL: https://insightbridge-backend-test.azurewebsites.net
-          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          NODE_ENV: production
+          echo "⏭️ Skipping local build - Azure will build on deployment"
+          echo "This reduces package size and avoids timeout"
       
       - name: Create deployment package
         run: |
-          echo "📦 Creating deployment package..."
+          echo "📦 Creating deployment package with source code..."
           
-          # Navigate INTO frontend folder and zip its CONTENTS
+          # Navigate INTO frontend folder
           cd frontend
           
-          # Create package WITHOUT node_modules - Azure will install them
+          # Zip SOURCE CODE only - Azure will build it
           zip -r ../frontend.zip \
-            .next \
+            src \
+            app \
+            pages \
+            components \
+            styles \
             public \
             package.json \
             package-lock.json \
             next.config.js \
+            tsconfig.json \
+            tailwind.config.js \
+            postcss.config.js \
+            .env.production \
             -x ".git/*" \
             -x "*__pycache__*" \
             -x "node_modules/*" \
+            -x ".next/*" \
             -x "*.log" \
-            -x ".env*"
+            -x ".env.local" \
+            -x ".env.development"
           
           cd ..
           echo "✅ Package size: $(du -h frontend.zip | cut -f1)"
           
           echo ""
-          echo "📋 Verifying key files in package:"
-          unzip -l frontend.zip | grep -E '(package\.json|next\.config\.js|\.next/)' | head -10
+          echo "📋 Package contents:"
+          unzip -l frontend.zip | head -20
       
       - name: Deploy to Azure with OneDeploy
         run: |
