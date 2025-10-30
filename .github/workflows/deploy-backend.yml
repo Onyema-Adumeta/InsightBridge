@@ -15,14 +15,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Create deployment package
+      - name: Create deployment package from backend folder
         run: |
+          echo "📦 Creating deployment package..."
+          
+          # Navigate into backend folder and zip its CONTENTS (not the folder itself)
           cd backend
-          
-          echo "Checking required files..."
-          ls -la requirements.txt app.py
-          
-          # Create deployment package
           zip -r ../backend.zip . \
             -x "*.git*" \
             -x "*__pycache__*" \
@@ -37,48 +35,59 @@ jobs:
             -x "debug*.py"
           
           cd ..
-          echo "✅ Package created ($(du -h backend.zip | cut -f1))"
-      
-      - name: Deploy with build enabled
-        run: |
-          echo "🚀 Deploying backend with build..."
           
-          # Use zipdeploy with SCM_DO_BUILD_DURING_DEPLOYMENT flag
+          echo "✅ Package created ($(du -h backend.zip | cut -f1))"
+          echo ""
+          echo "📋 Verifying package contents:"
+          unzip -l backend.zip | grep -E '(requirements\.txt|app\.py)' || echo "Warning: Key files not found"
+      
+      - name: Deploy to Azure with OneDeploy API
+        run: |
+          echo "🚀 Deploying backend to Azure..."
+          
+          # Use OneDeploy API which triggers Oryx build
           response=$(curl -X POST \
             -u '$insightbridge-backend-test:7fpDMWkLmqiWql3Ztqx93quEzpZbKW9p2mD4LngMbfXQrJSCKBw1qztmWi5q' \
             --data-binary @backend.zip \
-            -H "Content-Type: application/octet-stream" \
+            -H "Content-Type: application/zip" \
             -w "\n%{http_code}" \
             -s \
-            'https://insightbridge-backend-test.scm.azurewebsites.net/api/zipdeploy?isAsync=true&scm_do_build_during_deployment=true')
+            'https://insightbridge-backend-test.scm.azurewebsites.net/api/publish?type=zip')
           
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | head -n -1)
           
-          echo "Response: $body"
-          echo "Status code: $http_code"
+          echo "HTTP Status: $http_code"
           
           if [ "$http_code" = "200" ] || [ "$http_code" = "202" ]; then
-            echo "✅ Deployment initiated!"
+            echo "✅ Deployment accepted by Azure!"
+            echo ""
+            echo "⏳ Waiting for Oryx build to complete (this takes 60-90 seconds)..."
+            sleep 90
             
-            # Wait for deployment to complete
-            echo "⏳ Waiting for deployment to finish..."
-            sleep 60
+            echo ""
+            echo "🔍 Checking application health..."
             
-            echo "🔍 Checking application..."
             for i in {1..10}; do
-              if curl -f -s https://insightbridge-backend-test.azurewebsites.net/api/v1/main/health > /dev/null; then
-                echo "✅ Application is healthy!"
+              response_code=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-backend-test.azurewebsites.net/api/v1/main/health)
+              
+              if [ "$response_code" = "200" ]; then
+                echo "✅ Application is healthy and responding!"
+                echo "🎉 Deployment successful!"
+                echo ""
+                echo "View your API at: https://insightbridge-backend-test.azurewebsites.net/docs"
                 exit 0
               fi
-              echo "Attempt $i failed, waiting..."
-              sleep 15
+              
+              echo "Attempt $i/10: Health check returned $response_code, waiting..."
+              sleep 10
             done
             
-            echo "⚠️ App might still be starting - check Azure logs"
+            echo "⚠️  Health check timeout - app may still be starting"
+            echo "Check logs at: https://insightbridge-backend-test.scm.azurewebsites.net/api/logstream"
             exit 0
           else
             echo "❌ Deployment failed!"
-            echo "Response body: $body"
+            echo "Response: $body"
             exit 1
           fi
