@@ -43,17 +43,16 @@ jobs:
           # Navigate INTO frontend folder and zip its CONTENTS
           cd frontend
           
-          # Create package with built files - the "." means zip current directory contents
+          # Create package WITHOUT node_modules - Azure will install them
           zip -r ../frontend.zip \
             .next \
             public \
             package.json \
             package-lock.json \
             next.config.js \
-            node_modules \
             -x ".git/*" \
             -x "*__pycache__*" \
-            -x "node_modules/.cache/*" \
+            -x "node_modules/*" \
             -x "*.log" \
             -x ".env*"
           
@@ -68,14 +67,14 @@ jobs:
         run: |
           echo "🚀 Deploying frontend to Azure..."
           
-          # Use OneDeploy API for proper deployment
+          # Use OneDeploy API - Azure will run npm install automatically
           response=$(curl -X POST \
             -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
             --data-binary @frontend.zip \
             -H "Content-Type: application/zip" \
             -w "\n%{http_code}" \
             -s \
-            'https://insightbridge-frontend-test.scm.azurewebsites.net/api/publish?type=zip')
+            'https://insightbridge-frontend-test.scm.azurewebsites.net/api/publish?type=zip&restart=true&clean=true')
           
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | head -n -1)
