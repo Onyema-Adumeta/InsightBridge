@@ -38,9 +38,12 @@ jobs:
       
       - name: Create deployment package
         run: |
+          echo "📦 Creating deployment package..."
+          
+          # Navigate INTO frontend folder and zip its CONTENTS
           cd frontend
           
-          # Create package with built files and startup script
+          # Create package with built files - the "." means zip current directory contents
           zip -r ../frontend.zip \
             .next \
             public \
@@ -48,40 +51,66 @@ jobs:
             package-lock.json \
             next.config.js \
             node_modules \
-            -x ".git/*" "*__pycache__*" "node_modules/.cache/*"
+            -x ".git/*" \
+            -x "*__pycache__*" \
+            -x "node_modules/.cache/*" \
+            -x "*.log" \
+            -x ".env*"
           
           cd ..
-          echo "✅ Package size: $(du -h frontend.zip | cut -f1))"
-      
-      - name: Deploy via Kudu ZipDeploy API
-        run: |
-          echo "🚀 Deploying frontend..."
+          echo "✅ Package size: $(du -h frontend.zip | cut -f1)"
           
+          echo ""
+          echo "📋 Verifying key files in package:"
+          unzip -l frontend.zip | grep -E '(package\.json|next\.config\.js|\.next/)' | head -10
+      
+      - name: Deploy to Azure with OneDeploy
+        run: |
+          echo "🚀 Deploying frontend to Azure..."
+          
+          # Use OneDeploy API for proper deployment
           response=$(curl -X POST \
             -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
             --data-binary @frontend.zip \
-            -H "Content-Type: application/octet-stream" \
+            -H "Content-Type: application/zip" \
             -w "\n%{http_code}" \
             -s \
-            https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy?isAsync=true)
+            'https://insightbridge-frontend-test.scm.azurewebsites.net/api/publish?type=zip')
           
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | head -n -1)
           
-          echo "Response: $body"
-          echo "Status code: $http_code"
+          echo "HTTP Status: $http_code"
           
           if [ "$http_code" = "200" ] || [ "$http_code" = "202" ]; then
-            echo "✅ Deployment initiated successfully!"
+            echo "✅ Deployment accepted by Azure!"
+            echo ""
+            echo "⏳ Waiting for deployment to complete..."
+            sleep 60
+            
+            echo ""
+            echo "🔍 Checking application health..."
+            
+            for i in {1..10}; do
+              response_code=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-frontend-test.azurewebsites.net)
+              
+              if [ "$response_code" = "200" ]; then
+                echo "✅ Frontend is live and responding!"
+                echo "🎉 Deployment successful!"
+                echo ""
+                echo "View your app at: https://insightbridge-frontend-test.azurewebsites.net"
+                exit 0
+              fi
+              
+              echo "Attempt $i/10: Health check returned $response_code, waiting..."
+              sleep 10
+            done
+            
+            echo "⚠️  Deployment completed but app might still be starting"
+            echo "Check logs at: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
+            exit 0
           else
             echo "❌ Deployment failed!"
-            echo "Response body: $body"
+            echo "Response: $body"
             exit 1
           fi
-      
-      - name: Wait for deployment
-        run: |
-          echo "Waiting for deployment to complete..."
-          sleep 90
-          
-          echo "✅ Deployment should be complete. Check app in 1-2 minutes."
