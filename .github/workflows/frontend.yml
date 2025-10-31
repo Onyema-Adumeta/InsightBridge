@@ -32,23 +32,22 @@ jobs:
           NODE_ENV: production
         run: npm run build
       
-      - name: Create deployment package (include .next build)
+      - name: Create deployment package (with .next build output)
         run: |
           cd frontend
           rm -f ../frontend.zip
-          # Include .next folder with build artifacts
           zip -r ../frontend.zip . \
             -x ".git/*" ".github/*" "node_modules/*"
           cd ..
           echo "✅ Package size: $(du -h frontend.zip | cut -f1)"
       
-      - name: Deploy via Kudu ZipDeploy API (disable build)
+      - name: Deploy via Kudu ZipDeploy API
         run: |
-          echo "🚀 Deploying frontend..."
+          echo "🚀 Deploying frontend with pre-built artifacts..."
           curl -X POST \
             -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
             --data-binary @frontend.zip \
             -H "Content-Type: application/octet-stream" \
             -s \
             'https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy?isAsync=true&SCM_DO_BUILD_DURING_DEPLOYMENT=false'
-          echo "✅ Deployment initiated."
+          echo "✅ Deployment initiated (build disabled on Azure)."
