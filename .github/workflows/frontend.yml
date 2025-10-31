@@ -5,7 +5,7 @@ on:
     branches: [ main ]
     paths:
       - "frontend/**"
-      - ".github/workflows/frontend.yml"  # Changed to match actual filename
+      - ".github/workflows/frontend.yml"
   workflow_dispatch:
 
 jobs:
@@ -22,40 +22,66 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       
-      - name: Install dependencies and build
+      - name: Install dependencies
         run: |
           cd frontend
           npm ci
+      
+      - name: Build Next.js app
+        run: |
+          cd frontend
           npm run build
         env:
           NEXT_PUBLIC_API_BASE_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           NODE_ENV: production
       
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: 'insightbridge-frontend-test'
-          publish-profile: ${{ secrets.AZURE_FRONTEND_PUBLISH_PROFILE }}
-          package: './frontend'
-      
-      - name: Wait and verify deployment
+      - name: Create deployment package
         run: |
-          echo "⏳ Waiting for app to start..."
-          sleep 60
+          cd frontend
           
-          echo "🔍 Checking application..."
-          for i in {1..10}; do
-            response_code=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-frontend-test.azurewebsites.net)
-            
-            if [ "$response_code" = "200" ]; then
-              echo "✅ Frontend is live!"
-              echo "Visit: https://insightbridge-frontend-test.azurewebsites.net"
-              exit 0
-            fi
-            
-            echo "Attempt $i/10: Status $response_code, waiting..."
-            sleep 10
-          done
+          # Create package with built files and node_modules
+          zip -r ../frontend.zip \
+            .next \
+            public \
+            package.json \
+            package-lock.json \
+            next.config.js \
+            node_modules \
+            -x ".git/*" "*__pycache__*" "node_modules/.cache/*"
           
-          echo "⚠️  Check logs at: https://insightbridge-frontend-test.scm.azurewebsites.net"
+          cd ..
+          echo "✅ Package size: $(du -h frontend.zip | cut -f1)"
+      
+      - name: Deploy via Kudu ZipDeploy API
+        run: |
+          echo "🚀 Deploying frontend..."
+          
+          response=$(curl -X POST \
+            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
+            --data-binary @frontend.zip \
+            -H "Content-Type: application/octet-stream" \
+            -w "\n%{http_code}" \
+            -s \
+            https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy?isAsync=true)
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n -1)
+          
+          echo "Response: $body"
+          echo "Status code: $http_code"
+          
+          if [ "$http_code" = "200" ] || [ "$http_code" = "202" ]; then
+            echo "✅ Deployment initiated successfully!"
+          else
+            echo "❌ Deployment failed!"
+            echo "Response body: $body"
+            exit 1
+          fi
+      
+      - name: Wait for deployment
+        run: |
+          echo "⏳ Waiting for deployment to complete..."
+          sleep 90
+          
+          echo "✅ Deployment complete. Visit: https://insightbridge-frontend-test.azurewebsites.net"
