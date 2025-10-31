@@ -32,16 +32,17 @@ jobs:
           NODE_ENV: production
         run: npm run build
       
-      - name: Create deployment package (with build artifacts)
+      - name: Create deployment package (include .next build)
         run: |
           cd frontend
           rm -f ../frontend.zip
+          # Include .next folder with build artifacts
           zip -r ../frontend.zip . \
             -x ".git/*" ".github/*" "node_modules/*"
           cd ..
           echo "✅ Package size: $(du -h frontend.zip | cut -f1)"
       
-      - name: Deploy via Kudu ZipDeploy API
+      - name: Deploy via Kudu ZipDeploy API (disable build)
         run: |
           echo "🚀 Deploying frontend..."
           curl -X POST \
@@ -49,5 +50,5 @@ jobs:
             --data-binary @frontend.zip \
             -H "Content-Type: application/octet-stream" \
             -s \
-            https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy?isAsync=true
+            'https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy?isAsync=true&SCM_DO_BUILD_DURING_DEPLOYMENT=false'
           echo "✅ Deployment initiated."
