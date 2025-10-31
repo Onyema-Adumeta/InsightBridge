@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p ${PORT:-8080}",
     "lint": "next lint"
   },
   "dependencies": {
@@ -34,5 +34,9 @@
     "eslint-config-next": "15.4.3",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20 <21",
+    "npm": ">=10"
   }
 }
