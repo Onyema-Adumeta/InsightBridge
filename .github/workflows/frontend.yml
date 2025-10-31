@@ -32,52 +32,32 @@ jobs:
           NODE_ENV: production
         run: npm run build
       
-      - name: Create .deployment file to disable Oryx build
+      - name: Create .deployment file to disable Oryx
         working-directory: frontend
         run: |
           cat > .deployment << 'EOF'
           [config]
           SCM_DO_BUILD_DURING_DEPLOYMENT = false
           EOF
-          echo "✅ Created .deployment file to disable Oryx"
-          cat .deployment
+          echo "✅ Created .deployment file"
       
-      - name: Create deployment package
+      - name: Create deployment package (with .next build output)
         run: |
           cd frontend
           rm -f ../frontend.zip
-          # Include .next folder and .deployment file
           zip -r ../frontend.zip . \
             -x ".git/*" ".github/*" "node_modules/*"
           cd ..
           echo "✅ Package size: $(du -h frontend.zip | cut -f1)"
       
-      - name: Deploy to Azure
+      - name: Deploy via Kudu ZipDeploy API
         run: |
-          echo "🚀 Deploying pre-built Next.js app to Azure..."
+          echo "🚀 Deploying frontend with pre-built artifacts..."
           curl -X POST \
             -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
             --data-binary @frontend.zip \
             -H "Content-Type: application/octet-stream" \
+            -v \
             https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy
           echo ""
-          echo "✅ Deployment completed!"
-```
-
-## What This Does Differently
-
-1. **Creates `.deployment` file** - This tells Azure/Oryx to skip the build
-2. **Includes it in the zip** - So Azure sees it when deploying
-3. **Removed `isAsync=true`** - So you can see immediate results
-
-## After Deploying
-
-Once this runs, you should see in the Azure logs:
-- ✅ No more "Detecting platforms"
-- ✅ No more "Running npm install"
-- ✅ Just the startup command running
-
-The logs should look like:
-```
-2025-10-31T23:XX:XX.XXXXZ Starting container...
-2025-10-31T23:XX:XX.XXXXZ npm install --production && node node_modules/next/dist/bin/next start -p 8080
+          echo "✅ Deployment completed."
