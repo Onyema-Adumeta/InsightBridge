@@ -15,40 +15,67 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node 20 + npm cache
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      # Optional: fail fast, but don't deploy this build output
-      - name: CI sanity build
+      # 1️⃣ Install dependencies
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # 2️⃣ Build Next.js app (standalone output)
+      - name: Build Next.js app
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_BASE_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           NODE_ENV: production
-        run: |
-          npm ci
-          npm run build
+        run: npm run build
 
-      # Prepare a CLEAN deploy payload (no node_modules/.next)
-      - name: Stage clean source for deploy
+      # 3️⃣ Package only the minimal standalone runtime
+      - name: Create deployment package (standalone)
+        working-directory: frontend
         run: |
-          rm -rf deploy
-          mkdir -p deploy
-          rsync -av --delete \
-            --exclude=".git" \
-            --exclude=".github" \
-            --exclude="node_modules" \
-            --exclude=".next" \
-            frontend/ deploy/
+          rm -rf deploy && mkdir -p deploy/.next
+          cp -r .next/standalone deploy/
+          cp -r .next/static deploy/.next/static
+          cp -r public deploy/public
+          zip -r ../frontend.zip deploy
+          echo "✅ Package size: $(du -h ../frontend.zip | cut -f1)"
+      
+      # 4️⃣ Deploy to Azure via Kudu ZipDeploy
+      - name: Deploy via Kudu ZipDeploy API
+        run: |
+          echo "🚀 Deploying frontend..."
+          response=$(curl -X POST \
+            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
+            --data-binary @frontend.zip \
+            -H "Content-Type: application/octet-stream" \
+            -w "\n%{http_code}" \
+            -s \
+            https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy?isAsync=true)
 
-      # Deploy clean source; server will npm ci + build at startup
-      - name: Deploy to Azure Web App (Publish Profile)
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: insightbridge-frontend-test
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
-          package: deploy
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n -1)
+
+          echo "Response: $body"
+          echo "Status code: $http_code"
+
+          if [ "$http_code" = "200" ] || [ "$http_code" = "202" ]; then
+            echo "✅ Deployment initiated successfully!"
+          else
+            echo "❌ Deployment failed!"
+            echo "Response body: $body"
+            exit 1
+          fi
+
+      # 5️⃣ Wait for Azure to finish deploying
+      - name: Wait for deployment
+        run: |
+          echo "⏳ Waiting for deployment to complete..."
+          sleep 90
+          echo "✅ Deployment should be complete. Visit: https://insightbridge-frontend-test.azurewebsites.net"
