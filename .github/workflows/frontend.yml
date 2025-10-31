@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - "InsightbridgeParent/frontend/**"
+      - "frontend/**"
       - ".github/workflows/frontend.yml"
   workflow_dispatch:
 
@@ -15,39 +15,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # (Optional) Quick visibility so we don't chase wrong paths again
+      # Optional: quick visibility
       - name: Show repo layout
         run: |
           pwd
           ls -la
-          ls -la InsightbridgeParent || true
-          ls -la InsightbridgeParent/frontend || true
-          test -f InsightbridgeParent/frontend/package-lock.json && echo "Lockfile OK"
+          ls -la frontend || true
+          test -f frontend/package-lock.json && echo "Lockfile OK"
 
-      - name: Use Node 20 + npm cache (frontend lockfile)
+      - name: Use Node 20 + npm cache
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: |
-            InsightbridgeParent/frontend/package-lock.json
+            frontend/package-lock.json
 
       - name: Install deps (frontend)
-        working-directory: InsightbridgeParent/frontend
+        working-directory: frontend
         run: npm ci
 
       - name: Build (frontend)
-        working-directory: InsightbridgeParent/frontend
+        working-directory: frontend
         env:
           NEXT_PUBLIC_API_BASE_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           NODE_ENV: production
         run: npm run build
 
-      # Deploy SOURCE folder; let the app's Startup Command run npm ci + next start on server
+      # Deploy SOURCE folder (let server do npm ci + start)
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: insightbridge-frontend-test
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_FRONTEND }}
-          package: InsightbridgeParent/frontend
+          package: frontend
