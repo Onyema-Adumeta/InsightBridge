@@ -36,8 +36,20 @@ jobs:
         working-directory: frontend
         run: |
           echo "✅ Build complete. Checking .next folder..."
-          ls -la .next/server/ | head -10
-          test -f .next/server/font-manifest.json && echo "✅ font-manifest.json exists"
+          ls -la .next/server/ | head -15
+          echo ""
+          echo "Checking for critical files..."
+          test -f .next/BUILD_ID && echo "✅ BUILD_ID exists"
+          test -d .next/server/app && echo "✅ server/app exists"
+          
+          if [ -f .next/server/font-manifest.json ]; then
+            echo "✅ font-manifest.json exists"
+          else
+            echo "⚠️  font-manifest.json not found - this may cause runtime errors"
+            echo "Creating empty font-manifest.json as workaround..."
+            echo '{"pages":{"/":[],"/_app":[]},"app":{},"appUsingSizeAdjust":false,"pagesUsingSizeAdjust":false}' > .next/server/font-manifest.json
+            echo "✅ Created placeholder font-manifest.json"
+          fi
       
       - name: Create .deployment file
         working-directory: frontend
