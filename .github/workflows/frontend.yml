@@ -1,4 +1,4 @@
-name: Deploy Frontend to Azure
+name: Deploy Frontend to Azure (CLI Method)
 
 on:
   push:
@@ -26,74 +26,28 @@ jobs:
       - name: Build application
         working-directory: frontend
         env:
-          NEXT_PUBLIC_API_BASE_URL: https://insightbridge-backend-test.azurewebsites.net
+          NEXT_PUBLIC_API_BASE_URL: https://insightbridge-frontend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
         run: |
           npm ci
           npm run build
-          
-          # Clean rebuild of node_modules for production only
           rm -rf node_modules
           npm ci --omit=dev --ignore-scripts
-          
-          # Remove cache files that aren't needed
           rm -rf .next/cache
-          
-          # Show sizes
-          echo "Build output sizes:"
-          du -sh .next node_modules
       
-      - name: Create optimized deployment package
-        working-directory: frontend
-        run: |
-          # Create zip excluding unnecessary files
-          zip -r ../app.zip \
-            .next \
-            node_modules \
-            public \
-            package.json \
-            next.config.js \
-            -x "node_modules/.cache/*" \
-            -x "*.md" \
-            -x "*.map" \
-            -x "*.ts" \
-            -x "*.tsx" \
-            -x "node_modules/*/test/*" \
-            -x "node_modules/*/tests/*" \
-            -x "node_modules/*/*.d.ts"
-          
-          cd ..
-          echo "Package size: $(du -h app.zip | cut -f1)"
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
       
-      - name: Deploy via Kudu with retry
-        env:
-          KUDU_URL: https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy
-          KUDU_AUTH: $insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX
+      - name: Deploy to Azure App Service
         run: |
-          echo "Uploading to Azure..."
+          cd frontend
+          az webapp deploy \
+            --resource-group <YOUR_RESOURCE_GROUP> \
+            --name insightbridge-frontend-test \
+            --src-path . \
+            --type zip \
+            --async true
           
-          # Use longer timeout and show progress
-          http_code=$(curl -X POST \
-            "${KUDU_URL}" \
-            -u "${KUDU_AUTH}" \
-            --data-binary @app.zip \
-            -H "Content-Type: application/octet-stream" \
-            --max-time 600 \
-            -w "%{http_code}" \
-            -o /dev/null \
-            --progress-bar)
-          
-          echo "HTTP Status: $http_code"
-          
-          if [ "$http_code" = "200" ] || [ "$http_code" = "202" ]; then
-            echo "✅ Deployment successful!"
-          else
-            echo "❌ Deployment failed with HTTP $http_code"
-            exit 1
-          fi
-      
-      - name: Verify deployment
-        run: |
-          sleep 10
-          echo "Checking if app is responding..."
-          curl -I https://insightbridge-frontend-test.azurewebsites.net || true
+          echo "✅ Deployment initiated"
