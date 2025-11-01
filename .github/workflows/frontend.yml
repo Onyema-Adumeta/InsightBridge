@@ -1,4 +1,5 @@
-name: Deploy Frontend (Next.js)
+name: Deploy Frontend to Azure
+
 on:
   push:
     branches: [ main ]
@@ -10,10 +11,12 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
       
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -24,7 +27,7 @@ jobs:
         working-directory: frontend
         run: npm ci
       
-      - name: Build Next.js application
+      - name: Build application
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_BASE_URL: https://insightbridge-backend-test.azurewebsites.net
@@ -32,64 +35,15 @@ jobs:
           NODE_ENV: production
         run: npm run build
       
-      - name: Verify build
-        working-directory: frontend
-        run: |
-          test -f .next/BUILD_ID || (echo "ERROR: BUILD_ID missing" && exit 1)
-          echo "✅ Build verified"
-      
       - name: Install production dependencies
         working-directory: frontend
         run: |
           rm -rf node_modules
-          npm ci --production --no-audit --no-fund
+          npm ci --omit=dev
       
-      - name: Create standalone deployment structure
-        working-directory: frontend
-        run: |
-          # Create a deployment folder with everything needed
-          mkdir -p ../deploy-temp
-          
-          # Copy necessary files
-          cp -r .next ../deploy-temp/
-          cp -r node_modules ../deploy-temp/
-          cp -r public ../deploy-temp/ 2>/dev/null || true
-          cp package.json ../deploy-temp/
-          cp next.config.js ../deploy-temp/ 2>/dev/null || true
-          
-          echo "✅ Deployment structure created"
-          ls -la ../deploy-temp/
-      
-      - name: Create deployment package
-        run: |
-          cd deploy-temp
-          zip -r ../deploy.zip . -x "*.log"
-          cd ..
-          echo "✅ Package size: $(du -h deploy.zip | cut -f1)"
-          
-          # Verify .next is in the zip
-          unzip -l deploy.zip | grep "\.next/BUILD_ID" || (echo "ERROR: .next not in zip" && exit 1)
-          echo "✅ Verified .next in zip"
-      
-      - name: Deploy via ZipDeploy (clean deployment)
-        run: |
-          echo "🚀 Deploying to Azure (clean deployment)..."
-          
-          # Use ZipDeploy with clean flag to wipe old files
-          HTTP_CODE=$(curl -X POST \
-            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
-            --data-binary @deploy.zip \
-            -H "Content-Type: application/octet-stream" \
-            -w "%{http_code}" \
-            -o /tmp/deploy-response.txt \
-            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy?isAsync=false")
-          
-          echo "HTTP Status: $HTTP_CODE"
-          cat /tmp/deploy-response.txt
-          
-          if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 202 ]; then
-            echo "✅ Deployment successful!"
-          else
-            echo "❌ Deployment failed with status $HTTP_CODE"
-            exit 1
-          fi
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'insightbridge-frontend-test'
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: ./frontend
