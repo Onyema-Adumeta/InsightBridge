@@ -32,7 +32,20 @@ jobs:
           NODE_ENV: production
         run: npm run build
       
-      - name: Create .deployment file to disable Oryx
+      - name: Verify .next folder exists
+        working-directory: frontend
+        run: |
+          if [ ! -d ".next" ]; then
+            echo "❌ ERROR: .next folder not found after build!"
+            exit 1
+          fi
+          echo "✅ .next folder exists"
+          ls -la .next/
+          echo ""
+          echo "Contents of .next/server:"
+          ls -la .next/server/ | head -20
+      
+      - name: Create .deployment file to disable Oryx build
         working-directory: frontend
         run: |
           cat > .deployment << 'EOF'
@@ -41,23 +54,35 @@ jobs:
           EOF
           echo "✅ Created .deployment file"
       
-      - name: Create deployment package (with .next build output)
+      - name: Create deployment package (include .next)
         run: |
           cd frontend
           rm -f ../frontend.zip
-          zip -r ../frontend.zip . \
-            -x ".git/*" ".github/*" "node_modules/*"
+          # Explicitly include .next folder, exclude only node_modules and git
+          zip -r ../frontend.zip \
+            .next \
+            public \
+            src \
+            package.json \
+            package-lock.json \
+            next.config.js \
+            tsconfig.json \
+            .deployment \
+            -x "node_modules/*" ".git/*" ".github/*"
           cd ..
-          echo "✅ Package size: $(du -h frontend.zip | cut -f1)"
+          echo "✅ Package created"
+          echo "Package size: $(du -h frontend.zip | cut -f1)"
+          echo ""
+          echo "Verifying .next is in the zip:"
+          unzip -l frontend.zip | grep -E "\.next/(server|static)" | head -10
       
-      - name: Deploy via Kudu ZipDeploy API
+      - name: Deploy to Azure
         run: |
-          echo "🚀 Deploying frontend with pre-built artifacts..."
+          echo "🚀 Deploying pre-built Next.js app to Azure..."
           curl -X POST \
             -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
             --data-binary @frontend.zip \
             -H "Content-Type: application/octet-stream" \
-            -v \
             https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy
           echo ""
-          echo "✅ Deployment completed."
+          echo "✅ Deployment completed!"
