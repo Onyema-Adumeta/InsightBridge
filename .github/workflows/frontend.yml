@@ -32,72 +32,64 @@ jobs:
           NODE_ENV: production
         run: npm run build
       
-      - name: Verify build output
+      - name: Verify build
         working-directory: frontend
         run: |
-          echo "Checking .next folder..."
           test -f .next/BUILD_ID || (echo "ERROR: BUILD_ID missing" && exit 1)
           echo "✅ Build verified"
       
-      - name: Install production dependencies only
+      - name: Install production dependencies
         working-directory: frontend
         run: |
           rm -rf node_modules
           npm ci --production --no-audit --no-fund
       
-      - name: Create deployment package
+      - name: Create standalone deployment structure
         working-directory: frontend
         run: |
-          rm -f ../deploy.zip
-          zip -r ../deploy.zip \
-            .next \
-            node_modules \
-            public \
-            package.json \
-            next.config.js \
-            -x "*.log" ".git/*" ".github/*"
+          # Create a deployment folder with everything needed
+          mkdir -p ../deploy-temp
+          
+          # Copy necessary files
+          cp -r .next ../deploy-temp/
+          cp -r node_modules ../deploy-temp/
+          cp -r public ../deploy-temp/ 2>/dev/null || true
+          cp package.json ../deploy-temp/
+          cp next.config.js ../deploy-temp/ 2>/dev/null || true
+          
+          echo "✅ Deployment structure created"
+          ls -la ../deploy-temp/
+      
+      - name: Create deployment package
+        run: |
+          cd deploy-temp
+          zip -r ../deploy.zip . -x "*.log"
           cd ..
           echo "✅ Package size: $(du -h deploy.zip | cut -f1)"
-      
-      - name: Clean wwwroot directory
-        run: |
-          echo "🧹 Cleaning old files..."
-          curl -X DELETE \
-            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/vfs/site/wwwroot/.next/?recursive=true" \
-            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX'
           
-          curl -X DELETE \
-            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/vfs/site/wwwroot/node_modules/?recursive=true" \
-            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX'
-          
-          echo "✅ Cleaned"
+          # Verify .next is in the zip
+          unzip -l deploy.zip | grep "\.next/BUILD_ID" || (echo "ERROR: .next not in zip" && exit 1)
+          echo "✅ Verified .next in zip"
       
-      - name: Upload package to Azure
+      - name: Deploy via ZipDeploy (clean deployment)
         run: |
-          echo "🚀 Uploading package..."
-          curl -X PUT \
-            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/vfs/site/wwwroot/deploy.zip" \
+          echo "🚀 Deploying to Azure (clean deployment)..."
+          
+          # Use ZipDeploy with clean flag to wipe old files
+          HTTP_CODE=$(curl -X POST \
             -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
-            -T deploy.zip \
-            -H "Content-Type: application/zip"
-          echo "✅ Uploaded"
-      
-      - name: Extract package on Azure
-        run: |
-          echo "📦 Extracting..."
-          # Use proper shell command format
-          curl -X POST \
-            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/command" \
-            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
-            -H "Content-Type: application/json" \
-            -d '{"command": "unzip -o deploy.zip && rm deploy.zip", "dir": "/home/site/wwwroot"}'
+            --data-binary @deploy.zip \
+            -H "Content-Type: application/octet-stream" \
+            -w "%{http_code}" \
+            -o /tmp/deploy-response.txt \
+            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy?isAsync=false")
           
-          echo "✅ Extracted"
-      
-      - name: Restart App Service
-        run: |
-          echo "🔄 Restarting..."
-          curl -X POST \
-            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/app/restart" \
-            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX'
-          echo "✅ Done!"
+          echo "HTTP Status: $HTTP_CODE"
+          cat /tmp/deploy-response.txt
+          
+          if [ "$HTTP_CODE" -eq 200 ] || [ "$HTTP_CODE" -eq 202 ]; then
+            echo "✅ Deployment successful!"
+          else
+            echo "❌ Deployment failed with status $HTTP_CODE"
+            exit 1
+          fi
