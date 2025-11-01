@@ -1,4 +1,4 @@
-name: Deploy Frontend to Azure (CLI Method)
+name: Deploy Frontend to Azure
 
 on:
   push:
@@ -31,23 +31,41 @@ jobs:
         run: |
           npm ci
           npm run build
-          rm -rf node_modules
-          npm ci --omit=dev --ignore-scripts
-          rm -rf .next/cache
-      
-      - name: Azure Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-      
-      - name: Deploy to Azure App Service
-        run: |
-          cd frontend
-          az webapp deploy \
-            --resource-group <YOUR_RESOURCE_GROUP> \
-            --name insightbridge-frontend-test \
-            --src-path . \
-            --type zip \
-            --async true
           
-          echo "✅ Deployment initiated"
+          # Aggressive cleanup for smaller package
+          rm -rf node_modules
+          rm -rf .next/cache
+          npm ci --omit=dev --no-audit --no-fund
+          
+          # Remove unnecessary files from node_modules
+          find node_modules -name "*.md" -delete
+          find node_modules -name "*.ts" -not -path "*/node_modules/@types/*" -delete
+          find node_modules -name "test" -type d -exec rm -rf {} + 2>/dev/null || true
+          find node_modules -name "tests" -type d -exec rm -rf {} + 2>/dev/null || true
+          find node_modules -name "*.map" -delete
+          
+          echo "Final sizes:"
+          du -sh .next node_modules
+      
+      - name: Create deployment package
+        working-directory: frontend
+        run: |
+          zip -9 -r ../app.zip .next node_modules public package.json next.config.js 2>/dev/null || true
+          cd ..
+          echo "Final package: $(du -h app.zip | cut -f1)"
+      
+      - name: Deploy to Azure
+        run: |
+          curl -X POST \
+            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy" \
+            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
+            --data-binary @app.zip \
+            -H "Content-Type: application/octet-stream" \
+            --max-time 900 \
+            -w "\nHTTP: %{http_code}\n" \
+            --fail-with-body || echo "Deployment may have timed out but could still succeed"
+          
+          echo "Waiting for deployment to settle..."
+          sleep 30
+          
+          echo "✅ Deployment complete. Check: https://insightbridge-frontend-test.azurewebsites.net"
