@@ -32,53 +32,41 @@ jobs:
           NODE_ENV: production
         run: npm run build
       
-      - name: Verify .next folder exists
+      - name: Verify build
         working-directory: frontend
         run: |
-          if [ ! -d ".next" ]; then
-            echo "❌ ERROR: .next folder not found after build!"
-            exit 1
-          fi
-          echo "✅ .next folder exists"
-          ls -la .next/
-          echo ""
-          echo "Contents of .next/server:"
-          ls -la .next/server/ | head -20
+          echo "✅ Build complete. Checking .next folder..."
+          ls -la .next/server/ | head -10
+          test -f .next/server/font-manifest.json && echo "✅ font-manifest.json exists"
       
-      - name: Create .deployment file to disable Oryx build
+      - name: Create .deployment file
         working-directory: frontend
         run: |
           cat > .deployment << 'EOF'
           [config]
           SCM_DO_BUILD_DURING_DEPLOYMENT = false
           EOF
-          echo "✅ Created .deployment file"
       
-      - name: Create deployment package (include .next)
+      - name: Clean old .next folder on Azure
         run: |
-          cd frontend
+          echo "🧹 Cleaning old .next folder..."
+          curl -X DELETE \
+            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
+            https://insightbridge-frontend-test.scm.azurewebsites.net/api/vfs/site/wwwroot/.next/?recursive=true
+          echo "✅ Cleaned"
+      
+      - name: Create deployment package
+        working-directory: frontend
+        run: |
           rm -f ../frontend.zip
-          # Explicitly include .next folder, exclude only node_modules and git
-          zip -r ../frontend.zip \
-            .next \
-            public \
-            src \
-            package.json \
-            package-lock.json \
-            next.config.js \
-            tsconfig.json \
-            .deployment \
+          zip -r ../frontend.zip . \
             -x "node_modules/*" ".git/*" ".github/*"
           cd ..
-          echo "✅ Package created"
-          echo "Package size: $(du -h frontend.zip | cut -f1)"
-          echo ""
-          echo "Verifying .next is in the zip:"
-          unzip -l frontend.zip | grep -E "\.next/(server|static)" | head -10
+          echo "✅ Package size: $(du -h frontend.zip | cut -f1)"
       
       - name: Deploy to Azure
         run: |
-          echo "🚀 Deploying pre-built Next.js app to Azure..."
+          echo "🚀 Deploying to Azure..."
           curl -X POST \
             -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
             --data-binary @frontend.zip \
