@@ -32,57 +32,69 @@ jobs:
           NODE_ENV: production
         run: npm run build
       
-      - name: Verify build
+      - name: Verify build output
         working-directory: frontend
         run: |
-          echo "✅ Build complete. Checking .next folder..."
-          ls -la .next/server/ | head -15
+          echo "Checking .next folder structure..."
+          ls -R .next/ | head -50
           echo ""
-          echo "Checking for critical files..."
-          test -f .next/BUILD_ID && echo "✅ BUILD_ID exists"
-          test -d .next/server/app && echo "✅ server/app exists"
-          
-          if [ -f .next/server/font-manifest.json ]; then
-            echo "✅ font-manifest.json exists"
-          else
-            echo "⚠️  font-manifest.json not found - this may cause runtime errors"
-            echo "Creating empty font-manifest.json as workaround..."
-            echo '{"pages":{"/":[],"/_app":[]},"app":{},"appUsingSizeAdjust":false,"pagesUsingSizeAdjust":false}' > .next/server/font-manifest.json
-            echo "✅ Created placeholder font-manifest.json"
-          fi
+          test -f .next/BUILD_ID || (echo "ERROR: BUILD_ID missing" && exit 1)
+          echo "✅ Build verified"
       
-      - name: Create .deployment file
+      - name: Install production dependencies only
         working-directory: frontend
         run: |
-          cat > .deployment << 'EOF'
-          [config]
-          SCM_DO_BUILD_DURING_DEPLOYMENT = false
-          EOF
+          rm -rf node_modules
+          npm ci --production --no-audit --no-fund
       
-      - name: Clean old .next folder on Azure
-        run: |
-          echo "🧹 Cleaning old .next folder..."
-          curl -X DELETE \
-            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
-            https://insightbridge-frontend-test.scm.azurewebsites.net/api/vfs/site/wwwroot/.next/?recursive=true
-          echo "✅ Cleaned"
-      
-      - name: Create deployment package
+      - name: Create deployment package with dependencies
         working-directory: frontend
         run: |
-          rm -f ../frontend.zip
-          zip -r ../frontend.zip . \
-            -x "node_modules/*" ".git/*" ".github/*"
+          # Create a clean package with built app AND production dependencies
+          rm -f ../deploy.zip
+          zip -r ../deploy.zip \
+            .next \
+            node_modules \
+            public \
+            package.json \
+            next.config.js \
+            -x "*.log" ".git/*" ".github/*"
           cd ..
-          echo "✅ Package size: $(du -h frontend.zip | cut -f1)"
+          echo "✅ Deploy package size: $(du -h deploy.zip | cut -f1)"
       
-      - name: Deploy to Azure
+      - name: Upload to Azure (Run from Package)
         run: |
-          echo "🚀 Deploying to Azure..."
-          curl -X POST \
+          echo "🚀 Uploading package to Azure..."
+          
+          # Upload the zip file to Azure Blob Storage (wwwroot)
+          curl -X PUT \
+            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/vfs/site/wwwroot/deploy.zip" \
             -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
-            --data-binary @frontend.zip \
-            -H "Content-Type: application/octet-stream" \
-            https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy
-          echo ""
-          echo "✅ Deployment completed!"
+            -T deploy.zip \
+            -H "Content-Type: application/zip"
+          
+          echo "✅ Package uploaded"
+      
+      - name: Extract on Azure
+        run: |
+          echo "📦 Extracting package on Azure..."
+          
+          # Use Kudu API to extract
+          curl -X POST \
+            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/command" \
+            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
+            -H "Content-Type: application/json" \
+            -d '{
+              "command": "cd /home/site/wwwroot && unzip -o deploy.zip && rm deploy.zip",
+              "dir": "/home/site/wwwroot"
+            }'
+          
+          echo "✅ Extraction complete"
+      
+      - name: Restart App Service
+        run: |
+          echo "🔄 Restarting app..."
+          curl -X POST \
+            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/app/restart" \
+            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX'
+          echo "✅ App restarted"
