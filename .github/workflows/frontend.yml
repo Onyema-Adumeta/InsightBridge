@@ -23,41 +23,20 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
-      
-      - name: Build application
+      - name: Install and build
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_BASE_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          NODE_ENV: production
-        run: npm run build
-      
-      - name: Create deployment package
-        working-directory: frontend
         run: |
-          # Remove dev dependencies
+          npm ci
+          npm run build
           rm -rf node_modules
-          npm ci --omit=dev --no-audit --no-fund
-          
-          # Remove unnecessary files to reduce package size
-          rm -rf .git .github .next/cache
-          
-          echo "Deployment package ready"
-          du -sh .next node_modules
+          npm ci --omit=dev
       
-      - name: Create .deployment file
-        working-directory: frontend
-        run: |
-          echo '[config]' > .deployment
-          echo 'SCM_DO_BUILD_DURING_DEPLOYMENT = false' >> .deployment
-      
-      - name: Deploy to Azure Web App
+      - name: Deploy to Azure
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'insightbridge-frontend-test'
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ./frontend
-          clean: true
