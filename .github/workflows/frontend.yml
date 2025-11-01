@@ -26,46 +26,49 @@ jobs:
       - name: Build application
         working-directory: frontend
         env:
-          NEXT_PUBLIC_API_BASE_URL: https://insightbridge-frontend-test.azurewebsites.net
+          NEXT_PUBLIC_API_BASE_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
         run: |
           npm ci
           npm run build
           
-          # Aggressive cleanup for smaller package
+          # Clean production install
           rm -rf node_modules
           rm -rf .next/cache
           npm ci --omit=dev --no-audit --no-fund
           
-          # Remove unnecessary files from node_modules
-          find node_modules -name "*.md" -delete
-          find node_modules -name "*.ts" -not -path "*/node_modules/@types/*" -delete
-          find node_modules -name "test" -type d -exec rm -rf {} + 2>/dev/null || true
-          find node_modules -name "tests" -type d -exec rm -rf {} + 2>/dev/null || true
-          find node_modules -name "*.map" -delete
-          
-          echo "Final sizes:"
+          echo "Build complete. Package sizes:"
           du -sh .next node_modules
       
       - name: Create deployment package
         working-directory: frontend
         run: |
-          zip -9 -r ../app.zip .next node_modules public package.json next.config.js 2>/dev/null || true
+          zip -r ../app.zip .next node_modules public package.json next.config.js 2>/dev/null || true
           cd ..
-          echo "Final package: $(du -h app.zip | cut -f1)"
+          echo "Package size: $(du -h app.zip | cut -f1)"
       
       - name: Deploy to Azure
         run: |
-          curl -X POST \
+          echo "Deploying to Azure..."
+          
+          HTTP_CODE=$(curl -X POST \
             "https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy" \
             -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
             --data-binary @app.zip \
             -H "Content-Type: application/octet-stream" \
             --max-time 900 \
-            -w "\nHTTP: %{http_code}\n" \
-            --fail-with-body || echo "Deployment may have timed out but could still succeed"
+            -w "%{http_code}" \
+            -o /dev/null \
+            -s)
           
-          echo "Waiting for deployment to settle..."
-          sleep 30
+          echo "HTTP Status: $HTTP_CODE"
           
-          echo "✅ Deployment complete. Check: https://insightbridge-frontend-test.azurewebsites.net"
+          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
+            echo "✅ Deployment successful!"
+          elif [ "$HTTP_CODE" = "504" ]; then
+            echo "⚠️  Gateway timeout - deployment may still be processing"
+            echo "Check Azure portal logs in 2-3 minutes"
+          else
+            echo "❌ Deployment failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
