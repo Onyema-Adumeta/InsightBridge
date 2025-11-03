@@ -3130,3 +3130,96 @@ async def test_chart_build():
         "chart_data_length": len(chart_data),
         "message": "Chart building works!"
     }
+
+@router.post("/reset_user_data")
+async def reset_user_data(user_id: str = Form(...)):
+    """
+    Complete reset of all user data - use this to start fresh
+    """
+    logger.info(f"🗑️ COMPLETE RESET requested for user: {user_id}")
+    
+    # Clear from in-memory storage
+    if user_id in analysis_storage:
+        del analysis_storage[user_id]
+        logger.info(f"   ✓ Removed from analysis_storage")
+    
+    # Return a completely clean slate response
+    clean_response = {
+        "user_id": user_id,
+        "summary": "All data cleared. Ready for new upload.",
+        "items": [],
+        "updated_at": None,
+        "company": "Your Company",
+        "kpiChartData": [],
+        "kpiCardData": {},
+        "kpis": {},
+        "health_score": None,
+        "predictiveAnalysis": {"insights": []},
+        "aiAnalysis": None,
+        "cleared": True,
+        "message": "All data has been reset. Upload a document to begin."
+    }
+    
+    logger.info(f"✅ Complete reset successful for {user_id}")
+    
+    return JSONResponse(content=clean_response)
+
+
+@router.get("/check_data_status")
+async def check_data_status(user_id: str = "anonymous"):
+    """
+    Check if user has any data stored
+    """
+    has_data = user_id in analysis_storage
+    
+    if has_data:
+        data = analysis_storage[user_id]
+        return {
+            "has_data": True,
+            "user_id": user_id,
+            "items_count": len(data.get('items', [])),
+            "last_updated": data.get('updated_at'),
+            "document_type": data.get('documentType'),
+            "latest_file": data.get('latestFileName'),
+            "has_kpis": bool(data.get('kpis')),
+            "has_chart_data": bool(data.get('kpiChartData')),
+            "chart_data_points": len(data.get('kpiChartData', []))
+        }
+    else:
+        return {
+            "has_data": False,
+            "user_id": user_id,
+            "message": "No data found. Upload a document to begin."
+        }
+
+
+@router.post("/force_clear_all")
+async def force_clear_all(confirm: str = Form(...)):
+    """
+    DANGER: Clear ALL user data - requires confirmation
+    Only use this in testing!
+    """
+    if confirm != "YES_DELETE_ALL":
+        raise HTTPException(
+            status_code=400, 
+            detail="Must provide confirm='YES_DELETE_ALL' to proceed"
+        )
+    
+    logger.warning("⚠️ FORCE CLEARING ALL USER DATA")
+    
+    # Count before clearing
+    user_count = len(analysis_storage)
+    users_cleared = list(analysis_storage.keys())
+    
+    # Clear everything
+    analysis_storage.clear()
+    
+    logger.warning(f"🗑️ Cleared data for {user_count} users: {users_cleared}")
+    
+    return {
+        "success": True,
+        "users_cleared": user_count,
+        "user_ids": users_cleared,
+        "message": "All data has been permanently deleted",
+        "warning": "This action cannot be undone"
+    }
