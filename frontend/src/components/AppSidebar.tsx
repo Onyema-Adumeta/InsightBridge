@@ -110,6 +110,11 @@ const NavSection: React.FC<NavSectionProps> = ({
 export default function AppSidebar() {
   const pathname = usePathname();
 
+  // Hide sidebar on auth pages
+  if (pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up')) {
+    return null;
+  }
+
   return (
     <aside
       className="fixed left-0 top-0 h-screen w-64 overflow-auto bg-slate-950/95 border-r border-slate-800 backdrop-blur supports-[backdrop-filter]:bg-slate-950/80 z-30 flex flex-col"
