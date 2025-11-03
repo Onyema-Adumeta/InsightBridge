@@ -2,9 +2,9 @@
 
 import { ClerkProvider } from '@clerk/nextjs';
 import { Inter } from 'next/font/google';
-import AppSidebar from '@/components/AppSidebar';
+import ConditionalSidebar from '@/components/ConditionalSidebar';
 import { SettingsProvider } from '@/context/SettingsContext';
-import { AnalysisProvider } from '@/context/AnalysisContext'; // 👈 Add this import
+import { AnalysisProvider } from '@/context/AnalysisContext';
 import "./globals.css";
 
 export const metadata = {
@@ -20,8 +20,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <ClerkProvider>
           <SettingsProvider>
-            <AnalysisProvider> {/* 👈 Add AnalysisProvider here */}
-              <AppSidebar />
+            <AnalysisProvider>
+              <ConditionalSidebar />
               {children}
             </AnalysisProvider>
           </SettingsProvider>
