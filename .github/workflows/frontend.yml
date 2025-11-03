@@ -42,10 +42,23 @@ jobs:
       - name: Create deployment package
         working-directory: frontend
         run: |
-          # Include package.json so Azure can use npm start
-          zip -r ../app.zip .next node_modules public package.json next.config.js 2>/dev/null || true
+          echo "Files to deploy:"
+          ls -lh .next node_modules package.json next.config.js 2>/dev/null || true
+          
+          # Verify node_modules/next exists
+          if [ ! -d "node_modules/next" ]; then
+            echo "ERROR: node_modules/next not found!"
+            exit 1
+          fi
+          
+          echo "Verifying Next.js installation:"
+          ls -la node_modules/next/dist/bin/
+          
+          # Create deployment zip with all necessary files
+          zip -r ../deploy.zip .next node_modules public package.json next.config.js
+          
           cd ..
-          echo "Package size: $(du -h app.zip | cut -f1)"
+          echo "Deploy package size: $(du -h deploy.zip | cut -f1)"
       
       - name: Deploy to Azure
         run: |
@@ -54,7 +67,7 @@ jobs:
           HTTP_CODE=$(curl -X POST \
             "https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy" \
             -u '$insightbridge-frontend-test:${{ secrets.AZURE_PUBLISH_PROFILE_PASSWORD }}' \
-            --data-binary @app.zip \
+            --data-binary @deploy.zip \
             -H "Content-Type: application/octet-stream" \
             --max-time 900 \
             -w "%{http_code}" \
@@ -73,19 +86,8 @@ jobs:
             exit 1
           fi
       
-      - name: Configure Azure Startup Command
+      - name: Verify deployment
         run: |
-          echo "Configuring Azure startup command..."
-          
-          # Set startup command via Kudu API
-          curl -X PUT \
-            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/settings" \
-            -u '$insightbridge-frontend-test:${{ secrets.AZURE_PUBLISH_PROFILE_PASSWORD }}' \
-            -H "Content-Type: application/json" \
-            -d '{
-              "WEBSITE_NODE_DEFAULT_VERSION": "20",
-              "PORT": "8080",
-              "NODE_ENV": "production"
-            }' || echo "⚠️  Settings update may have failed, but continuing..."
-          
-          echo "✅ Configuration complete. App will restart automatically."
+          echo "Waiting 10 seconds for deployment to settle..."
+          sleep 10
+          echo "✅ Deployment process complete. Check Azure portal for app status."
