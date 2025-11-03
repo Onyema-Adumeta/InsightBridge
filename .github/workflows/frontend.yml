@@ -25,7 +25,7 @@ jobs:
       - name: Build application
         working-directory: frontend
         env:
-          NEXT_PUBLIC_API_BASE_URL: https://insightbridge-backend-test.azurewebsites.net
+          NEXT_PUBLIC_API_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
         run: |
           npm ci
