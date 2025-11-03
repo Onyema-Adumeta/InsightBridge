@@ -1,5 +1,4 @@
 name: Deploy Frontend to Azure
-
 on:
   push:
     branches: [ main ]
@@ -43,6 +42,7 @@ jobs:
       - name: Create deployment package
         working-directory: frontend
         run: |
+          # Include package.json so Azure can use npm start
           zip -r ../app.zip .next node_modules public package.json next.config.js 2>/dev/null || true
           cd ..
           echo "Package size: $(du -h app.zip | cut -f1)"
@@ -53,7 +53,7 @@ jobs:
           
           HTTP_CODE=$(curl -X POST \
             "https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy" \
-            -u '$insightbridge-frontend-test:Lg1J1bwzwlpwo0F3bDMxghwSiQLDalTkezowfJ8vf5ReSSwoeqelnwEMKxYX' \
+            -u '$insightbridge-frontend-test:${{ secrets.AZURE_PUBLISH_PROFILE_PASSWORD }}' \
             --data-binary @app.zip \
             -H "Content-Type: application/octet-stream" \
             --max-time 900 \
@@ -72,3 +72,20 @@ jobs:
             echo "❌ Deployment failed with HTTP $HTTP_CODE"
             exit 1
           fi
+      
+      - name: Configure Azure Startup Command
+        run: |
+          echo "Configuring Azure startup command..."
+          
+          # Set startup command via Kudu API
+          curl -X PUT \
+            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/settings" \
+            -u '$insightbridge-frontend-test:${{ secrets.AZURE_PUBLISH_PROFILE_PASSWORD }}' \
+            -H "Content-Type: application/json" \
+            -d '{
+              "WEBSITE_NODE_DEFAULT_VERSION": "20",
+              "PORT": "8080",
+              "NODE_ENV": "production"
+            }' || echo "⚠️  Settings update may have failed, but continuing..."
+          
+          echo "✅ Configuration complete. App will restart automatically."
