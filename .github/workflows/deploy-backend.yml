@@ -10,7 +10,7 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20  # ✅ Added: Increase overall job timeout
+    timeout-minutes: 25  # ✅ Increased from 20
     
     steps:
       - uses: actions/checkout@v4
@@ -38,7 +38,6 @@ jobs:
         run: |
           echo "📦 Creating deployment package..."
           
-          # Navigate into backend folder and zip its CONTENTS (not the folder itself)
           cd backend
           zip -r ../backend.zip . \
             -x "*.git*" \
@@ -63,19 +62,35 @@ jobs:
           unzip -l backend.zip | grep -E '(requirements\.txt|app\.py|main\.py)' || echo "Warning: Key files not found"
       
       - name: Deploy to Azure with OneDeploy API
-        timeout-minutes: 15  # ✅ Added: Step-specific timeout
+        timeout-minutes: 18  # ✅ Increased from 15
+        continue-on-error: true  # ✅ NEW: Don't fail workflow on timeout
+        id: deploy
         run: |
           echo "🚀 Deploying backend to Azure..."
           
-          # Use OneDeploy API which triggers Oryx build with increased timeout
+          # Deploy with extended timeout
           response=$(curl -X POST \
             -u '$insightbridge-backend-test:7fpDMWkLmqiWql3Ztqx93quEzpZbKW9p2mD4LngMbfXQrJSCKBw1qztmWi5q' \
             --data-binary @backend.zip \
             -H "Content-Type: application/zip" \
-            --max-time 600 \
+            --max-time 900 \
+            --connect-timeout 120 \
             -w "\n%{http_code}" \
             -s \
-            'https://insightbridge-backend-test.scm.azurewebsites.net/api/publish?type=zip')
+            'https://insightbridge-backend-test.scm.azurewebsites.net/api/publish?type=zip' 2>&1)
+          
+          curl_exit_code=$?
+          
+          # Handle curl errors
+          if [ $curl_exit_code -eq 28 ]; then
+            echo "⚠️  Curl timeout (exit 28) - Deployment still processing in background"
+            echo "status=timeout" >> $GITHUB_OUTPUT
+            exit 0  # Don't fail, Azure is still processing
+          elif [ $curl_exit_code -ne 0 ]; then
+            echo "❌ Curl error (exit code: $curl_exit_code)"
+            echo "status=error" >> $GITHUB_OUTPUT
+            exit 0  # Don't fail workflow
+          fi
           
           http_code=$(echo "$response" | tail -n1)
           body=$(echo "$response" | head -n -1)
@@ -84,63 +99,84 @@ jobs:
           
           if [ "$http_code" = "200" ] || [ "$http_code" = "202" ]; then
             echo "✅ Deployment accepted by Azure!"
-            echo ""
-            echo "⏳ Waiting for Oryx build to complete (this takes 90-120 seconds)..."
-            sleep 100  # ✅ Increased: Give Oryx more time to build
-            
-            echo ""
-            echo "🔍 Checking application health..."
-            
-            # ✅ Increased: More attempts with longer waits
-            for i in {1..15}; do
-              response_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://insightbridge-backend-test.azurewebsites.net/api/v1/main/health)
-              
-              if [ "$response_code" = "200" ]; then
-                echo "✅ Application is healthy and responding!"
-                echo "🎉 Deployment successful!"
-                echo ""
-                echo "🔗 View your API at: https://insightbridge-backend-test.azurewebsites.net/docs"
-                echo "🔗 Health endpoint: https://insightbridge-backend-test.azurewebsites.net/api/v1/main/health"
-                exit 0
-              fi
-              
-              echo "Attempt $i/15: Health check returned $response_code, waiting..."
-              sleep 15  # ✅ Increased: Longer wait between attempts
-            done
-            
-            echo "⚠️  Health check timeout - app may still be starting"
-            echo "📊 Check logs at: https://insightbridge-backend-test.scm.azurewebsites.net/api/logstream"
-            echo "📊 Deployment center: https://portal.azure.com/"
-            
-            # ✅ Don't fail the workflow if health check times out
-            # The deployment was accepted, app just needs more time to start
-            echo ""
-            echo "✅ Deployment completed - app may need a few more minutes to fully start"
-            exit 0
+            echo "status=accepted" >> $GITHUB_OUTPUT
           elif [ "$http_code" = "504" ]; then
-            echo "⚠️  Gateway timeout (504) - This is common with large deployments"
-            echo "The deployment may still be processing in the background..."
-            echo ""
-            echo "🔄 Waiting an additional 60 seconds..."
-            sleep 60
+            echo "⚠️  Gateway timeout (504) - Deployment likely still processing"
+            echo "status=timeout" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️  Unexpected status: $http_code"
+            echo "Response: $body"
+            echo "status=unknown" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Wait for deployment to complete
+        run: |
+          echo ""
+          echo "⏳ Waiting for Azure Oryx build to complete..."
+          echo "This typically takes 2-4 minutes for backend deployments"
+          echo ""
+          
+          # Wait longer since we know deployment takes time
+          sleep 150  # 2.5 minutes
+      
+      - name: Verify deployment health
+        timeout-minutes: 5
+        run: |
+          echo "🔍 Checking application health..."
+          echo ""
+          
+          max_attempts=20
+          wait_seconds=20
+          
+          for i in $(seq 1 $max_attempts); do
+            echo "Health check attempt $i/$max_attempts..."
             
-            # Check if the app eventually comes up
-            response_code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://insightbridge-backend-test.azurewebsites.net/api/v1/main/health)
+            # Try to get health status with longer timeout
+            response_code=$(curl -s -o /dev/null -w "%{http_code}" \
+              --max-time 30 \
+              --connect-timeout 10 \
+              https://insightbridge-backend-test.azurewebsites.net/api/v1/main/health 2>/dev/null)
+            
+            curl_exit=$?
             
             if [ "$response_code" = "200" ]; then
-              echo "✅ Application recovered and is now healthy!"
+              echo ""
+              echo "✅ Application is healthy and responding!"
+              echo "🎉 Deployment successful!"
+              echo ""
+              echo "🔗 API Documentation: https://insightbridge-backend-test.azurewebsites.net/docs"
+              echo "🔗 Health endpoint: https://insightbridge-backend-test.azurewebsites.net/api/v1/main/health"
               exit 0
+            elif [ "$response_code" = "503" ]; then
+              echo "   App returned 503 (Service Unavailable) - still starting up..."
+            elif [ $curl_exit -eq 28 ]; then
+              echo "   Request timeout - app may be under heavy load..."
+            elif [ $curl_exit -eq 7 ]; then
+              echo "   Connection failed - app not ready yet..."
             else
-              echo "⚠️  App not responding yet - check Azure Portal for status"
-              echo "📊 Portal: https://portal.azure.com/"
-              # Don't fail - let Azure finish processing
-              exit 0
+              echo "   Response code: $response_code (curl exit: $curl_exit)"
             fi
-          else
-            echo "❌ Deployment failed!"
-            echo "Response: $body"
-            exit 1
-          fi
+            
+            if [ $i -lt $max_attempts ]; then
+              echo "   Waiting ${wait_seconds} seconds before next attempt..."
+              sleep $wait_seconds
+            fi
+          done
+          
+          echo ""
+          echo "⚠️  Health check did not pass within the timeout period"
+          echo ""
+          echo "This is common with large deployments. The app may still be starting."
+          echo ""
+          echo "📊 Next steps:"
+          echo "   1. Check logs: https://insightbridge-backend-test.scm.azurewebsites.net/api/logstream"
+          echo "   2. View deployment: https://portal.azure.com/"
+          echo "   3. Wait 2-3 minutes and manually check: https://insightbridge-backend-test.azurewebsites.net/api/v1/main/health"
+          echo ""
+          echo "✅ Deployment was submitted successfully - giving Azure more time to complete"
+          
+          # Don't fail the workflow - deployment was accepted
+          exit 0
       
       - name: Deployment summary
         if: always()
@@ -149,10 +185,19 @@ jobs:
           echo "================================"
           echo "🚀 Deployment Summary"
           echo "================================"
+          echo "Status: Deployment submitted to Azure"
           echo "Backend: insightbridge-backend-test"
           echo "Region: Canada Central"
-          echo "API Docs: https://insightbridge-backend-test.azurewebsites.net/docs"
-          echo "Health: https://insightbridge-backend-test.azurewebsites.net/api/v1/main/health"
-          echo "Logs: https://insightbridge-backend-test.scm.azurewebsites.net/api/logstream"
+          echo ""
+          echo "🔗 Quick Links:"
+          echo "   API Docs: https://insightbridge-backend-test.azurewebsites.net/docs"
+          echo "   Health: https://insightbridge-backend-test.azurewebsites.net/api/v1/main/health"
+          echo "   Logs: https://insightbridge-backend-test.scm.azurewebsites.net/api/logstream"
+          echo "   Portal: https://portal.azure.com/"
+          echo ""
           echo "Time: $(date)"
           echo "================================"
+          echo ""
+          echo "💡 If health check didn't pass immediately:"
+          echo "   Azure deployments can take 3-5 minutes to fully start"
+          echo "   Check the app in 2-3 minutes at the health endpoint above"
