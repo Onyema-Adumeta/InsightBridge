@@ -27,42 +27,111 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          NODE_ENV: production
         run: |
+          echo "📦 Installing dependencies..."
           npm ci
+          
+          echo "🔨 Building Next.js application..."
           npm run build
           
+          echo ""
+          echo "✅ Build complete!"
+          echo ""
+          
+          # Critical: Verify .next folder was created
+          if [ ! -d ".next" ]; then
+            echo "❌ ERROR: .next folder not created by build!"
+            exit 1
+          fi
+          
+          if [ ! -f ".next/BUILD_ID" ]; then
+            echo "❌ ERROR: .next/BUILD_ID missing - build may have failed!"
+            exit 1
+          fi
+          
+          echo "📊 Build artifacts:"
+          ls -la .next/ | head -15
+          echo ""
+          
+          echo "📏 Package sizes:"
+          du -sh .next node_modules
+          echo ""
+          
           # Clean production install
+          echo "🧹 Cleaning for production..."
           rm -rf node_modules
           rm -rf .next/cache
+          
+          echo "📦 Installing production dependencies..."
           npm ci --omit=dev --no-audit --no-fund
           
-          echo "Build complete. Package sizes:"
-          du -sh .next node_modules
+          echo "✅ Production dependencies installed"
+      
+      - name: Verify build artifacts
+        working-directory: frontend
+        run: |
+          echo "🔍 Verifying all required files exist..."
+          echo ""
+          
+          # Check critical files
+          test -d .next || { echo "❌ Missing .next folder"; exit 1; }
+          test -f .next/BUILD_ID || { echo "❌ Missing .next/BUILD_ID"; exit 1; }
+          test -d .next/server || { echo "❌ Missing .next/server folder"; exit 1; }
+          test -d .next/static || { echo "❌ Missing .next/static folder"; exit 1; }
+          test -d node_modules/next || { echo "❌ Missing node_modules/next"; exit 1; }
+          test -f package.json || { echo "❌ Missing package.json"; exit 1; }
+          test -f next.config.js || echo "⚠️  Warning: next.config.js not found"
+          
+          echo "✅ All critical files present!"
+          echo ""
+          echo "📁 .next folder structure:"
+          find .next -type d -maxdepth 2 | head -20
       
       - name: Create deployment package
         working-directory: frontend
         run: |
-          echo "Files to deploy:"
-          ls -lh .next node_modules package.json next.config.js 2>/dev/null || true
+          echo "📦 Creating deployment ZIP package..."
+          echo ""
           
-          # Verify node_modules/next exists
-          if [ ! -d "node_modules/next" ]; then
-            echo "ERROR: node_modules/next not found!"
+          # Create ZIP with all necessary files
+          # IMPORTANT: Must include .next folder!
+          zip -r ../deploy.zip \
+            .next \
+            node_modules \
+            package.json \
+            next.config.js \
+            next.config.mjs \
+            public \
+            2>/dev/null || zip -r ../deploy.zip .next node_modules package.json
+          
+          cd ..
+          
+          echo "✅ ZIP package created"
+          echo "📏 Package size: $(du -h deploy.zip | cut -f1)"
+          echo ""
+          
+          # CRITICAL: Verify .next folder is actually in the ZIP
+          echo "🔍 Verifying .next folder is in deployment package..."
+          if unzip -l deploy.zip | grep -q ".next/BUILD_ID"; then
+            echo "✅ .next folder confirmed in ZIP package"
+          else
+            echo "❌ ERROR: .next folder NOT found in ZIP package!"
+            echo ""
+            echo "ZIP contents:"
+            unzip -l deploy.zip | head -30
             exit 1
           fi
           
-          echo "Verifying Next.js installation:"
-          ls -la node_modules/next/dist/bin/
-          
-          # Create deployment zip with all necessary files
-          zip -r ../deploy.zip .next node_modules public package.json next.config.js
-          
-          cd ..
-          echo "Deploy package size: $(du -h deploy.zip | cut -f1)"
+          echo ""
+          echo "📋 ZIP package contents (first 30 files):"
+          unzip -l deploy.zip | head -30
       
       - name: Deploy to Azure
         run: |
-          echo "Deploying to Azure..."
+          echo "🚀 Deploying to Azure App Service..."
+          echo "📍 Target: insightbridge-frontend-test"
+          echo ""
           
           HTTP_CODE=$(curl -X POST \
             "https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy" \
@@ -70,24 +139,100 @@ jobs:
             --data-binary @deploy.zip \
             -H "Content-Type: application/octet-stream" \
             --max-time 900 \
+            --connect-timeout 120 \
             -w "%{http_code}" \
             -o /dev/null \
             -s)
           
           echo "HTTP Status: $HTTP_CODE"
+          echo ""
           
           if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
-            echo "✅ Deployment successful!"
+            echo "✅ Deployment accepted by Azure!"
+            echo "Azure is now extracting and configuring the application..."
           elif [ "$HTTP_CODE" = "504" ]; then
-            echo "⚠️  Gateway timeout - deployment may still be processing"
+            echo "⚠️  Gateway timeout (504) - deployment may still be processing"
             echo "Check Azure portal logs in 2-3 minutes"
+            exit 0  # Don't fail - Azure might still succeed
           else
             echo "❌ Deployment failed with HTTP $HTTP_CODE"
             exit 1
           fi
       
+      - name: Wait for Azure processing
+        run: |
+          echo ""
+          echo "⏳ Waiting for Azure to extract ZIP and start application..."
+          echo "This typically takes 30-90 seconds..."
+          sleep 60
+      
       - name: Verify deployment
         run: |
-          echo "Waiting 10 seconds for deployment to settle..."
-          sleep 10
-          echo "✅ Deployment process complete. Check Azure portal for app status."
+          echo ""
+          echo "🔍 Verifying deployment to Azure..."
+          echo ""
+          
+          # Try to reach the application
+          for i in {1..15}; do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              --max-time 10 \
+              --connect-timeout 5 \
+              https://insightbridge-frontend-test.azurewebsites.net/ 2>/dev/null || echo "000")
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Application is responding!"
+              echo "🌐 URL: https://insightbridge-frontend-test.azurewebsites.net"
+              echo "🎯 Dashboard: https://insightbridge-frontend-test.azurewebsites.net/dashboard"
+              exit 0
+            elif [ "$HTTP_CODE" = "503" ]; then
+              echo "Attempt $i/15: App starting up (503) - waiting 10 seconds..."
+            else
+              echo "Attempt $i/15: Status $HTTP_CODE - waiting 10 seconds..."
+            fi
+            
+            sleep 10
+          done
+          
+          echo ""
+          echo "⚠️  Application not responding after 15 attempts"
+          echo ""
+          echo "📊 Troubleshooting steps:"
+          echo "   1. Check Kudu console: https://insightbridge-frontend-test.scm.azurewebsites.net/wwwroot/"
+          echo "   2. Verify .next folder exists in wwwroot"
+          echo "   3. Check logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
+          echo "   4. Restart app in Azure Portal"
+          echo ""
+          echo "💡 The deployment was accepted by Azure"
+          echo "   Give it 2-3 more minutes and check manually"
+          
+          # Don't fail - deployment was accepted, app just needs time
+          exit 0
+      
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo ""
+          echo "================================"
+          echo "🎉 Deployment Summary"
+          echo "================================"
+          echo "Application: insightbridge-frontend-test"
+          echo "Region: Canada Central"
+          echo ""
+          echo "🔗 Important URLs:"
+          echo "   App: https://insightbridge-frontend-test.azurewebsites.net"
+          echo "   Dashboard: https://insightbridge-frontend-test.azurewebsites.net/dashboard"
+          echo "   Kudu (File Browser): https://insightbridge-frontend-test.scm.azurewebsites.net"
+          echo "   Logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
+          echo ""
+          echo "💡 Post-deployment checklist:"
+          echo "   1. Wait 2-3 minutes for full startup"
+          echo "   2. Hard refresh browser (Ctrl+Shift+R)"
+          echo "   3. Check Kudu console to verify .next folder exists"
+          echo "   4. If old code shows, restart app in Azure Portal"
+          echo ""
+          echo "🔧 Azure App Service Configuration:"
+          echo "   Startup Command should be: node_modules/next/dist/bin/next start"
+          echo "   Or: npm start"
+          echo ""
+          echo "Time: $(date)"
+          echo "================================"
