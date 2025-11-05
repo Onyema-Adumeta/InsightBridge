@@ -10,6 +10,7 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     
     steps:
       - name: Checkout code
@@ -19,6 +20,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
       
       - name: Build application
         working-directory: frontend
@@ -27,41 +30,38 @@ jobs:
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
           NODE_ENV: production
         run: |
-          echo "📦 Installing dependencies..."
-          npm install
+          echo "📦 Installing dependencies (including devDependencies for build)..."
+          npm ci
           
+          echo ""
           echo "🔨 Building Next.js application..."
           npm run build
           
           echo ""
           echo "✅ Build complete!"
-          echo ""
           
-          # Critical: Verify .next folder was created
+          # Verify .next folder was created
           if [ ! -d ".next" ]; then
-            echo "❌ ERROR: .next folder not created by build!"
+            echo "❌ ERROR: .next folder not created!"
             exit 1
           fi
           
           if [ ! -f ".next/BUILD_ID" ]; then
-            echo "❌ ERROR: .next/BUILD_ID missing - build may have failed!"
+            echo "❌ ERROR: .next/BUILD_ID missing!"
             exit 1
           fi
           
-          echo "📊 Build artifacts:"
-          ls -la .next/ | head -15
+          echo "✅ .next folder verified"
           echo ""
-          
-          echo "📏 Package sizes:"
+          echo "📊 Build sizes:"
           du -sh .next node_modules
-          echo ""
           
-          # Clean production install
-          echo "🧹 Cleaning for production..."
+          echo ""
+          echo "🧹 Cleaning for production deployment..."
           rm -rf node_modules
           rm -rf .next/cache
           
-          echo "📦 Installing production dependencies..."
+          echo "📦 Installing production dependencies only..."
           npm ci --omit=dev --no-audit --no-fund
           
           echo "✅ Production dependencies installed"
@@ -79,12 +79,11 @@ jobs:
           test -d .next/static || { echo "❌ Missing .next/static folder"; exit 1; }
           test -d node_modules/next || { echo "❌ Missing node_modules/next"; exit 1; }
           test -f package.json || { echo "❌ Missing package.json"; exit 1; }
-          test -f next.config.js || echo "⚠️  Warning: next.config.js not found"
           
           echo "✅ All critical files present!"
           echo ""
           echo "📁 .next folder structure:"
-          find .next -type d -maxdepth 2 | head -20
+          ls -la .next/ | head -15
       
       - name: Create deployment package
         working-directory: frontend
@@ -92,8 +91,16 @@ jobs:
           echo "📦 Creating deployment ZIP package..."
           echo ""
           
-          # Create ZIP with all necessary files
-          # IMPORTANT: Must include .next folder!
+          # Verify node_modules/next exists
+          if [ ! -d "node_modules/next" ]; then
+            echo "❌ ERROR: node_modules/next not found!"
+            exit 1
+          fi
+          
+          echo "Verifying Next.js installation:"
+          ls -la node_modules/next/dist/bin/ || echo "Warning: next bin not found"
+          
+          # Create deployment zip with all necessary files
           zip -r ../deploy.zip \
             .next \
             node_modules \
@@ -105,16 +112,17 @@ jobs:
           
           cd ..
           
+          echo ""
           echo "✅ ZIP package created"
           echo "📏 Package size: $(du -h deploy.zip | cut -f1)"
           echo ""
           
-          # CRITICAL: Verify .next folder is actually in the ZIP
+          # CRITICAL: Verify .next folder is in the ZIP
           echo "🔍 Verifying .next folder is in deployment package..."
           if unzip -l deploy.zip | grep -q ".next/BUILD_ID"; then
-            echo "✅ .next folder confirmed in ZIP package"
+            echo "✅ .next folder confirmed in ZIP"
           else
-            echo "❌ ERROR: .next folder NOT found in ZIP package!"
+            echo "❌ ERROR: .next folder NOT in ZIP!"
             echo ""
             echo "ZIP contents:"
             unzip -l deploy.zip | head -30
@@ -122,10 +130,11 @@ jobs:
           fi
           
           echo ""
-          echo "📋 ZIP package contents (first 30 files):"
+          echo "📋 First 30 files in ZIP:"
           unzip -l deploy.zip | head -30
       
       - name: Deploy to Azure
+        timeout-minutes: 15
         run: |
           echo "🚀 Deploying to Azure App Service..."
           echo "📍 Target: insightbridge-frontend-test"
@@ -147,11 +156,12 @@ jobs:
           
           if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
             echo "✅ Deployment accepted by Azure!"
-            echo "Azure is now extracting and configuring the application..."
+            echo "Azure is now extracting and configuring..."
           elif [ "$HTTP_CODE" = "504" ]; then
-            echo "⚠️  Gateway timeout (504) - deployment may still be processing"
-            echo "Check Azure portal logs in 2-3 minutes"
-            exit 0  # Don't fail - Azure might still succeed
+            echo "⚠️  Gateway timeout (504)"
+            echo "Deployment may still be processing in background"
+            echo "This is common with large packages"
+            exit 0
           else
             echo "❌ Deployment failed with HTTP $HTTP_CODE"
             exit 1
@@ -160,18 +170,19 @@ jobs:
       - name: Wait for Azure processing
         run: |
           echo ""
-          echo "⏳ Waiting for Azure to extract ZIP and start application..."
-          echo "This typically takes 30-90 seconds..."
-          sleep 60
+          echo "⏳ Waiting for Azure to extract and start application..."
+          echo "This typically takes 60-90 seconds..."
+          sleep 75
       
       - name: Verify deployment
+        timeout-minutes: 5
         run: |
           echo ""
-          echo "🔍 Verifying deployment to Azure..."
+          echo "🔍 Verifying deployment..."
           echo ""
           
-          # Try to reach the application
-          for i in {1..15}; do
+          max_attempts=15
+          for i in $(seq 1 $max_attempts); do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
               --max-time 10 \
               --connect-timeout 5 \
@@ -179,31 +190,32 @@ jobs:
             
             if [ "$HTTP_CODE" = "200" ]; then
               echo "✅ Application is responding!"
-              echo "🌐 URL: https://insightbridge-frontend-test.azurewebsites.net"
-              echo "🎯 Dashboard: https://insightbridge-frontend-test.azurewebsites.net/dashboard"
+              echo ""
+              echo "🌐 URLs:"
+              echo "   App: https://insightbridge-frontend-test.azurewebsites.net"
+              echo "   Dashboard: https://insightbridge-frontend-test.azurewebsites.net/dashboard"
               exit 0
             elif [ "$HTTP_CODE" = "503" ]; then
-              echo "Attempt $i/15: App starting up (503) - waiting 10 seconds..."
+              echo "Attempt $i/$max_attempts: App starting (503) - waiting 10s..."
             else
-              echo "Attempt $i/15: Status $HTTP_CODE - waiting 10 seconds..."
+              echo "Attempt $i/$max_attempts: Status $HTTP_CODE - waiting 10s..."
             fi
             
             sleep 10
           done
           
           echo ""
-          echo "⚠️  Application not responding after 15 attempts"
+          echo "⚠️  Application not responding after $max_attempts attempts"
           echo ""
-          echo "📊 Troubleshooting steps:"
-          echo "   1. Check Kudu console: https://insightbridge-frontend-test.scm.azurewebsites.net/wwwroot/"
-          echo "   2. Verify .next folder exists in wwwroot"
+          echo "📊 Next steps:"
+          echo "   1. Check Kudu: https://insightbridge-frontend-test.scm.azurewebsites.net/wwwroot/"
+          echo "   2. Verify .next folder exists"
           echo "   3. Check logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
           echo "   4. Restart app in Azure Portal"
           echo ""
-          echo "💡 The deployment was accepted by Azure"
-          echo "   Give it 2-3 more minutes and check manually"
+          echo "💡 Deployment was accepted - app may need 2-3 more minutes"
           
-          # Don't fail - deployment was accepted, app just needs time
+          # Don't fail - deployment succeeded, app just needs time
           exit 0
       
       - name: Deployment summary
@@ -219,18 +231,18 @@ jobs:
           echo "🔗 Important URLs:"
           echo "   App: https://insightbridge-frontend-test.azurewebsites.net"
           echo "   Dashboard: https://insightbridge-frontend-test.azurewebsites.net/dashboard"
-          echo "   Kudu (File Browser): https://insightbridge-frontend-test.scm.azurewebsites.net"
+          echo "   Kudu: https://insightbridge-frontend-test.scm.azurewebsites.net"
           echo "   Logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
           echo ""
-          echo "💡 Post-deployment checklist:"
-          echo "   1. Wait 2-3 minutes for full startup"
-          echo "   2. Hard refresh browser (Ctrl+Shift+R)"
-          echo "   3. Check Kudu console to verify .next folder exists"
-          echo "   4. If old code shows, restart app in Azure Portal"
+          echo "💡 Post-deployment:"
+          echo "   • Wait 2-3 minutes for full startup"
+          echo "   • Hard refresh browser (Ctrl+Shift+R)"
+          echo "   • Check Kudu to verify .next exists"
           echo ""
-          echo "🔧 Azure App Service Configuration:"
-          echo "   Startup Command should be: node_modules/next/dist/bin/next start"
-          echo "   Or: npm start"
+          echo "🔧 If issues persist:"
+          echo "   • Startup Command: node_modules/next/dist/bin/next start"
+          echo "   • Or: npm start"
+          echo "   • Restart app in Azure Portal"
           echo ""
           echo "Time: $(date)"
           echo "================================"
