@@ -50,6 +50,25 @@ jobs:
           echo "=== Files that SHOULD be in this commit ==="
           git ls-tree -r HEAD --name-only | grep -E "AppSidebar|SimulationChart|AnalysisContext"
       
+      - name: Verify imports before build
+        working-directory: frontend
+        run: |
+          echo "=== Verifying tsconfig.json paths ==="
+          cat tsconfig.json | grep -A 3 '"paths"'
+          echo ""
+          echo "=== Verifying critical files exist ==="
+          test -f src/components/AppSidebar.tsx && echo "✓ AppSidebar.tsx exists" || echo "✗ AppSidebar.tsx MISSING"
+          test -f src/components/SimulationChart.tsx && echo "✓ SimulationChart.tsx exists" || echo "✗ SimulationChart.tsx MISSING"
+          test -f src/context/AnalysisContext.tsx && echo "✓ AnalysisContext.tsx exists" || echo "✗ AnalysisContext.tsx MISSING"
+          echo ""
+          echo "=== File sizes ==="
+          ls -lh src/components/AppSidebar.tsx src/components/SimulationChart.tsx src/context/AnalysisContext.tsx 2>/dev/null || echo "Files not accessible"
+          echo ""
+          echo "=== Checking import statements ==="
+          grep -n "import.*AppSidebar" src/app/\(app\)/layout.tsx || echo "No AppSidebar import"
+          grep -n "import.*SimulationChart" src/app/\(app\)/strategic-advisor/page.tsx || echo "No SimulationChart import"
+          grep -n "import.*AnalysisContext" src/app/\(app\)/strategic-advisor/page.tsx || echo "No AnalysisContext import"
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
