@@ -15,6 +15,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: false
+          fetch-depth: 0
+      
+      - name: Debug - List files
+        run: |
+          echo "Checking if component files exist..."
+          ls -la frontend/src/components/ | grep -E "AppSidebar|SimulationChart" || echo "Components not found"
+          ls -la frontend/src/context/ | grep "AnalysisContext" || echo "Context not found"
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
