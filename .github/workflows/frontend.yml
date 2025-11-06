@@ -19,11 +19,36 @@ jobs:
           submodules: false
           fetch-depth: 0
       
-      - name: Debug - List files
+      - name: Debug - Verify repository contents
         run: |
-          echo "Checking if component files exist..."
-          ls -la frontend/src/components/ | grep -E "AppSidebar|SimulationChart" || echo "Components not found"
-          ls -la frontend/src/context/ | grep "AnalysisContext" || echo "Context not found"
+          echo "=== Current directory ==="
+          pwd
+          echo ""
+          echo "=== Repository root contents ==="
+          ls -la
+          echo ""
+          echo "=== Frontend directory exists? ==="
+          ls -la frontend/ || echo "Frontend directory not found!"
+          echo ""
+          echo "=== Frontend src directory ==="
+          ls -la frontend/src/ || echo "src not found!"
+          echo ""
+          echo "=== Components directory ==="
+          ls -la frontend/src/components/ | head -20 || echo "Components not found!"
+          echo ""
+          echo "=== Context directory ==="
+          ls -la frontend/src/context/ || echo "Context not found!"
+          echo ""
+          echo "=== Looking for specific files with find ==="
+          find frontend/src -name "*AppSidebar*" 2>/dev/null || echo "Find failed"
+          find frontend/src -name "*SimulationChart*" 2>/dev/null || echo "Find failed"
+          find frontend/src -name "*AnalysisContext*" 2>/dev/null || echo "Find failed"
+          echo ""
+          echo "=== Current commit hash ==="
+          git rev-parse HEAD
+          echo ""
+          echo "=== Files that SHOULD be in this commit ==="
+          git ls-tree -r HEAD --name-only | grep -E "AppSidebar|SimulationChart|AnalysisContext"
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
