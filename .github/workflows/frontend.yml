@@ -1,4 +1,5 @@
 name: Deploy Frontend to Azure
+
 on:
   push:
     branches: [ main ]
@@ -11,14 +12,14 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: false
           fetch-depth: 0
-      
+
       - name: Debug - Verify repository contents
         run: |
           echo "=== Current directory ==="
@@ -48,13 +49,13 @@ jobs:
           git rev-parse HEAD
           echo ""
           echo "=== Files that SHOULD be in this commit ==="
-          git ls-tree -r HEAD --name-only | grep -E "AppSidebar|SimulationChart|AnalysisContext"
-      
+          git ls-tree -r HEAD --name-only | grep -E "AppSidebar|SimulationChart|AnalysisContext" || true
+
       - name: Verify imports before build
         working-directory: frontend
         run: |
           echo "=== Verifying tsconfig.json paths ==="
-          cat tsconfig.json | grep -A 3 '"paths"'
+          cat tsconfig.json | grep -A 3 '"paths"' || echo "No paths section found"
           echo ""
           echo "=== Verifying critical files exist ==="
           test -f src/components/AppSidebar.tsx && echo "✓ AppSidebar.tsx exists" || echo "✗ AppSidebar.tsx MISSING"
@@ -68,14 +69,40 @@ jobs:
           grep -n "import.*AppSidebar" src/app/\(app\)/layout.tsx || echo "No AppSidebar import"
           grep -n "import.*SimulationChart" src/app/\(app\)/strategic-advisor/page.tsx || echo "No SimulationChart import"
           grep -n "import.*AnalysisContext" src/app/\(app\)/strategic-advisor/page.tsx || echo "No AnalysisContext import"
-      
+
+      - name: Fail fast on case-sensitivity mistakes
+        working-directory: frontend
+        run: |
+          echo "🔎 Exact-case check for '@/components' and '@/context' imports"
+          set -e
+          IMPORTS=$(grep -Ehro --include=\*.{ts,tsx} "from ['\"]@\/(components|context)\/[A-Za-z0-9\/_.-]+['\"]" src || true)
+          if [ -z "$IMPORTS" ]; then
+            echo "No alias imports found."
+            exit 0
+          fi
+          ERR=0
+          while IFS= read -r line; do
+            REL=$(echo "$line" | sed -E "s/.*from ['\"]@\/([^'\"]+)['\"].*/\1/")
+            if [ -f "src/$REL" ] || [ -f "src/$REL.tsx" ] || [ -f "src/$REL.ts" ]; then
+              echo "✓ @/$REL"
+            else
+              echo "❌ Missing (case mismatch or wrong path): @/$REL"
+              ERR=1
+            fi
+          done <<< "$IMPORTS"
+          if [ $ERR -ne 0 ]; then
+            echo "🔴 Fix the import casing to match filenames exactly."
+            exit 1
+          fi
+          echo "✅ All alias imports resolve with exact casing."
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
-      
+
       - name: Build application
         working-directory: frontend
         env:
@@ -85,75 +112,62 @@ jobs:
         run: |
           echo "📦 Installing dependencies (including devDependencies for build)..."
           npm ci
-          
+
           echo ""
           echo "🔨 Building Next.js application..."
           npm run build
-          
+
           echo ""
           echo "✅ Build complete!"
-          
-          # Verify .next folder was created
+
           if [ ! -d ".next" ]; then
             echo "❌ ERROR: .next folder not created!"
             exit 1
           fi
-          
           if [ ! -f ".next/BUILD_ID" ]; then
             echo "❌ ERROR: .next/BUILD_ID missing!"
             exit 1
           fi
-          
           echo "✅ .next folder verified"
           echo ""
           echo "📊 Build sizes:"
           du -sh .next node_modules
-          
+
           echo ""
           echo "🧹 Cleaning for production deployment..."
           rm -rf node_modules
           rm -rf .next/cache
-          
+
           echo "📦 Installing production dependencies only..."
           npm ci --omit=dev --no-audit --no-fund
-          
+
           echo "✅ Production dependencies installed"
-      
+
       - name: Verify build artifacts
         working-directory: frontend
         run: |
           echo "🔍 Verifying all required files exist..."
-          echo ""
-          
-          # Check critical files
           test -d .next || { echo "❌ Missing .next folder"; exit 1; }
           test -f .next/BUILD_ID || { echo "❌ Missing .next/BUILD_ID"; exit 1; }
           test -d .next/server || { echo "❌ Missing .next/server folder"; exit 1; }
           test -d .next/static || { echo "❌ Missing .next/static folder"; exit 1; }
           test -d node_modules/next || { echo "❌ Missing node_modules/next"; exit 1; }
           test -f package.json || { echo "❌ Missing package.json"; exit 1; }
-          
           echo "✅ All critical files present!"
           echo ""
           echo "📁 .next folder structure:"
           ls -la .next/ | head -15
-      
+
       - name: Create deployment package
         working-directory: frontend
         run: |
           echo "📦 Creating deployment ZIP package..."
-          echo ""
-          
-          # Verify node_modules/next exists
           if [ ! -d "node_modules/next" ]; then
             echo "❌ ERROR: node_modules/next not found!"
             exit 1
           fi
-          
-          echo "Verifying Next.js installation:"
           ls -la node_modules/next/dist/bin/ || echo "Warning: next bin not found"
-          
-          # Create deployment zip with all necessary files
+
           zip -r ../deploy.zip \
             .next \
             node_modules \
@@ -162,37 +176,30 @@ jobs:
             next.config.mjs \
             public \
             2>/dev/null || zip -r ../deploy.zip .next node_modules package.json
-          
+
           cd ..
-          
           echo ""
           echo "✅ ZIP package created"
           echo "📏 Package size: $(du -h deploy.zip | cut -f1)"
           echo ""
-          
-          # CRITICAL: Verify .next folder is in the ZIP
           echo "🔍 Verifying .next folder is in deployment package..."
           if unzip -l deploy.zip | grep -q ".next/BUILD_ID"; then
             echo "✅ .next folder confirmed in ZIP"
           else
             echo "❌ ERROR: .next folder NOT in ZIP!"
-            echo ""
-            echo "ZIP contents:"
             unzip -l deploy.zip | head -30
             exit 1
           fi
-          
           echo ""
           echo "📋 First 30 files in ZIP:"
           unzip -l deploy.zip | head -30
-      
+
       - name: Deploy to Azure
         timeout-minutes: 15
         run: |
           echo "🚀 Deploying to Azure App Service..."
           echo "📍 Target: insightbridge-frontend-test"
           echo ""
-          
           HTTP_CODE=$(curl -X POST \
             "https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy" \
             -u '$insightbridge-frontend-test:${{ secrets.AZURE_PUBLISH_PROFILE_PASSWORD }}' \
@@ -203,44 +210,35 @@ jobs:
             -w "%{http_code}" \
             -o /dev/null \
             -s)
-          
           echo "HTTP Status: $HTTP_CODE"
           echo ""
-          
           if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
             echo "✅ Deployment accepted by Azure!"
             echo "Azure is now extracting and configuring..."
           elif [ "$HTTP_CODE" = "504" ]; then
-            echo "⚠️  Gateway timeout (504)"
-            echo "Deployment may still be processing in background"
-            echo "This is common with large packages"
+            echo "⚠️  Gateway timeout (504). Deployment may still be processing."
             exit 0
           else
             echo "❌ Deployment failed with HTTP $HTTP_CODE"
             exit 1
           fi
-      
+
       - name: Wait for Azure processing
         run: |
           echo ""
           echo "⏳ Waiting for Azure to extract and start application..."
-          echo "This typically takes 60-90 seconds..."
           sleep 75
-      
+
       - name: Verify deployment
         timeout-minutes: 5
         run: |
           echo ""
           echo "🔍 Verifying deployment..."
-          echo ""
-          
           max_attempts=15
           for i in $(seq 1 $max_attempts); do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-              --max-time 10 \
-              --connect-timeout 5 \
+              --max-time 10 --connect-timeout 5 \
               https://insightbridge-frontend-test.azurewebsites.net/ 2>/dev/null || echo "000")
-            
             if [ "$HTTP_CODE" = "200" ]; then
               echo "✅ Application is responding!"
               echo ""
@@ -253,24 +251,13 @@ jobs:
             else
               echo "Attempt $i/$max_attempts: Status $HTTP_CODE - waiting 10s..."
             fi
-            
             sleep 10
           done
-          
           echo ""
           echo "⚠️  Application not responding after $max_attempts attempts"
-          echo ""
-          echo "📊 Next steps:"
-          echo "   1. Check Kudu: https://insightbridge-frontend-test.scm.azurewebsites.net/wwwroot/"
-          echo "   2. Verify .next folder exists"
-          echo "   3. Check logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
-          echo "   4. Restart app in Azure Portal"
-          echo ""
-          echo "💡 Deployment was accepted - app may need 2-3 more minutes"
-          
-          # Don't fail - deployment succeeded, app just needs time
+          echo "💡 Deployment was accepted - app may need more time"
           exit 0
-      
+
       - name: Deployment summary
         if: always()
         run: |
@@ -295,7 +282,6 @@ jobs:
           echo "🔧 If issues persist:"
           echo "   • Startup Command: node_modules/next/dist/bin/next start"
           echo "   • Or: npm start"
-          echo "   • Restart app in Azure Portal"
           echo ""
           echo "Time: $(date)"
           echo "================================"
