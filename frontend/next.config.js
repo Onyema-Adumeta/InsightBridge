@@ -1,5 +1,6 @@
-/** @type {import('next').NextConfig} */
+﻿/** @type {import('next').NextConfig} */
 let nextConfig = {
+  outputFileTracingRoot: __dirname,
   // Add these two lines to ignore linting errors during build
   eslint: {
     ignoreDuringBuilds: true,
@@ -19,7 +20,6 @@ let nextConfig = {
     ];
   },
 };
-
 // Only use bundle analyzer if the package is installed
 if (process.env.ANALYZE === 'true') {
   try {
@@ -31,5 +31,4 @@ if (process.env.ANALYZE === 'true') {
     console.log('Bundle analyzer not installed, skipping...');
   }
 }
-
 module.exports = nextConfig;
