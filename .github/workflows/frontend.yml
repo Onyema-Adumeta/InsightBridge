@@ -108,10 +108,13 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          NODE_ENV: production
         run: |
           echo "📦 Installing dependencies (including devDependencies for build)..."
           npm ci
+
+          echo ""
+          echo "🧩 Ensuring TypeScript deps (CI safeguard)..."
+          npm ls typescript >/dev/null 2>&1 || npm i -D --no-save typescript@5 @types/react@18 @types/react-dom@18 @types/node@20
 
           echo ""
           echo "🔨 Building Next.js application..."
@@ -120,14 +123,8 @@ jobs:
           echo ""
           echo "✅ Build complete!"
 
-          if [ ! -d ".next" ]; then
-            echo "❌ ERROR: .next folder not created!"
-            exit 1
-          fi
-          if [ ! -f ".next/BUILD_ID" ]; then
-            echo "❌ ERROR: .next/BUILD_ID missing!"
-            exit 1
-          fi
+          [ -d ".next" ] || { echo "❌ .next not created"; exit 1; }
+          [ -f ".next/BUILD_ID" ] || { echo "❌ .next/BUILD_ID missing"; exit 1; }
           echo "✅ .next folder verified"
           echo ""
           echo "📊 Build sizes:"
@@ -140,7 +137,6 @@ jobs:
 
           echo "📦 Installing production dependencies only..."
           npm ci --omit=dev --no-audit --no-fund
-
           echo "✅ Production dependencies installed"
 
       - name: Verify build artifacts
@@ -214,9 +210,8 @@ jobs:
           echo ""
           if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
             echo "✅ Deployment accepted by Azure!"
-            echo "Azure is now extracting and configuring..."
           elif [ "$HTTP_CODE" = "504" ]; then
-            echo "⚠️  Gateway timeout (504). Deployment may still be processing."
+            echo "⚠️ Gateway timeout (504). Deployment may still be processing."
             exit 0
           else
             echo "❌ Deployment failed with HTTP $HTTP_CODE"
@@ -254,7 +249,7 @@ jobs:
             sleep 10
           done
           echo ""
-          echo "⚠️  Application not responding after $max_attempts attempts"
+          echo "⚠️ Application not responding after $max_attempts attempts"
           echo "💡 Deployment was accepted - app may need more time"
           exit 0
 
