@@ -171,7 +171,7 @@ jobs:
             next.config.js \
             next.config.mjs \
             public \
-            2>/dev/null || zip -r ../deploy.zip .next node_modules package.json
+            2>/dev/null || zip -r ../deploy.zip .next node_modules package.json next.config.js public
 
           cd ..
           echo ""
@@ -280,4 +280,5 @@ jobs:
           echo ""
           echo "Time: $(date)"
           echo "================================"
+
 
