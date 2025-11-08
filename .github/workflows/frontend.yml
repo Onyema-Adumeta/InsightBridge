@@ -218,7 +218,7 @@ jobs:
           sleep 75
 
       - name: Verify deployment
-        timeout-minutes: 5
+        timeout-minutes: 10
         run: |
           echo ""
           echo "🔍 Verifying deployment..."
