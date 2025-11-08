@@ -32,7 +32,6 @@ if [ -d "backend" ]; then
     python3 -m pip install -r requirements.txt --quiet --break-system-packages
     
     echo "Starting Python backend on port 8000..."
-    # Changed from main:app to app:app
     nohup python3 -m uvicorn app:app --host 0.0.0.0 --port 8000 > /tmp/backend.log 2>&1 &
     BACKEND_PID=$!
     echo "Backend started with PID: $BACKEND_PID"
@@ -51,13 +50,16 @@ fi
 if [ -d "/home/site/wwwroot/frontend" ]; then
     cd /home/site/wwwroot/frontend
     
-    echo "Installing production dependencies..."
-    npm ci --production --omit=dev
+    echo "Installing ALL dependencies (including dev for build)..."
+    npm ci
+    
+    echo "Building Next.js application..."
+    npm run build
     
     export PORT=${PORT:-8080}
     echo "Starting Next.js frontend on port $PORT..."
     
-    npm start -- -p $PORT
+    npm start
 else
     echo "ERROR: Frontend directory not found!"
     exit 1

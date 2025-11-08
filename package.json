@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "InsightBridge Fullstack Application",
   "scripts": {
-    "start": "bash startup.sh",
-    "postinstall": "cd frontend && npm install --production"
+    "start": "cd frontend && npm start",
+    "build": "cd frontend && npm run build",
+    "postinstall": "cd frontend && npm install"
   },
   "engines": {
     "node": "20.x",
