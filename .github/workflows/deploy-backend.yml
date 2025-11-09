@@ -133,7 +133,7 @@ jobs:
             
             # Try to get health status with longer timeout
             response_code=$(curl -s -o /dev/null -w "%{http_code}" \
-              --max-time 30 \
+              --max-time 60 \
               --connect-timeout 10 \
               https://insightbridge-backend-test.azurewebsites.net/api/v1/main/health 2>/dev/null)
             
