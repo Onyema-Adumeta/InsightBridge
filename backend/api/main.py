@@ -25,10 +25,14 @@ router = APIRouter()
 
 
 try:
+
+    http_client = httpx.Client(proxies=None)
+
     client = AzureOpenAI(
         api_key=os.getenv("AZURE_OPENAI_API_KEY"),
         api_version="2024-02-01",
         azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+        http_client=http_client,
     )
     logger.info("✅ Azure OpenAI client initialized")
 except Exception as e:
