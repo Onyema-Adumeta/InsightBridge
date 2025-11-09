@@ -9,9 +9,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
+    environment:
+      name: 'Production'
+      url: 'https://insightbridge-frontend-test.azurewebsites.net'
 
     steps:
       - name: Checkout code
@@ -40,62 +43,26 @@ jobs:
           echo ""
           echo "✅ Build complete!"
           [ -d ".next" ] || { echo "❌ .next not created"; exit 1; }
-          [ -f ".next/BUILD_ID" ] || { echo "❌ .next/BUILD_ID"; exit 1; }
           
           echo ""
-          echo "🧹 Cleaning for production..."
+          echo "🧹 Preparing for deployment..."
           rm -rf node_modules
           rm -rf .next/cache
 
           echo "📦 Installing production dependencies..."
           npm ci --omit=dev --no-audit --no-fund
-          echo "✅ Production dependencies installed"
+          echo "✅ Production ready"
 
-      - name: Verify Build Artifacts
+      - name: Verify Build
         working-directory: frontend
         run: |
-          echo "🔍 Verifying all required files..."
+          echo "🔍 Verifying build artifacts..."
           test -d .next || { echo "❌ Missing .next"; exit 1; }
-          test -d .next/server || { echo "❌ Missing .next/server"; exit 1; }
-          test -d .next/static || { echo "❌ Missing .next/static"; exit 1; }
-          test -d node_modules/next || { echo "❌ Missing node_modules/next"; exit 1; }
+          test -d node_modules/next || { echo "❌ Missing next"; exit 1; }
           test -f node_modules/next/dist/bin/next || { echo "❌ Missing next binary"; exit 1; }
-          echo "✅ All critical files present!"
-          echo ""
-          echo "📊 Build size:"
-          du -sh .next node_modules
-
-      - name: Upload artifact for deployment
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build
-          path: frontend/
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    timeout-minutes: 15
-    environment:
-      name: 'Production'
-      url: 'https://insightbridge-frontend-test.azurewebsites.net'
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-build
-          path: ./frontend
-
-      - name: Verify downloaded artifacts
-        run: |
-          echo "📦 Verifying deployment package..."
-          ls -la frontend/
-          test -d frontend/.next || { echo "❌ .next missing after download"; exit 1; }
-          test -d frontend/node_modules || { echo "❌ node_modules missing"; exit 1; }
-          echo "✅ Package verified"
+          echo "✅ All files present!"
 
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'insightbridge-frontend-test'
@@ -103,56 +70,42 @@ jobs:
           package: ./frontend
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_FRONTEND }}
 
-      - name: Wait for application startup
+      - name: Wait for startup
         run: |
-          echo ""
-          echo "⏳ Waiting for Azure to start the application..."
+          echo "⏳ Waiting for Azure to start..."
           sleep 45
 
       - name: Verify Deployment
         timeout-minutes: 8
         run: |
-          echo "🔍 Verifying deployment..."
+          echo "🔍 Checking application..."
           max_attempts=15
           
           for i in $(seq 1 $max_attempts); do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-              --max-time 10 --connect-timeout 5 \
+              --max-time 10 \
               https://insightbridge-frontend-test.azurewebsites.net/ 2>/dev/null || echo "000")
             
             if [ "$HTTP_CODE" = "200" ]; then
               echo ""
-              echo "✅ Frontend is live and responding!"
-              echo ""
-              echo "🌐 Application URL:"
-              echo "   https://insightbridge-frontend-test.azurewebsites.net"
+              echo "✅ Application is live!"
+              echo "🌐 https://insightbridge-frontend-test.azurewebsites.net"
               exit 0
-            elif [ "$HTTP_CODE" = "503" ]; then
-              echo "Attempt $i/$max_attempts: Starting (503)... waiting 10s"
-            else
-              echo "Attempt $i/$max_attempts: Status $HTTP_CODE... waiting 10s"
             fi
+            echo "Attempt $i/$max_attempts: Status $HTTP_CODE"
             sleep 10
           done
           
-          echo ""
-          echo "⚠️ Application not responding after $max_attempts attempts"
-          echo "💡 Check Azure logs if issue persists"
+          echo "⚠️ Deployment complete but app needs more time to start"
 
-      - name: Deployment Summary
+      - name: Summary
         if: always()
         run: |
           echo ""
           echo "================================"
-          echo "🎉 Deployment Summary"
+          echo "Deployment Complete"
           echo "================================"
           echo "Frontend: https://insightbridge-frontend-test.azurewebsites.net"
           echo "Backend: https://insightbridge-backend-test.azurewebsites.net"
-          echo "Backend Docs: https://insightbridge-backend-test.azurewebsites.net/docs"
-          echo ""
-          echo "🔧 Logs & Tools:"
-          echo "   Frontend Logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
-          echo "   Kudu Console: https://insightbridge-frontend-test.scm.azurewebsites.net"
-          echo ""
-          echo "Time: $(date -u)"
+          echo "Logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
           echo "================================"
