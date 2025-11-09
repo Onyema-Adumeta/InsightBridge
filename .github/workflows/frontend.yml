@@ -68,7 +68,7 @@ jobs:
           app-name: 'insightbridge-frontend-test'
           slot-name: 'Production'
           package: ./frontend
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_FRONTEND }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
 
       - name: Wait for startup
         run: |
