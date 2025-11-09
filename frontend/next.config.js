@@ -15,7 +15,7 @@ let nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://127.0.0.1:8000/api/:path*',
+        destination: 'https://bridge-backend-test.azurewebsites.net/api/:path*',
       },
     ];
   },
