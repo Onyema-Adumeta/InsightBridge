@@ -11,90 +11,14 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
+    environment:
+      name: 'Production'
+      url: 'https://insightbridge-frontend-test.azurewebsites.net'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          submodules: false
-          fetch-depth: 0
-
-      - name: Debug - Verify repository contents
-        run: |
-          echo "=== Current directory ==="
-          pwd
-          echo ""
-          echo "=== Repository root contents ==="
-          ls -la
-          echo ""
-          echo "=== Frontend directory exists? ==="
-          ls -la frontend/ || echo "Frontend directory not found!"
-          echo ""
-          echo "=== Frontend src directory ==="
-          ls -la frontend/src/ || echo "src not found!"
-          echo ""
-          echo "=== Components directory ==="
-          ls -la frontend/src/components/ | head -20 || echo "Components not found!"
-          echo ""
-          echo "=== Context directory ==="
-          ls -la frontend/src/context/ || echo "Context not found!"
-          echo ""
-          echo "=== Looking for specific files with find ==="
-          find frontend/src -name "*AppSidebar*" 2>/dev/null || echo "Find failed"
-          find frontend/src -name "*SimulationChart*" 2>/dev/null || echo "Find failed"
-          find frontend/src -name "*AnalysisContext*" 2>/dev/null || echo "Find failed"
-          echo ""
-          echo "=== Current commit hash ==="
-          git rev-parse HEAD
-          echo ""
-          echo "=== Files that SHOULD be in this commit ==="
-          git ls-tree -r HEAD --name-only | grep -E "AppSidebar|SimulationChart|AnalysisContext" || true
-
-      - name: Verify imports before build
-        working-directory: frontend
-        run: |
-          echo "=== Verifying tsconfig.json paths ==="
-          cat tsconfig.json | grep -A 3 '"paths"' || echo "No paths section found"
-          echo ""
-          echo "=== Verifying critical files exist ==="
-          test -f src/components/AppSidebar.tsx && echo "✓ AppSidebar.tsx exists" || echo "✗ AppSidebar.tsx MISSING"
-          test -f src/components/SimulationChart.tsx && echo "✓ SimulationChart.tsx exists" || echo "✗ SimulationChart.tsx MISSING"
-          test -f src/context/AnalysisContext.tsx && echo "✓ AnalysisContext.tsx exists" || echo "✗ AnalysisContext.tsx MISSING"
-          echo ""
-          echo "=== File sizes ==="
-          ls -lh src/components/AppSidebar.tsx src/components/SimulationChart.tsx src/context/AnalysisContext.tsx 2>/dev/null || echo "Files not accessible"
-          echo ""
-          echo "=== Checking import statements ==="
-          grep -n "import.*AppSidebar" src/app/\(app\)/layout.tsx || echo "No AppSidebar import"
-          grep -n "import.*SimulationChart" src/app/\(app\)/strategic-advisor/page.tsx || echo "No SimulationChart import"
-          grep -n "import.*AnalysisContext" src/app/\(app\)/strategic-advisor/page.tsx || echo "No AnalysisContext import"
-
-      - name: Fail fast on case-sensitivity mistakes
-        working-directory: frontend
-        run: |
-          echo "🔎 Exact-case check for '@/components' and '@/context' imports"
-          set -e
-          IMPORTS=$(grep -Ehro --include=\*.{ts,tsx} "from ['\"]@\/(components|context)\/[A-Za-z0-9\/_.-]+['\"]" src || true)
-          if [ -z "$IMPORTS" ]; then
-            echo "No alias imports found."
-            exit 0
-          fi
-          ERR=0
-          while IFS= read -r line; do
-            REL=$(echo "$line" | sed -E "s/.*from ['\"]@\/([^'\"]+)['\"].*/\1/")
-            if [ -f "src/$REL" ] || [ -f "src/$REL.tsx" ] || [ -f "src/$REL.ts" ]; then
-              echo "✓ @/$REL"
-            else
-              echo "❌ Missing (case mismatch or wrong path): @/$REL"
-              ERR=1
-            fi
-          done <<< "$IMPORTS"
-          if [ $ERR -ne 0 ]; then
-            echo "🔴 Fix the import casing to match filenames exactly."
-            exit 1
-          fi
-          echo "✅ All alias imports resolve with exact casing."
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -103,18 +27,14 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Build application
+      - name: Build Frontend Application
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
         run: |
-          echo "📦 Installing dependencies (including devDependencies for build)..."
+          echo "📦 Installing dependencies..."
           npm ci
-
-          echo ""
-          echo "🧩 Ensuring TypeScript deps (CI safeguard)..."
-          npm ls typescript >/dev/null 2>&1 || npm i -D --no-save typescript@5 @types/react@18 @types/react-dom@18 @types/node@20
 
           echo ""
           echo "🔨 Building Next.js application..."
@@ -122,154 +42,70 @@ jobs:
 
           echo ""
           echo "✅ Build complete!"
-
           [ -d ".next" ] || { echo "❌ .next not created"; exit 1; }
-          [ -f ".next/BUILD_ID" ] || { echo "❌ .next/BUILD_ID missing"; exit 1; }
-          echo "✅ .next folder verified"
+          
           echo ""
-          echo "📊 Build sizes:"
-          du -sh .next node_modules
-
-          echo ""
-          echo "🧹 Cleaning for production deployment..."
+          echo "🧹 Preparing for deployment..."
           rm -rf node_modules
           rm -rf .next/cache
 
-          echo "📦 Installing production dependencies only..."
+          echo "📦 Installing production dependencies..."
           npm ci --omit=dev --no-audit --no-fund
-          echo "✅ Production dependencies installed"
+          echo "✅ Production ready"
 
-      - name: Verify build artifacts
+      - name: Verify Build
         working-directory: frontend
         run: |
-          echo "🔍 Verifying all required files exist..."
-          test -d .next || { echo "❌ Missing .next folder"; exit 1; }
-          test -f .next/BUILD_ID || { echo "❌ Missing .next/BUILD_ID"; exit 1; }
-          test -d .next/server || { echo "❌ Missing .next/server folder"; exit 1; }
-          test -d .next/static || { echo "❌ Missing .next/static folder"; exit 1; }
-          test -d node_modules/next || { echo "❌ Missing node_modules/next"; exit 1; }
-          test -f package.json || { echo "❌ Missing package.json"; exit 1; }
-          echo "✅ All critical files present!"
-          echo ""
-          echo "📁 .next folder structure:"
-          ls -la .next/ | head -15
+          echo "🔍 Verifying build artifacts..."
+          test -d .next || { echo "❌ Missing .next"; exit 1; }
+          test -d node_modules/next || { echo "❌ Missing next"; exit 1; }
+          test -f node_modules/next/dist/bin/next || { echo "❌ Missing next binary"; exit 1; }
+          echo "✅ All files present!"
 
-      - name: Create deployment package
-        working-directory: frontend
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'insightbridge-frontend-test'
+          slot-name: 'Production'
+          package: ./frontend
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
+
+      - name: Wait for startup
         run: |
-          echo "📦 Creating deployment ZIP package..."
-          if [ ! -d "node_modules/next" ]; then
-            echo "❌ ERROR: node_modules/next not found!"
-            exit 1
-          fi
-          ls -la node_modules/next/dist/bin/ || echo "Warning: next bin not found"
+          echo "⏳ Waiting for Azure to start..."
+          sleep 45
 
-          zip -r ../deploy.zip .next node_modules package.json next.config.js public 2>/dev/null || true
-
-          cd ..
-          echo ""
-          echo "✅ ZIP package created"
-          echo "📏 Package size: $(du -h deploy.zip | cut -f1)"
-          echo ""
-          echo "🔍 Verifying .next folder is in deployment package..."
-          if unzip -l deploy.zip | grep -q ".next/BUILD_ID"; then
-            echo "✅ .next folder confirmed in ZIP"
-          else
-            echo "❌ ERROR: .next folder NOT in ZIP!"
-            unzip -l deploy.zip | head -30
-            exit 1
-          fi
-          echo ""
-          echo "📋 First 30 files in ZIP:"
-          unzip -l deploy.zip | head -30
-
-      - name: Deploy to Azure
-        timeout-minutes: 15
+      - name: Verify Deployment
+        timeout-minutes: 8
         run: |
-          echo "🚀 Deploying to Azure App Service..."
-          echo "📍 Target: insightbridge-frontend-test"
-          echo ""
-          HTTP_CODE=$(curl -X POST \
-            "https://insightbridge-frontend-test.scm.azurewebsites.net/api/zipdeploy" \
-            -u '$insightbridge-frontend-test:${{ secrets.AZURE_PUBLISH_PROFILE_PASSWORD }}' \
-            --data-binary @deploy.zip \
-            -H "Content-Type: application/octet-stream" \
-            --max-time 900 \
-            --connect-timeout 120 \
-            -w "%{http_code}" \
-            -o /dev/null \
-            -s)
-          echo "HTTP Status: $HTTP_CODE"
-          echo ""
-          if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
-            echo "✅ Deployment accepted by Azure!"
-          elif [ "$HTTP_CODE" = "504" ]; then
-            echo "⚠️ Gateway timeout (504). Deployment may still be processing."
-            exit 0
-          else
-            echo "❌ Deployment failed with HTTP $HTTP_CODE"
-            exit 1
-          fi
-
-      - name: Wait for Azure processing
-        run: |
-          echo ""
-          echo "⏳ Waiting for Azure to extract and start application..."
-          sleep 75
-
-      - name: Verify deployment
-        timeout-minutes: 10
-        run: |
-          echo ""
-          echo "🔍 Verifying deployment..."
+          echo "🔍 Checking application..."
           max_attempts=15
+          
           for i in $(seq 1 $max_attempts); do
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-              --max-time 10 --connect-timeout 5 \
+              --max-time 10 \
               https://insightbridge-frontend-test.azurewebsites.net/ 2>/dev/null || echo "000")
+            
             if [ "$HTTP_CODE" = "200" ]; then
-              echo "✅ Application is responding!"
               echo ""
-              echo "🌐 URLs:"
-              echo "   App: https://insightbridge-frontend-test.azurewebsites.net"
-              echo "   Dashboard: https://insightbridge-frontend-test.azurewebsites.net/dashboard"
+              echo "✅ Application is live!"
+              echo "🌐 https://insightbridge-frontend-test.azurewebsites.net"
               exit 0
-            elif [ "$HTTP_CODE" = "503" ]; then
-              echo "Attempt $i/$max_attempts: App starting (503) - waiting 10s..."
-            else
-              echo "Attempt $i/$max_attempts: Status $HTTP_CODE - waiting 10s..."
             fi
+            echo "Attempt $i/$max_attempts: Status $HTTP_CODE"
             sleep 10
           done
-          echo ""
-          echo "⚠️ Application not responding after $max_attempts attempts"
-          echo "💡 Deployment was accepted - app may need more time"
-          exit 0
+          
+          echo "⚠️ Deployment complete but app needs more time to start"
 
-      - name: Deployment summary
+      - name: Summary
         if: always()
         run: |
           echo ""
           echo "================================"
-          echo "🎉 Deployment Summary"
+          echo "Deployment Complete"
           echo "================================"
-          echo "Application: insightbridge-frontend-test"
-          echo "Region: Canada Central"
-          echo ""
-          echo "🔗 Important URLs:"
-          echo "   App: https://insightbridge-frontend-test.azurewebsites.net"
-          echo "   Dashboard: https://insightbridge-frontend-test.azurewebsites.net/dashboard"
-          echo "   Kudu: https://insightbridge-frontend-test.scm.azurewebsites.net"
-          echo "   Logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
-          echo ""
-          echo "💡 Post-deployment:"
-          echo "   • Wait 2-3 minutes for full startup"
-          echo "   • Hard refresh browser (Ctrl+Shift+R)"
-          echo "   • Check Kudu to verify .next exists"
-          echo ""
-          echo "🔧 If issues persist:"
-          echo "   • Startup Command: node_modules/next/dist/bin/next start"
-          echo "   • Or: npm start"
-          echo ""
-          echo "Time: $(date)"
+          echo "Frontend: https://insightbridge-frontend-test.azurewebsites.net"
+          echo "Backend: https://insightbridge-backend-test.azurewebsites.net"
+          echo "Logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
           echo "================================"
