@@ -7,6 +7,7 @@ import "./globals.css";
 export const metadata = {
   title: "InsightBridge",
   description: "Smart Financial Assistant for SMBs",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
 };
 
 const inter = Inter({ subsets: ['latin'] });
