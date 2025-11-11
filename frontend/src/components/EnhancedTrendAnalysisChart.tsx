@@ -51,50 +51,50 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value);
 
     return (
-      <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xl">
-        <p className="font-semibold text-slate-900 mb-3 pb-2 border-b border-slate-200">{label}</p>
-        <div className="space-y-2">
+      <div className="bg-white border border-slate-200 rounded-lg p-3 sm:p-4 shadow-xl max-w-[280px] sm:max-w-none">
+        <p className="font-semibold text-slate-900 mb-2 sm:mb-3 pb-2 border-b border-slate-200 text-xs sm:text-sm">{label}</p>
+        <div className="space-y-1.5 sm:space-y-2">
           {/* P&L Metrics */}
           {revenue && (
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: revenue.stroke || '#10b981' }} />
-                <span className="text-sm text-slate-600">Revenue</span>
+            <div className="flex items-center justify-between gap-2 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: revenue.stroke || '#10b981' }} />
+                <span className="text-xs sm:text-sm text-slate-600">Revenue</span>
               </div>
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-xs sm:text-sm font-semibold text-slate-900">
                 {formatCurrency(revenue.value)}
               </span>
             </div>
           )}
           {expenses && (
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: expenses.stroke || '#ef4444' }} />
-                <span className="text-sm text-slate-600">Expenses</span>
+            <div className="flex items-center justify-between gap-2 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: expenses.stroke || '#ef4444' }} />
+                <span className="text-xs sm:text-sm text-slate-600">Expenses</span>
               </div>
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-xs sm:text-sm font-semibold text-slate-900">
                 {formatCurrency(expenses.value)}
               </span>
             </div>
           )}
           {grossProfit && (
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: grossProfit.stroke || '#8b5cf6' }} />
-                <span className="text-sm text-slate-600">Gross Profit</span>
+            <div className="flex items-center justify-between gap-2 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: grossProfit.stroke || '#8b5cf6' }} />
+                <span className="text-xs sm:text-sm text-slate-600">Gross Profit</span>
               </div>
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-xs sm:text-sm font-semibold text-slate-900">
                 {formatCurrency(grossProfit.value)}
               </span>
             </div>
           )}
           {netIncome && (
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: netIncome.stroke || '#3b82f6' }} />
-                <span className="text-sm text-slate-600">Net Income</span>
+            <div className="flex items-center justify-between gap-2 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: netIncome.stroke || '#3b82f6' }} />
+                <span className="text-xs sm:text-sm text-slate-600">Net Income</span>
               </div>
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-xs sm:text-sm font-semibold text-slate-900">
                 {formatCurrency(netIncome.value)}
               </span>
             </div>
@@ -102,34 +102,34 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           
           {/* Balance Sheet Metrics */}
           {totalAssets && totalAssets.value > 0 && (
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: totalAssets.stroke || '#3b82f6' }} />
-                <span className="text-sm text-slate-600">Total Assets</span>
+            <div className="flex items-center justify-between gap-2 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: totalAssets.stroke || '#3b82f6' }} />
+                <span className="text-xs sm:text-sm text-slate-600">Total Assets</span>
               </div>
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-xs sm:text-sm font-semibold text-slate-900">
                 {formatCurrency(totalAssets.value)}
               </span>
             </div>
           )}
           {totalLiabilities && totalLiabilities.value > 0 && (
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: totalLiabilities.stroke || '#ef4444' }} />
-                <span className="text-sm text-slate-600">Total Liabilities</span>
+            <div className="flex items-center justify-between gap-2 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: totalLiabilities.stroke || '#ef4444' }} />
+                <span className="text-xs sm:text-sm text-slate-600">Total Liabilities</span>
               </div>
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-xs sm:text-sm font-semibold text-slate-900">
                 {formatCurrency(totalLiabilities.value)}
               </span>
             </div>
           )}
           {totalEquity && totalEquity.value > 0 && (
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: totalEquity.stroke || '#10b981' }} />
-                <span className="text-sm text-slate-600">Total Equity</span>
+            <div className="flex items-center justify-between gap-2 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: totalEquity.stroke || '#10b981' }} />
+                <span className="text-xs sm:text-sm text-slate-600">Total Equity</span>
               </div>
-              <span className="text-sm font-semibold text-slate-900">
+              <span className="text-xs sm:text-sm font-semibold text-slate-900">
                 {formatCurrency(totalEquity.value)}
               </span>
             </div>
@@ -152,11 +152,11 @@ const CustomLegend = ({ payload }: any) => {
   );
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-6 pt-4">
+    <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 lg:gap-6 pt-3 sm:pt-4 px-2">
       {legendItems.map((entry: any, index: number) => (
-        <div key={`legend-${index}`} className="flex items-center gap-2">
+        <div key={`legend-${index}`} className="flex items-center gap-1.5 sm:gap-2">
           <div 
-            className="w-8 h-0.5 rounded-full" 
+            className="w-6 sm:w-8 h-0.5 rounded-full flex-shrink-0" 
             style={{ 
               backgroundColor: entry.color,
               ...(entry.payload?.strokeDasharray && { 
@@ -165,7 +165,7 @@ const CustomLegend = ({ payload }: any) => {
               })
             }}
           />
-          <span className="text-sm text-slate-700 font-medium">{entry.value}</span>
+          <span className="text-xs sm:text-sm text-slate-700 font-medium whitespace-nowrap">{entry.value}</span>
         </div>
       ))}
     </div>
@@ -236,14 +236,14 @@ export default function EnhancedTrendAnalysisChart({ historicalData, forecastDat
   if (!combinedData.length) {
     console.log('[EnhancedTrendAnalysisChart] No data to render');
     return (
-      <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-        <div className="inline-flex items-center justify-center w-12 h-12 bg-slate-100 rounded-full mb-3">
-          <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="bg-white rounded-xl border border-slate-200 p-6 sm:p-8 text-center">
+        <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 bg-slate-100 rounded-full mb-3">
+          <svg className="w-5 h-5 sm:w-6 sm:h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         </div>
-        <p className="text-slate-600 font-medium">No chart data available</p>
-        <p className="text-sm text-slate-500 mt-1">Upload financial statements to view trends</p>
+        <p className="text-slate-600 font-medium text-sm sm:text-base">No chart data available</p>
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">Upload financial statements to view trends</p>
       </div>
     );
   }
@@ -253,23 +253,25 @@ export default function EnhancedTrendAnalysisChart({ historicalData, forecastDat
     : null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
+      {/* Header */}
       <div>
-        <h3 className="text-base font-semibold text-slate-900">
+        <h3 className="text-sm sm:text-base font-semibold text-slate-900">
           {hasProfitLoss && hasBalanceSheet ? 'Financial Performance & Position' : 
            hasProfitLoss ? 'Performance & Forecast' : 
            'Balance Sheet Trends'}
         </h3>
-        <p className="text-sm text-slate-600 mt-1">
+        <p className="text-xs sm:text-sm text-slate-600 mt-1">
           {hasProfitLoss && hasBalanceSheet ? 'Complete financial overview with trends and projections' :
            hasProfitLoss ? 'Historical trends with AI-powered projections' :
            'Assets, liabilities, and equity over time'}
         </p>
       </div>
 
-      <div className="bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-200 p-6">
-        <ResponsiveContainer width="100%" height={400}>
-          <ComposedChart data={combinedData}>
+      {/* Chart Container */}
+      <div className="bg-gradient-to-br from-slate-50 to-white rounded-xl border border-slate-200 p-3 sm:p-4 lg:p-6 overflow-x-auto">
+        <ResponsiveContainer width="100%" height={300} className="sm:!h-[350px] lg:!h-[400px]">
+          <ComposedChart data={combinedData} margin={{ top: 5, right: 5, left: 0, bottom: 5 }}>
             {/* Professional Grid */}
             <CartesianGrid 
               strokeDasharray="3 3" 
@@ -281,17 +283,23 @@ export default function EnhancedTrendAnalysisChart({ historicalData, forecastDat
             <XAxis 
               dataKey="period" 
               stroke="#64748b"
-              tick={{ fill: '#475569', fontSize: 12, fontWeight: 500 }}
+              tick={{ fill: '#475569', fontSize: 10, fontWeight: 500 }}
+              className="sm:text-xs"
               axisLine={{ stroke: '#e2e8f0' }}
               tickLine={{ stroke: '#e2e8f0' }}
+              angle={-45}
+              textAnchor="end"
+              height={60}
             />
             
             {/* Y Axis */}
             <YAxis 
               stroke="#64748b"
-              tick={{ fill: '#475569', fontSize: 12, fontWeight: 500 }}
+              tick={{ fill: '#475569', fontSize: 10, fontWeight: 500 }}
+              className="sm:text-xs"
               axisLine={{ stroke: '#e2e8f0' }}
               tickLine={{ stroke: '#e2e8f0' }}
+              width={60}
               tickFormatter={(value) => {
                 if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
                 if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
@@ -336,36 +344,42 @@ export default function EnhancedTrendAnalysisChart({ historicalData, forecastDat
                   type="monotone" 
                   dataKey="revenue" 
                   stroke="#10b981" 
-                  strokeWidth={2.5}
-                  dot={{ fill: '#10b981', r: 4, strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
+                  strokeWidth={2}
+                  className="sm:!stroke-[2.5px]"
+                  dot={{ fill: '#10b981', r: 3, strokeWidth: 0 }}
+                  className="sm:!r-4"
+                  activeDot={{ r: 5, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
+                  className="sm:!r-6"
                   name="Revenue" 
                 />
                 <Line 
                   type="monotone" 
                   dataKey="expenses" 
                   stroke="#ef4444" 
-                  strokeWidth={2.5}
-                  dot={{ fill: '#ef4444', r: 4, strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: '#ef4444', stroke: '#fff', strokeWidth: 2 }}
+                  strokeWidth={2}
+                  className="sm:!stroke-[2.5px]"
+                  dot={{ fill: '#ef4444', r: 3, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#ef4444', stroke: '#fff', strokeWidth: 2 }}
                   name="Expenses" 
                 />
                 <Line 
                   type="monotone" 
                   dataKey="gross_profit" 
                   stroke="#8b5cf6" 
-                  strokeWidth={2.5}
-                  dot={{ fill: '#8b5cf6', r: 4, strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: '#8b5cf6', stroke: '#fff', strokeWidth: 2 }}
+                  strokeWidth={2}
+                  className="sm:!stroke-[2.5px]"
+                  dot={{ fill: '#8b5cf6', r: 3, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#8b5cf6', stroke: '#fff', strokeWidth: 2 }}
                   name="Gross Profit" 
                 />
                 <Line 
                   type="monotone" 
                   dataKey="net_income" 
                   stroke="#3b82f6" 
-                  strokeWidth={2.5}
-                  dot={{ fill: '#3b82f6', r: 4, strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+                  strokeWidth={2}
+                  className="sm:!stroke-[2.5px]"
+                  dot={{ fill: '#3b82f6', r: 3, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
                   name="Net Income" 
                 />
               </>
@@ -378,27 +392,30 @@ export default function EnhancedTrendAnalysisChart({ historicalData, forecastDat
                   type="monotone" 
                   dataKey="total_assets" 
                   stroke="#3b82f6" 
-                  strokeWidth={2.5}
-                  dot={{ fill: '#3b82f6', r: 4, strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+                  strokeWidth={2}
+                  className="sm:!stroke-[2.5px]"
+                  dot={{ fill: '#3b82f6', r: 3, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
                   name="Total Assets" 
                 />
                 <Line 
                   type="monotone" 
                   dataKey="total_liabilities" 
                   stroke="#ef4444" 
-                  strokeWidth={2.5}
-                  dot={{ fill: '#ef4444', r: 4, strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: '#ef4444', stroke: '#fff', strokeWidth: 2 }}
+                  strokeWidth={2}
+                  className="sm:!stroke-[2.5px]"
+                  dot={{ fill: '#ef4444', r: 3, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#ef4444', stroke: '#fff', strokeWidth: 2 }}
                   name="Total Liabilities" 
                 />
                 <Line 
                   type="monotone" 
                   dataKey="total_equity" 
                   stroke="#10b981" 
-                  strokeWidth={2.5}
-                  dot={{ fill: '#10b981', r: 4, strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
+                  strokeWidth={2}
+                  className="sm:!stroke-[2.5px]"
+                  dot={{ fill: '#10b981', r: 3, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
                   name="Total Equity" 
                 />
               </>
@@ -411,20 +428,22 @@ export default function EnhancedTrendAnalysisChart({ historicalData, forecastDat
                   type="monotone" 
                   dataKey="forecast_revenue" 
                   stroke="#10b981" 
-                  strokeWidth={2.5}
+                  strokeWidth={2}
+                  className="sm:!stroke-[2.5px]"
                   strokeDasharray="8 4"
-                  dot={{ fill: '#10b981', r: 4, strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
+                  dot={{ fill: '#10b981', r: 3, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
                   name="Revenue Forecast" 
                 />
                 <Line 
                   type="monotone" 
                   dataKey="forecast_net_income" 
                   stroke="#3b82f6" 
-                  strokeWidth={2.5}
+                  strokeWidth={2}
+                  className="sm:!stroke-[2.5px]"
                   strokeDasharray="8 4"
-                  dot={{ fill: '#3b82f6', r: 4, strokeWidth: 0 }}
-                  activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+                  dot={{ fill: '#3b82f6', r: 3, strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
                   name="Net Income Forecast" 
                 />
               </>
@@ -440,7 +459,7 @@ export default function EnhancedTrendAnalysisChart({ historicalData, forecastDat
                   value: 'Forecast', 
                   position: 'top', 
                   fill: '#64748b', 
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: 500 
                 }}
               />
@@ -450,13 +469,13 @@ export default function EnhancedTrendAnalysisChart({ historicalData, forecastDat
       </div>
 
       {/* Info Badge */}
-      <div className="flex items-start gap-3 px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg">
-        <Info className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+      <div className="flex items-start gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 bg-purple-50 border border-purple-200 rounded-lg">
+        <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600 mt-0.5 flex-shrink-0" />
         <div>
           <p className="text-xs font-semibold text-purple-900 mb-1">
             {forecastData && forecastData.length > 0 ? 'Forecast Model' : 'Historical Data'}
           </p>
-          <p className="text-xs text-purple-800">
+          <p className="text-xs text-purple-800 leading-relaxed">
             {forecastData && forecastData.length > 0 
               ? `Based on ${historicalData.length} periods of historical data with trend analysis. Dashed lines represent projected values with 95% confidence intervals (shaded area).`
               : `Showing ${historicalData.length} periods of historical financial data. Upload more periods to enable forecasting.`
