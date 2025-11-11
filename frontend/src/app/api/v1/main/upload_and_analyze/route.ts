@@ -1,108 +1,92 @@
+// src/app/api/v1/main/upload_and_analyze/route.ts
 import { NextResponse, NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-// (Optional) If backend can take a while:
 // export const maxDuration = 60;
 
-const BACKEND_API_URL = process.env.BACKEND_API_URL || "http://127.0.0.1:8000";
+const API_BASE =
+  (process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
+const BACKEND_PATH = "/api/v1/main/upload_and_analyze";
 
 export async function POST(request: NextRequest) {
   let userId: string | null = null;
-  let enhancedMode = false;
 
   try {
-    // 1. Authenticate the request
-    const authResult = await auth();
-    userId = authResult?.userId;
-
+    // 1) Auth via Clerk
+    const { userId: clerkUserId } = await auth();
+    userId = clerkUserId ?? null;
     if (!userId) {
-      console.error("[API Route] Unauthorized: No userId from Clerk.");
+      console.error("[upload_and_analyze] Unauthorized: no Clerk userId");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 2. Prepare Form Data
-    const incomingFormData = await request.formData();
-    
-    // Always trust the server-side user ID
-    incomingFormData.set("user_id", userId);
+    // 2) Read incoming multipart and re-assemble a fresh FormData
+    const incoming = await request.formData();
+    incoming.set("user_id", userId); // always trust server-side user
+    const enhancedMode = String(incoming.get("enhanced_mode")) === "true";
+    incoming.set("enhanced_mode", String(enhancedMode));
 
-    // Check for enhanced mode flag
-    enhancedMode = String(incomingFormData.get("enhanced_mode")) === "true";
-    incomingFormData.set("enhanced_mode", String(enhancedMode));
+    const upstreamUrl = `${API_BASE}${BACKEND_PATH}`;
+    console.log(`[upload_and_analyze] → ${upstreamUrl} (enhanced=${enhancedMode})`);
 
-    const backendUrl = `${BACKEND_API_URL}/api/v1/main/upload_and_analyze`;
-    console.log(
-      `[API Route] Forwarding file for user: ${userId} to ${backendUrl} (Enhanced: ${enhancedMode})`
-    );
+    // 3) Server-side headers (DON'T expose secrets client-side)
+    const headers: Record<string, string> = {};
+    if (process.env.BACKEND_API_KEY) {
+      // choose one your backend expects:
+      headers["X-API-Key"] = process.env.BACKEND_API_KEY;
+      // or, if your FastAPI expects Bearer:
+      // headers["Authorization"] = `Bearer ${process.env.BACKEND_API_KEY}`;
+    }
 
-    // 3. Forward to Backend with Timeout
+    // 4) Forward to backend (do not set Content-Type; fetch sets boundary)
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60_000); // 60-second timeout
-
-    const response = await fetch(backendUrl, {
+    const to = setTimeout(() => controller.abort(), 60_000);
+    const upstream = await fetch(upstreamUrl, {
       method: "POST",
-      body: incomingFormData,
+      body: incoming,
+      headers,
+      cache: "no-store",
       signal: controller.signal,
-      // NOTE: Do NOT set "Content-Type" when sending FormData; 
-      // fetch sets the correct boundary automatically.
-    }).catch((err) => {
-      // Handle network errors (e.g., backend is down)
-      throw new Error(`Upstream fetch failed: ${err?.message || String(err)}`);
+    }).catch((e) => {
+      throw new Error(`Upstream fetch failed: ${e?.message ?? String(e)}`);
     });
+    clearTimeout(to);
 
-    clearTimeout(timeout); // Clear the timeout if the request succeeded
-
-    // 4. Handle Backend Error Response
-    if (!response.ok) {
-      let errorBody: any;
-      try {
-        // Try to parse a JSON error message from the backend
-        errorBody = await response.json();
-      } catch {
-        // Fallback to text if JSON parsing fails
-        const txt = await response.text().catch(() => "");
-        errorBody = txt ? { error: txt } : { error: "Backend returned an invalid response." };
-      }
-      console.error(`[API Route] Backend error (${response.status}):`, errorBody);
-      return NextResponse.json(errorBody, { status: response.status });
-    }
-
-    // 5. Handle Backend Success Response
-    let data: any;
+    // 5) Return backend response (prefer JSON)
+    const text = await upstream.text();
     try {
-      data = await response.json();
-    } catch (parseError) {
-      // Handle case where backend returns 200 OK but invalid JSON
-      const txt = await response.text().catch(() => "N/A");
-      throw new Error(`Backend returned non-JSON body: ${txt?.slice(0, 180)}`);
+      const json = JSON.parse(text);
+      console.log("[upload_and_analyze] ✅", {
+        user_id: userId,
+        filename: json?.latestFileName,
+        hasKPIs: !!json?.kpis,
+      });
+      return NextResponse.json(
+        {
+          ...json,
+          processing_info: {
+            enhanced_mode_used: enhancedMode,
+            processing_time: json?.processing_time ?? null,
+            data_quality_score: json?.validation_score ?? null,
+          },
+        },
+        { status: upstream.status }
+      );
+    } catch {
+      // non-JSON from backend
+      if (!upstream.ok) {
+        return NextResponse.json({ error: text || "Backend error" }, { status: upstream.status });
+      }
+      return new NextResponse(text, { status: upstream.status, headers: { "Content-Type": "text/plain" } });
     }
-
-    // Log the successful response (This was moved from the duplicate code)
-    console.log('[API Route] ✅ Backend response:', {
-      user_id: userId,
-      filename: data.latestFileName,
-      hasKPIs: !!data.kpis,
-    });
-
-    // 6. Enrich and Return to Client
-    return NextResponse.json({
-      ...data,
-      processing_info: {
-        enhanced_mode_used: enhancedMode,
-        processing_time: data.processing_time || null,
-        data_quality_score: data.validation_score || null,
-      },
-    });
-
-  } catch (error: any) {
-    // 7. Handle All Other Errors (Timeout, etc.)
-    const message = error?.name === "AbortError"
-      ? "The request timed out. The backend may be busy."
-      : error?.message || "An unknown internal error occurred.";
-      
-    console.error("[API Route] An unexpected error occurred:", error);
-    return NextResponse.json({ error: "Internal Server Error", details: message }, { status: 500 });
+  } catch (err: any) {
+    const msg =
+      err?.name === "AbortError"
+        ? "The request timed out. The backend may be busy."
+        : err?.message ?? "Unknown internal error.";
+    console.error("[upload_and_analyze] ❌", err);
+    return NextResponse.json({ error: "Internal Server Error", details: msg }, { status: 500 });
   }
 }
