@@ -4,20 +4,22 @@ import { auth } from "@clerk/nextjs/server";
 
 export const dynamic = "force-dynamic";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+const API_BASE = (
+  process.env.BACKEND_API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "http://127.0.0.1:8000"
+).replace(/\/+$/, "");
+
 const FASTAPI_ADVISOR_FULL_PATH =
   process.env.FASTAPI_ADVISOR_FULL_PATH || "/api/v1/advisor/chat";
-const FASTAPI_API_KEY = process.env.FASTAPI_API_KEY || "";
 
 export async function POST(req: Request) {
   try {
-    // ✅ Clerk (async; does NOT use next/headers directly here)
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // ✅ Read JSON body safely
     let body: any;
     try {
       body = await req.json();
@@ -30,18 +32,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Question is required" }, { status: 400 });
     }
 
-    // ✅ Build URL
-    const url = `${API_BASE.replace(/\/+$/, "")}${FASTAPI_ADVISOR_FULL_PATH}`;
-    console.log("[advisor] calling:", url);
+    const url = `${API_BASE}${FASTAPI_ADVISOR_FULL_PATH}`;
+    // Server-only headers
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (process.env.FASTAPI_API_KEY) {
+      // Pick one, based on what your FastAPI expects:
+      headers["X-API-Key"] = process.env.FASTAPI_API_KEY;
+      // or:
+      // headers["Authorization"] = `Bearer ${process.env.FASTAPI_API_KEY}`;
+    }
 
-    // ✅ Call FastAPI
     const upstream = await fetch(url, {
       method: "POST",
       cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-        ...(FASTAPI_API_KEY ? { Authorization: `Bearer ${FASTAPI_API_KEY}` } : {}),
-      },
+      headers,
       body: JSON.stringify({ question, prompt: question, user_id: userId }),
     });
 
@@ -54,14 +58,9 @@ export async function POST(req: Request) {
       );
     }
 
-    // Try to parse JSON; otherwise return the raw text as plan
     try {
       const json = JSON.parse(text);
-
-      // If backend already returns { plan }
       if (typeof json?.plan === "string") return NextResponse.json({ plan: json.plan });
-
-      // If backend returns an array like strategy_plan[], format it nicely
       if (Array.isArray(json?.strategy_plan)) {
         const plan = json.strategy_plan
           .map(
@@ -71,11 +70,8 @@ export async function POST(req: Request) {
           .join("\n\n");
         return NextResponse.json({ plan, raw: json });
       }
-
-      // Fallback: pass through JSON
       return NextResponse.json(json);
     } catch {
-      // Not JSON → treat text as a finished plan
       return NextResponse.json({ plan: text });
     }
   } catch (err: any) {
