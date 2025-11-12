@@ -1,11 +1,21 @@
 "use client";
 
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import AppSidebar from '@/components/AppSidebar';
 import { Menu } from 'lucide-react';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Check if current page is an auth page
+  const isAuthPage = pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up');
+
+  // If auth page, render without sidebar layout
+  if (isAuthPage) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">
