@@ -54,23 +54,23 @@ interface ModalProps {
     children: React.ReactNode;
 }
 
-// --- Modal Component ---
+// --- Modal Component (Mobile Responsive) ---
 const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
     if (!isOpen) return null;
     
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl border border-slate-200">
-                <div className="flex justify-between items-center p-6 border-b border-slate-200">
-                    <h2 className="text-xl font-bold text-slate-900">{title}</h2>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200 sticky top-0 bg-white">
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-900">{title}</h2>
                     <button 
                         onClick={onClose} 
-                        className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded"
+                        className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded touch-target"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                     {children}
                 </div>
             </div>
@@ -230,10 +230,10 @@ export default function WorkflowsPage() {
 
     // Helper functions
     const getMetricIcon = (metric: string) => {
-        if (metric.includes('revenue')) return <DollarSign className="w-5 h-5" />;
-        if (metric.includes('cash')) return <DollarSign className="w-5 h-5" />;
-        if (metric.includes('burn')) return <TrendingDown className="w-5 h-5" />;
-        return <TrendingUpIcon className="w-5 h-5" />;
+        if (metric.includes('revenue')) return <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />;
+        if (metric.includes('cash')) return <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />;
+        if (metric.includes('burn')) return <TrendingDown className="w-4 h-4 sm:w-5 sm:h-5" />;
+        return <TrendingUpIcon className="w-4 h-4 sm:w-5 sm:h-5" />;
     };
 
     const getActionIcon = (actionType: string) => {
@@ -255,7 +255,7 @@ export default function WorkflowsPage() {
     // Loading state
     if (isLoading && workflows.length === 0) {
         return (
-            <div className="ml-64 min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
                     <p className="text-slate-600">Loading workflows...</p>
@@ -265,56 +265,57 @@ export default function WorkflowsPage() {
     }
 
     return (
-        <div className="ml-64 min-h-screen bg-slate-50">
-            {/* Header */}
+        // REMOVED ml-64 hardcoded margin - MobileLayout handles this now
+        <div className="min-h-screen bg-slate-50">
+            {/* Header - Mobile Responsive */}
             <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-                <div className="max-w-7xl mx-auto px-6 py-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
-                            <Zap className="w-5 h-5 text-white" />
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                         </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-slate-900">Automated Workflows</h1>
-                            <p className="text-sm text-slate-600">Set up triggers and actions to automate your financial monitoring</p>
+                        <div className="min-w-0 flex-1">
+                            <h1 className="text-lg sm:text-2xl font-bold text-slate-900">Automated Workflows</h1>
+                            <p className="text-xs sm:text-sm text-slate-600 hidden sm:block">Set up triggers and actions to automate your financial monitoring</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+            {/* Main Content - Mobile Responsive Padding */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8 space-y-4 sm:space-y-6">
                 {/* Messages */}
                 {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                            <p className="font-semibold text-red-900">Error</p>
-                            <p className="text-red-700 text-sm">{error}</p>
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4 flex items-start gap-2 sm:gap-3">
+                        <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-red-900 text-sm sm:text-base">Error</p>
+                            <p className="text-red-700 text-xs sm:text-sm">{error}</p>
                         </div>
-                        <button onClick={() => setError('')} className="text-red-400 hover:text-red-600">
+                        <button onClick={() => setError('')} className="text-red-400 hover:text-red-600 flex-shrink-0 touch-target">
                             <X className="w-4 h-4" />
                         </button>
                     </div>
                 )}
 
                 {successMessage && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
-                        <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <p className="text-green-900">{successMessage}</p>
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4 flex items-start gap-2 sm:gap-3">
+                        <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        <p className="text-green-900 text-xs sm:text-sm">{successMessage}</p>
                     </div>
                 )}
 
-                {/* Header with Create Button */}
-                <div className="flex items-center justify-between">
+                {/* Header with Create Button - Mobile Responsive */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                     <div>
-                        <h2 className="text-xl font-bold text-slate-900">Your Workflows</h2>
-                        <p className="text-sm text-slate-600 mt-1">
+                        <h2 className="text-lg sm:text-xl font-bold text-slate-900">Your Workflows</h2>
+                        <p className="text-xs sm:text-sm text-slate-600 mt-1">
                             Automate actions when specific conditions are met
                         </p>
                     </div>
                     <button 
                         onClick={handleOpenWorkflowModal}
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors shadow-sm"
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm touch-target w-full sm:w-auto"
                         disabled={isSubmitting}
                     >
                         <Plus className="w-4 h-4" />
@@ -322,41 +323,41 @@ export default function WorkflowsPage() {
                     </button>
                 </div>
 
-                {/* Workflows List */}
+                {/* Workflows List - Mobile Responsive */}
                 {workflows.length === 0 ? (
-                    <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
-                        <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Zap className="w-8 h-8 text-indigo-600" />
+                    <div className="bg-white rounded-xl border border-slate-200 p-8 sm:p-12 text-center">
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Zap className="w-6 h-6 sm:w-8 sm:h-8 text-indigo-600" />
                         </div>
-                        <h3 className="text-lg font-semibold text-slate-900 mb-2">No workflows yet</h3>
-                        <p className="text-slate-600 mb-6">
+                        <h3 className="text-base sm:text-lg font-semibold text-slate-900 mb-2">No workflows yet</h3>
+                        <p className="text-sm sm:text-base text-slate-600 mb-6">
                             Create your first workflow to start automating your financial monitoring
                         </p>
                         <button 
                             onClick={handleOpenWorkflowModal}
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg inline-flex items-center gap-2 transition-colors"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg inline-flex items-center gap-2 transition-colors touch-target"
                         >
                             <Plus className="w-4 h-4" />
                             Create Workflow
                         </button>
                     </div>
                 ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                         {workflows.map((workflow) => (
                             <div 
                                 key={workflow.id}
-                                className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm hover:shadow-md transition-shadow"
+                                className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
                             >
-                                <div className="flex items-start justify-between">
+                                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                                     <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-3">
-                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                        <div className="flex items-center gap-2 sm:gap-3 mb-3">
+                                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                                                 workflow.is_active ? 'bg-green-100' : 'bg-slate-100'
                                             }`}>
                                                 {getMetricIcon(workflow.trigger.metric)}
                                             </div>
-                                            <div>
-                                                <h3 className="text-lg font-semibold text-slate-900">{workflow.name}</h3>
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="text-base sm:text-lg font-semibold text-slate-900 truncate">{workflow.name}</h3>
                                                 <span className={`text-xs font-medium ${
                                                     workflow.is_active ? 'text-green-600' : 'text-slate-500'
                                                 }`}>
@@ -365,26 +366,27 @@ export default function WorkflowsPage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center gap-3 text-sm">
+                                        {/* Mobile: Stack, Desktop: Row */}
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-sm">
                                             <div className="flex-1 bg-slate-50 rounded-lg p-3">
-                                                <p className="text-slate-600 font-medium mb-1">Trigger</p>
-                                                <p className="text-slate-900">{renderTriggerText(workflow.trigger)}</p>
+                                                <p className="text-slate-600 font-medium mb-1 text-xs sm:text-sm">Trigger</p>
+                                                <p className="text-slate-900 text-xs sm:text-sm">{renderTriggerText(workflow.trigger)}</p>
                                             </div>
-                                            <ArrowRight className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                                            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 flex-shrink-0 hidden sm:block" />
                                             <div className="flex-1 bg-slate-50 rounded-lg p-3">
-                                                <p className="text-slate-600 font-medium mb-1 flex items-center gap-1">
+                                                <p className="text-slate-600 font-medium mb-1 flex items-center gap-1 text-xs sm:text-sm">
                                                     {getActionIcon(workflow.action.type)}
                                                     Action
                                                 </p>
-                                                <p className="text-slate-900">{renderActionText(workflow.action)}</p>
+                                                <p className="text-slate-900 text-xs sm:text-sm">{renderActionText(workflow.action)}</p>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center gap-2 ml-4">
+                                    <div className="flex sm:flex-col items-center justify-end sm:justify-start gap-2 sm:ml-4">
                                         <button
                                             onClick={() => handleToggleWorkflow(workflow.id, workflow.is_active)}
-                                            className={`p-2 rounded-lg transition-colors ${
+                                            className={`p-2 rounded-lg transition-colors touch-target ${
                                                 workflow.is_active
                                                     ? 'text-green-600 hover:bg-green-50'
                                                     : 'text-slate-400 hover:bg-slate-100'
@@ -402,7 +404,7 @@ export default function WorkflowsPage() {
                                                 setWorkflowToDelete(workflow.id);
                                                 setDeleteModalOpen(true);
                                             }}
-                                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors touch-target"
                                             title="Delete"
                                         >
                                             <Trash2 className="w-5 h-5" />
@@ -415,9 +417,9 @@ export default function WorkflowsPage() {
                 )}
             </div>
 
-            {/* Create Workflow Modal */}
+            {/* Create Workflow Modal - Mobile Responsive */}
             <Modal isOpen={isWorkflowModalOpen} onClose={() => setWorkflowModalOpen(false)} title="Create New Workflow">
-                <form onSubmit={handleCreateWorkflow} className="space-y-6">
+                <form onSubmit={handleCreateWorkflow} className="space-y-4 sm:space-y-6">
                     <div>
                         <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-2">
                             Workflow Name *
@@ -429,14 +431,15 @@ export default function WorkflowsPage() {
                             required
                             value={newWorkflow.name}
                             onChange={handleWorkflowFormChange}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
                             placeholder="e.g., Low Cash Flow Alert"
+                            style={{ fontSize: 'max(16px, 1rem)' }} // Prevent iOS zoom
                         />
                     </div>
 
-                    <div className="border border-slate-200 rounded-lg p-4">
-                        <h3 className="font-semibold text-indigo-600 mb-4">When...</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
+                        <h3 className="font-semibold text-indigo-600 mb-3 sm:mb-4 text-sm sm:text-base">When...</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
                             <div>
                                 <label htmlFor="trigger_metric" className="block text-sm font-medium text-slate-700 mb-2">
                                     Metric
@@ -446,7 +449,8 @@ export default function WorkflowsPage() {
                                     id="trigger_metric"
                                     value={newWorkflow.trigger_metric}
                                     onChange={handleWorkflowFormChange}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
+                                    style={{ fontSize: 'max(16px, 1rem)' }}
                                 >
                                     <option value="monthly_revenue">Monthly Revenue</option>
                                     <option value="cash_on_hand">Cash on Hand</option>
@@ -462,7 +466,8 @@ export default function WorkflowsPage() {
                                     id="trigger_condition"
                                     value={newWorkflow.trigger_condition}
                                     onChange={handleWorkflowFormChange}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
+                                    style={{ fontSize: 'max(16px, 1rem)' }}
                                 >
                                     <option value="drops_by_percent">Drops by %</option>
                                     <option value="falls_below">Falls Below</option>
@@ -480,15 +485,16 @@ export default function WorkflowsPage() {
                                     required
                                     value={newWorkflow.trigger_value}
                                     onChange={handleWorkflowFormChange}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
+                                    style={{ fontSize: 'max(16px, 1rem)' }}
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="border border-slate-200 rounded-lg p-4">
-                        <h3 className="font-semibold text-indigo-600 mb-4">Then...</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="border border-slate-200 rounded-lg p-3 sm:p-4">
+                        <h3 className="font-semibold text-indigo-600 mb-3 sm:mb-4 text-sm sm:text-base">Then...</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                             <div>
                                 <label htmlFor="action_type" className="block text-sm font-medium text-slate-700 mb-2">
                                     Action
@@ -498,7 +504,8 @@ export default function WorkflowsPage() {
                                     id="action_type"
                                     value={newWorkflow.action_type}
                                     onChange={handleWorkflowFormChange}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
+                                    style={{ fontSize: 'max(16px, 1rem)' }}
                                 >
                                     <option value="email_notification">Send Email</option>
                                     <option value="slack_alert">Send Slack Alert</option>
@@ -515,8 +522,9 @@ export default function WorkflowsPage() {
                                     required
                                     value={newWorkflow.action_target}
                                     onChange={handleWorkflowFormChange}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
                                     placeholder="#general or team@example.com"
+                                    style={{ fontSize: 'max(16px, 1rem)' }}
                                 />
                             </div>
                         </div>
@@ -528,18 +536,18 @@ export default function WorkflowsPage() {
                         </div>
                     )}
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-slate-200">
                         <button
                             type="button"
                             onClick={() => setWorkflowModalOpen(false)}
-                            className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                            className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors touch-target"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors touch-target"
                         >
                             {isSubmitting ? 'Creating...' : 'Create Workflow'}
                         </button>
@@ -547,23 +555,23 @@ export default function WorkflowsPage() {
                 </form>
             </Modal>
 
-            {/* Delete Confirmation Modal */}
+            {/* Delete Confirmation Modal - Mobile Responsive */}
             <Modal isOpen={isDeleteModalOpen} onClose={() => setDeleteModalOpen(false)} title="Delete Workflow">
                 <div className="space-y-4">
-                    <p className="text-slate-700">
+                    <p className="text-slate-700 text-sm sm:text-base">
                         Are you sure you want to delete this workflow? This action cannot be undone.
                     </p>
                     
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+                    <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-slate-200">
                         <button
                             onClick={() => setDeleteModalOpen(false)}
-                            className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                            className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors touch-target"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleDeleteWorkflow}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors touch-target"
                         >
                             Delete Workflow
                         </button>
