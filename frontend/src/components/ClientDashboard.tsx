@@ -20,7 +20,7 @@ import AppSidebar from "@/components/AppSidebar";
 /* =============================================================================
    CONFIG
 ============================================================================= */
-const API_BASE =
+const =
   (process.env.NEXT_PUBLIC_API_URL || "").trim() || "http://127.0.0.1:8000";
 
 /* =============================================================================
@@ -161,7 +161,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     if (!user?.id) return;
 
     try {
-      const url = `${API_BASE}/api/v1/main/analysis_summary?user_id=${user.id}`;
+      const url = `/api/v1/main/analysis_summary?user_id=${userId}`;
       console.log("[Dashboard] Fetching analysis_summary:", url);
 
       const controller = new AbortController();
@@ -227,7 +227,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
       formData.append("industry", "Software/SaaS");
       formData.append("file_type", ext);
 
-      const uploadURL = `${API_BASE}/api/v1/main/upload_and_analyze`;
+      const uploadURL = `/api/v1/main/upload_and_analyze`;
       console.log("[Dashboard] Uploading file:", file.name, "to", uploadURL);
 
       const response = await fetch(uploadURL, {
@@ -276,7 +276,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     console.log('[Dashboard] ✓ Frontend state cleared');
     
     try {
-      const clearUrl = `${API_BASE}/api/v1/main/clear_storage`;
+      const url = `/api/v1/main/clear_storage`;
       console.log('[Dashboard] 📡 Calling clear_storage:', clearUrl);
       
       const clearResponse = await fetch(clearUrl, {
@@ -342,7 +342,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     try {
       console.log('[Dashboard] Generating report...');
       
-      const response = await fetch(`${API_BASE}/api/v1/main/generate_report`, {
+      const response = await fetch(`/api/v1/main/generate_report`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(analysisData),
