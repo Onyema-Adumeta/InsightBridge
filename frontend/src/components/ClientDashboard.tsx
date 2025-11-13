@@ -17,10 +17,6 @@ import { AlertCircle, RefreshCw } from "lucide-react";
 import ModernDashboard from "./ModernDashboard";
 import AppSidebar from "@/components/AppSidebar";
 
-
-/* =============================================================================
-   TYPES
-============================================================================= */
 interface AnalysisData {
   latestFileName?: string;
   documentType?: string;
