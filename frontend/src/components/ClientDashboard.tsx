@@ -246,7 +246,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
 
       const formData = new FormData();
       formData.append("file", file);
-      // formData.append("user_id", user.id); // <-- REMOVED! This is insecure.
+      formData.append("user_id", user.id); 
       formData.append("industry", "Software/SaaS");
       formData.append("file_type", ext);
 
