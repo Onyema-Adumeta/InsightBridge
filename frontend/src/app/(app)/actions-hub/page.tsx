@@ -565,7 +565,7 @@ export default function ActionsHubPage() {
     const fetchAnalysisData = async () => {
       if (!userId) return;
       try {
-        const response = await fetch(`http://localhost:8000/api/v1/main/analysis_summary?user_id=${userId}`);
+        const response = await fetch(`/api/v1/main/analysis_summary?user_id=${userId}`);
         if (response.ok) {
           const data = await response.json();
           setAnalysisDataLocal(data);

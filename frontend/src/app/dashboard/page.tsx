@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
@@ -25,18 +25,18 @@ export default function DashboardPage() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'error'>('connecting');
   const [retryCount, setRetryCount] = useState(0);
 
-  // âœ… Environment check - only show debug info in development
+  // ✅ Environment check - only show debug info in development
   const isDevelopment = process.env.NODE_ENV === 'development';
 
   // Function to fetch data
   const fetchData = async (isRetry = false) => {
     if (!isLoaded) {
-      if (isDevelopment) console.log('â³ Clerk not loaded yet...');
+      if (isDevelopment) console.log('⏳ Clerk not loaded yet...');
       return;
     }
 
     if (!isSignedIn || !user) {
-      if (isDevelopment) console.log('ðŸ” User not signed in');
+      if (isDevelopment) console.log('🔐 User not signed in');
       setLoading(false);
       return;
     }
@@ -45,25 +45,24 @@ export default function DashboardPage() {
       setLoading(true);
       setConnectionStatus('connecting');
 
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-      const url = `${apiUrl}/api/v1/main/analysis_summary?user_id=${user.id}`;
+      const url = `/api/v1/main/analysis_summary?user_id=${user.id}`;
       
       if (isDevelopment) {
-        console.log('ðŸ” Fetching from:', url);
-        console.log('ðŸŒ API Base URL:', apiUrl);
-        console.log('ðŸ”‘ User ID:', user.id);
+        console.log('🔍 Fetching from:', url);
+        console.log('🌐 API Base URL:', apiUrl);
+        console.log('🔑 User ID:', user.id);
       }
 
-      // âœ… Silent health check - don't show errors to users
+      // ✅ Silent health check - don't show errors to users
       try {
         const healthCheck = await fetch(`${apiUrl}/health`, { 
           method: 'GET',
           cache: 'no-store',
           signal: AbortSignal.timeout(5000) // 5 second timeout for health check
         });
-        if (isDevelopment) console.log('ðŸ’š Health check status:', healthCheck.status);
+        if (isDevelopment) console.log('💚 Health check status:', healthCheck.status);
       } catch (healthError) {
-        if (isDevelopment) console.error('âŒ Health check failed:', healthError);
+        if (isDevelopment) console.error('❌ Health check failed:', healthError);
         // Don't throw - continue to main request
       }
 
@@ -81,21 +80,21 @@ export default function DashboardPage() {
 
       clearTimeout(timeoutId);
       
-      if (isDevelopment) console.log('ðŸ“¡ Response status:', response.status);
+      if (isDevelopment) console.log('📡 Response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        if (isDevelopment) console.error(`âŒ API Error: ${response.status}`, errorText);
+        if (isDevelopment) console.error(`❌ API Error: ${response.status}`, errorText);
         throw new Error(`API returned ${response.status}`);
       }
 
       const data = await response.json();
       
       if (isDevelopment) {
-        console.log('âœ… Analysis data received:', data);
-        console.log('ðŸ“Š Summary:', data.summary);
-        console.log('ðŸ“ Items count:', data.items?.length || 0);
-        console.log('ðŸ• Updated at:', data.updated_at);
+        console.log('✅ Analysis data received:', data);
+        console.log('📊 Summary:', data.summary);
+        console.log('📁 Items count:', data.items?.length || 0);
+        console.log('🕐 Updated at:', data.updated_at);
       }
       
       setAnalysisData(data);
@@ -104,14 +103,14 @@ export default function DashboardPage() {
 
     } catch (err: any) {
       if (isDevelopment) {
-        console.error('ðŸ’¥ Error:', err.message);
+        console.error('💥 Error:', err.message);
       }
       
       setConnectionStatus('error');
 
-      // âœ… Auto-retry logic (up to 3 times)
+      // ✅ Auto-retry logic (up to 3 times)
       if (!isRetry && retryCount < 3) {
-        if (isDevelopment) console.log(`ðŸ”„ Auto-retry ${retryCount + 1}/3 in 3 seconds...`);
+        if (isDevelopment) console.log(`🔄 Auto-retry ${retryCount + 1}/3 in 3 seconds...`);
         setRetryCount(prev => prev + 1);
         
         setTimeout(() => {
@@ -120,8 +119,8 @@ export default function DashboardPage() {
         return;
       }
 
-      // âœ… If all retries fail, show empty state (not error)
-      if (isDevelopment) console.warn('âš ï¸ All retries exhausted, showing empty state');
+      // ✅ If all retries fail, show empty state (not error)
+      if (isDevelopment) console.warn('⚠️ All retries exhausted, showing empty state');
       
       setAnalysisData({
         user_id: user?.id || 'anonymous',
@@ -144,11 +143,11 @@ export default function DashboardPage() {
   // Listen for analysis updates (when file is uploaded)
   useEffect(() => {
     const handleAnalysisUpdate = (event: any) => {
-      if (isDevelopment) console.log('ðŸ”„ Analysis updated event received:', event.detail);
+      if (isDevelopment) console.log('🔄 Analysis updated event received:', event.detail);
       
       // Refetch data after a short delay to ensure backend has processed
       setTimeout(() => {
-        if (isDevelopment) console.log('ðŸ”„ Refetching analysis data...');
+        if (isDevelopment) console.log('🔄 Refetching analysis data...');
         setRetryCount(0); // Reset retry count for new fetch
         fetchData();
       }, 500);
@@ -163,16 +162,16 @@ export default function DashboardPage() {
 
   // Manual refresh function
   const handleRefresh = () => {
-    if (isDevelopment) console.log('ðŸ”„ Manual refresh triggered');
+    if (isDevelopment) console.log('🔄 Manual refresh triggered');
     setRetryCount(0);
     fetchData();
   };
 
-  // âœ… Loading states
+  // ✅ Loading states
   if (!isLoaded && !analysisData) return <LoadingDashboard />;
   if (loading && !analysisData) return <LoadingDashboard />;
 
-  // âœ… Not signed in
+  // ✅ Not signed in
   if (isLoaded && !isSignedIn) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
@@ -205,7 +204,7 @@ export default function DashboardPage() {
     );
   }
 
-  // âœ… Connection status banner (minimal, non-intrusive)
+  // ✅ Connection status banner (minimal, non-intrusive)
   const connectionBanner = connectionStatus === 'connecting' && retryCount > 0 ? (
     <div className="bg-blue-900/30 border-l-4 border-blue-500 p-3 mb-4">
       <div className="flex items-center">
@@ -217,7 +216,7 @@ export default function DashboardPage() {
 
   // Debug banner removed
 
-  // âœ… Render dashboard
+  // ✅ Render dashboard
   if (analysisData) {
     return (
       <div>
@@ -230,4 +229,5 @@ export default function DashboardPage() {
   // Fallback
   return <LoadingDashboard />;
 }
+
 
