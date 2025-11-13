@@ -1,54 +1,72 @@
 """
-JWT Authentication for Clerk
-Decodes the Authorization Bearer token and extracts the Clerk user ID.
+JWT Authentication for Clerk using official Clerk Backend SDK
+Properly verifies tokens using Clerk's API
 """
 
 import os
 import logging
-from fastapi import Header, HTTPException, Depends
-from dotenv import load_dotenv
+from fastapi import Header, HTTPException
 from typing import Optional
-from jose import jwt, JWTError
+from clerk_backend_api import Clerk
+from clerk_backend_api.jwks_helpers import verify_token
 
-load_dotenv()
 logger = logging.getLogger(__name__)
 
-# Clerk JWT public key (JWK)
-CLERK_JWKS_URL = "https://api.clerk.com/v1/jwks"
+# Initialize Clerk client with secret key
+CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
 
-# Load Clerk issuer + audience
-CLERK_ISSUER = os.getenv("CLERK_JWT_ISSUER")
-CLERK_AUDIENCE = os.getenv("CLERK_JWT_AUDIENCE")
+if not CLERK_SECRET_KEY:
+    logger.warning("⚠️ CLERK_SECRET_KEY not set - authentication will fail!")
+
+clerk_client = Clerk(bearer_auth=CLERK_SECRET_KEY) if CLERK_SECRET_KEY else None
+
 
 async def get_current_user_id(
     authorization: Optional[str] = Header(None),
-):
+) -> str:
     """
-    Decodes Clerk JWT token and extracts the real user ID.
+    Verifies Clerk JWT token and extracts the user ID.
     Returns user_id (string).
     """
-
+    
     if not authorization:
+        logger.error("❌ No Authorization header provided")
         raise HTTPException(status_code=401, detail="Missing Authorization header")
 
+    # Extract Bearer token
     try:
         scheme, token = authorization.split()
         if scheme.lower() != "bearer":
+            logger.error(f"❌ Invalid auth scheme: {scheme}")
             raise HTTPException(status_code=401, detail="Invalid Authorization header format")
-    except:
+    except ValueError:
+        logger.error("❌ Malformed Authorization header")
         raise HTTPException(status_code=401, detail="Invalid Authorization header")
 
-    # Decode JWT without validating signature (Clerk recommends key lookup but optional here)
+    if not clerk_client:
+        logger.error("❌ Clerk client not initialized - check CLERK_SECRET_KEY")
+        raise HTTPException(status_code=500, detail="Authentication service unavailable")
+
+    # Verify token with Clerk
     try:
-        decoded = jwt.get_unverified_claims(token)
-        user_id = decoded.get("sub")
-
+        logger.info(f"🔑 Verifying token (first 20 chars): {token[:20]}...")
+        
+        # Use Clerk's verify_token helper to validate the JWT
+        verified_token = verify_token(token, CLERK_SECRET_KEY)
+        
+        # Extract user ID from verified claims
+        user_id = verified_token.get("sub")
+        
         if not user_id:
-            raise HTTPException(status_code=401, detail="Invalid Clerk token: missing user ID")
+            logger.error("❌ Token verified but no user ID (sub) found")
+            raise HTTPException(status_code=401, detail="Invalid token: missing user ID")
 
-        logger.info(f"🔐 Authenticated Clerk user: {user_id}")
+        logger.info(f"✅ Authenticated user: {user_id}")
         return user_id
 
-    except JWTError as e:
-        logger.error(f"JWT decode error: {e}")
-        raise HTTPException(status_code=401, detail="Invalid or expired Clerk token")
+    except Exception as e:
+        logger.error(f"❌ Token verification failed: {str(e)}")
+        raise HTTPException(
+            status_code=401, 
+            detail=f"Invalid or expired token: {str(e)}"
+        )
