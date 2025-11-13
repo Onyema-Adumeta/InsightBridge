@@ -4,6 +4,8 @@ Main FastAPI Application
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from routes.auth import get_current_user_id
+
 
 # Configure logging
 logging.basicConfig(

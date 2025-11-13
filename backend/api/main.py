@@ -14,10 +14,12 @@ import chardet
 from dotenv import load_dotenv
 import pandas as pd
 from pathlib import Path
-from fastapi import APIRouter, File, UploadFile, HTTPException, Form, Header
+from fastapi import APIRouter, File, UploadFile, HTTPException, Form, Header, Depends
 from fastapi.responses import JSONResponse
 from datetime import datetime
 from typing import Dict, List, Any, Optional
+from routes.auth import get_current_user_id
+
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -2201,11 +2203,8 @@ async def health_check():
     return {"status": "healthy", "service": "Main API"}
 
 @router.get("/analysis_summary")
-async def analysis_summary(user_id: str = "anonymous", x_user_id: Optional[str] = Header(None)):
+async def analysis_summary(user_id: str = Depends(get_current_user_id)):
     """Return the FULL analysis data for a user"""
-    if x_user_id and user_id == "anonymous":
-        user_id = x_user_id
-
     logger.info(f"📊 Analysis request for: {user_id}")
     
     if user_id in analysis_storage:
@@ -2216,16 +2215,14 @@ async def analysis_summary(user_id: str = "anonymous", x_user_id: Optional[str] 
         
         return JSONResponse(content=data)
     
-    logger.info(f"⚠️ No data for {user_id}")
-    return JSONResponse(content={
-        "user_id": user_id,
-        "summary": "Welcome to InsightBridge! Upload your first financial document.",
-        "items": [],
-        "updated_at": None,
-        "company": "Your Company",
-        "kpiChartData": [],
-        "kpiCardData": {}
-    })
+    logger.info("⚠️ No analysis data found for user")
+    return JSONResponse(
+        content={
+            "message": "No analysis data found for this user yet. Please upload a file.",
+            "hasData": False
+        }
+    )
+
 
 def generate_ai_powered_analysis(kpis: Dict[str, Any], doc_type: str, df: pd.DataFrame) -> Dict[str, Any]:
     """
@@ -2808,20 +2805,18 @@ def build_multi_period_chart_data(df: pd.DataFrame, period_columns: List[str],
 @router.post("/upload_and_analyze")
 async def upload_and_analyze(
     file: UploadFile = File(...),
-    user_id: str = Form("anonymous"),
     industry: str = Form("Software/SaaS"),
-    x_user_id: Optional[str] = Header(None),
+    user_id: str = Depends(get_current_user_id),
 ):
     """Enhanced upload and analyze with adaptive chart types (bar for single period, line for multi-period)"""
-    if x_user_id and user_id == "anonymous":
-        user_id = x_user_id
-
     logger.info(f"📁 Upload from {user_id}: {file.filename}")
     
     try:
         # Read file content
         content = await file.read()
         logger.info(f"✓ Read {len(content)} bytes")
+        ...
+
 
         # Read file and get both DataFrame and raw text
         df, raw_text = read_file(content, file.filename)
@@ -3066,13 +3061,14 @@ async def test_endpoint():
     }
 
 @router.post("/clear_storage")
-async def clear_storage(user_id: str = Form(...)):
-    """Clear storage for a user"""
+async def clear_storage(user_id: str = Depends(get_current_user_id)):
+    """Clear storage for the authenticated user"""
     if user_id in analysis_storage:
         del analysis_storage[user_id]
         logger.info(f"🗑️ Cleared storage for {user_id}")
         return {"message": f"Storage cleared for {user_id}"}
     return {"message": "No data to clear"}
+
 
 @router.get("/debug_storage")
 async def debug_storage(user_id: str):
@@ -3136,11 +3132,12 @@ async def test_chart_build():
     }
 
 @router.post("/reset_user_data")
-async def reset_user_data(user_id: str = Form(...)):
+async def reset_user_data(user_id: str = Depends(get_current_user_id)):
     """
     Complete reset of all user data - use this to start fresh
     """
     logger.info(f"🗑️ COMPLETE RESET requested for user: {user_id}")
+
     
     # Clear from in-memory storage
     if user_id in analysis_storage:
