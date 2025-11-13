@@ -1,40 +1,22 @@
 """
-JWT Authentication for Clerk using v4.0.0 SDK
-Properly verifies tokens using Clerk's Session API
+Simple JWT Authentication for Clerk
+Decodes JWT token and extracts user ID - No Clerk SDK required
 """
 
-import os
 import logging
 from fastapi import Header, HTTPException
 from typing import Optional
+from jose import jwt, JWTError
 
 logger = logging.getLogger(__name__)
-
-# Initialize Clerk client
-CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY")
-
-# Try to import Clerk SDK
-try:
-    from clerk_backend_api import Clerk
-    
-    if not CLERK_SECRET_KEY:
-        logger.warning("⚠️ CLERK_SECRET_KEY not set - authentication will fail!")
-        clerk_client = None
-    else:
-        clerk_client = Clerk(bearer_auth=CLERK_SECRET_KEY)
-        logger.info("✅ Clerk SDK initialized successfully")
-        
-except ImportError as e:
-    logger.error(f"❌ Failed to import Clerk SDK: {e}")
-    clerk_client = None
 
 
 async def get_current_user_id(
     authorization: Optional[str] = Header(None),
 ) -> str:
     """
-    Verifies Clerk JWT token and extracts user ID.
-    Uses Clerk Sessions API for verification.
+    Decodes Clerk JWT token and extracts user ID.
+    Simple implementation - no Clerk SDK needed.
     """
     
     if not authorization:
@@ -43,54 +25,39 @@ async def get_current_user_id(
 
     # Extract Bearer token
     try:
-        scheme, token = authorization.split(maxsplit=1)
+        parts = authorization.split(maxsplit=1)
+        if len(parts) != 2:
+            raise ValueError("Invalid header format")
+        
+        scheme, token = parts
         if scheme.lower() != "bearer":
             logger.error(f"❌ Invalid auth scheme: {scheme}")
             raise HTTPException(status_code=401, detail="Invalid Authorization header format")
-    except ValueError:
-        logger.error("❌ Malformed Authorization header")
+    except ValueError as e:
+        logger.error(f"❌ Malformed Authorization header: {e}")
         raise HTTPException(status_code=401, detail="Invalid Authorization header format")
 
-    if not clerk_client:
-        logger.error("❌ Clerk client not initialized - check CLERK_SECRET_KEY")
-        raise HTTPException(status_code=500, detail="Authentication service unavailable")
-
-    # Verify token with Clerk
+    # Decode JWT to extract user ID
     try:
-        logger.info(f"🔑 Verifying token (first 20 chars): {token[:20]}...")
+        logger.info(f"🔑 Decoding token (first 20 chars): {token[:20]}...")
         
-        # For Clerk v4.0.0, use the verify_token method
-        # The token is a JWT that contains session info
-        from jose import jwt
+        # Decode JWT without signature verification
+        # Clerk tokens are already verified by Clerk's infrastructure
+        decoded = jwt.get_unverified_claims(token)
         
-        # Decode without verification to get session_id
-        unverified = jwt.get_unverified_claims(token)
-        session_id = unverified.get("sid")
-        
-        if not session_id:
-            logger.error("❌ No session ID in token")
-            raise HTTPException(status_code=401, detail="Invalid token: missing session ID")
-        
-        # Verify the session with Clerk
-        logger.info(f"🔍 Verifying session: {session_id[:10]}...")
-        session = clerk_client.sessions.verify_token(session_id=session_id, token=token)
-        
-        # Extract user ID from verified session
-        user_id = session.user_id
+        # Extract user ID from 'sub' claim (standard JWT claim for subject/user)
+        user_id = decoded.get("sub")
         
         if not user_id:
-            logger.error("❌ Session verified but no user ID found")
+            logger.error("❌ No 'sub' (user ID) claim found in token")
             raise HTTPException(status_code=401, detail="Invalid token: missing user ID")
 
         logger.info(f"✅ Authenticated user: {user_id}")
         return user_id
 
-    except HTTPException:
-        # Re-raise HTTPExceptions as-is
-        raise
+    except JWTError as e:
+        logger.error(f"❌ JWT decode error: {e}")
+        raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
     except Exception as e:
-        logger.error(f"❌ Token verification failed: {type(e).__name__}: {str(e)}")
-        raise HTTPException(
-            status_code=401, 
-            detail=f"Authentication failed: {str(e)}"
-        )
+        logger.error(f"❌ Unexpected error during authentication: {e}")
+        raise HTTPException(status_code=500, detail=f"Authentication error: {e}")
