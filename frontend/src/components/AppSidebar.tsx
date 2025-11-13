@@ -52,11 +52,11 @@ const NavItem: React.FC<NavItemProps> = ({
     onClick?.();
   };
 
-  const baseClasses = "flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 group";
+  const baseClasses = "flex items-center justify-between gap-2 px-3 py-3 rounded-lg transition-all duration-200 group touch-target";
   
   const activeClasses = isActive
-    ? "bg-indigo-600/20 text-indigo-400 border border-indigo-500/30"
-    : "hover:bg-slate-800/60 text-slate-300 hover:text-white";
+    ? "bg-primary/10 text-primary border border-primary/30"
+    : "hover:bg-muted/60 text-foreground/80 hover:text-foreground active:bg-muted";
 
   return (
     <Link
@@ -64,12 +64,12 @@ const NavItem: React.FC<NavItemProps> = ({
       onClick={handleClick}
       className={`${baseClasses} ${activeClasses}`}
     >
-      <div className="flex items-center gap-2">
-        <Icon className="w-4 h-4 opacity-80 group-hover:opacity-100" />
+      <div className="flex items-center gap-3">
+        <Icon className="w-5 h-5 opacity-80 group-hover:opacity-100 flex-shrink-0" />
         <span className="text-sm font-medium">{label}</span>
       </div>
       {badge && (
-        <span className="px-2 py-0.5 text-xs font-semibold bg-indigo-600/30 text-indigo-400 rounded-full">
+        <span className="badge badge-success flex-shrink-0">
           {badge}
         </span>
       )}
@@ -94,16 +94,19 @@ const NavSection: React.FC<NavSectionProps> = ({
     <div className="space-y-1">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider hover:text-slate-400 transition"
+        className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition touch-target"
+        aria-expanded={isOpen}
       >
         <span>{title}</span>
         {isOpen ? (
-          <ChevronDown className="w-3 h-3" />
+          <ChevronDown className="w-4 h-4" />
         ) : (
-          <ChevronRight className="w-3 h-3" />
+          <ChevronRight className="w-4 h-4" />
         )}
       </button>
-      {isOpen && <div className="space-y-1">{children}</div>}
+      {isOpen && (
+        <div className="space-y-1 animate-slide-in-bottom">{children}</div>
+      )}
     </div>
   );
 };
@@ -126,7 +129,7 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
       {/* Mobile Overlay */}
       {isOpen && (
         <div
-          className="md:hidden fixed inset-0 bg-black/50 z-40"
+          className="md:hidden mobile-menu-overlay fixed inset-0 bg-black/50 z-40 animate-fade-in"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -135,23 +138,26 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
       {/* Sidebar */}
       <aside
         className={`
-          fixed left-0 top-0 h-screen w-64 overflow-auto 
-          bg-slate-950/95 border-r border-slate-800 
-          backdrop-blur supports-[backdrop-filter]:bg-slate-950/80 
+          fixed left-0 top-0 h-screen 
+          w-[280px] sm:w-72 md:w-64
+          overflow-hidden
+          bg-card/95 border-r border-border 
+          backdrop-blur 
           z-50 flex flex-col
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
           md:translate-x-0
+          shadow-2xl md:shadow-none
         `}
         aria-label="Sidebar"
       >
         {/* Header */}
-        <div className="h-14 flex items-center justify-between px-4 border-b border-slate-800">
+        <div className="h-16 md:h-14 flex items-center justify-between px-4 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <BarChart3 className="w-4 h-4 text-white" />
+            <div className="w-9 h-9 md:w-8 md:h-8 bg-gradient-to-br from-[var(--ring)] to-primary rounded-lg flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 md:w-4 md:h-4 text-primary-foreground" />
             </div>
-            <span className="text-sm font-bold tracking-wide text-white">
+            <span className="text-base md:text-sm font-bold tracking-wide text-foreground">
               InsightBridge
             </span>
           </div>
@@ -159,18 +165,18 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
           {/* Mobile Close Button */}
           <button
             onClick={onClose}
-            className="md:hidden p-1 hover:bg-slate-800 rounded-lg transition"
+            className="md:hidden touch-target p-2 hover:bg-muted/50 active:bg-muted rounded-lg transition flex items-center justify-center"
             aria-label="Close sidebar"
           >
-            <X className="w-5 h-5 text-slate-400" />
+            <X className="w-6 h-6 text-muted-foreground" />
           </button>
 
           {/* Desktop Version Tag */}
-          <span className="hidden md:block text-xs text-slate-500 font-mono">v1.0</span>
+          <span className="hidden md:block text-xs text-muted-foreground font-mono">v1.0</span>
         </div>
 
         {/* Main Navigation */}
-        <nav className="flex-1 p-3 space-y-6 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 p-4 md:p-3 space-y-6 overflow-y-auto touch-scroll overscroll-contain scrollbar-hide">
           {/* Core Features */}
           <NavSection title="Core">
             <NavItem
@@ -301,41 +307,24 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-800">
-          <div className="p-3 bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-500/20 rounded-lg">
+        <div className="p-4 md:p-3 border-t border-border flex-shrink-0">
+          <div className="card-mobile border-primary/30">
             <div className="flex items-center gap-2 mb-2">
-              <Zap className="w-4 h-4 text-indigo-400" />
-              <span className="text-xs font-semibold text-white">Pro Features</span>
+              <Zap className="w-5 h-5 md:w-4 md:h-4 text-primary" />
+              <span className="text-sm md:text-xs font-semibold text-foreground">Pro Features</span>
             </div>
-            <p className="text-xs text-slate-400 mb-3">
+            <p className="text-sm md:text-xs text-muted-foreground mb-3">
               Advanced forecasting, unlimited uploads, and team collaboration
             </p>
-            <button className="w-full px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded transition">
+            <button className="btn-primary w-full touch-target">
               Upgrade Now
             </button>
           </div>
           
-          <div className="mt-3 text-xs text-slate-500 text-center">
+          <div className="mt-3 text-xs text-muted-foreground text-center">
             © {new Date().getFullYear()} InsightBridge
           </div>
         </div>
-
-        {/* Custom Scrollbar Styles */}
-        <style jsx global>{`
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #475569;
-            border-radius: 3px;
-          }
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
-          }
-        `}</style>
       </aside>
     </>
   );
