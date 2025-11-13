@@ -2,6 +2,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { Inter } from 'next/font/google';
 import { SettingsProvider } from '@/context/SettingsContext';
 import { AnalysisProvider } from '@/context/AnalysisContext';
+import MobileLayout from '@/components/MobileLayout';
 import "./globals.css";
 
 export const metadata = {
@@ -19,7 +20,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ClerkProvider>
           <SettingsProvider>
             <AnalysisProvider>
-              {children}
+              <MobileLayout>
+                {children}
+              </MobileLayout>
             </AnalysisProvider>
           </SettingsProvider>
         </ClerkProvider>
