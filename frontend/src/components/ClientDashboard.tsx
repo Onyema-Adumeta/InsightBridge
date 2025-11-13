@@ -17,11 +17,6 @@ import { AlertCircle, RefreshCw } from "lucide-react";
 import ModernDashboard from "./ModernDashboard";
 import AppSidebar from "@/components/AppSidebar";
 
-/* =============================================================================
-   CONFIG
-============================================================================= */
-const =
-  (process.env.NEXT_PUBLIC_API_URL || "").trim() || "http://127.0.0.1:8000";
 
 /* =============================================================================
    TYPES
