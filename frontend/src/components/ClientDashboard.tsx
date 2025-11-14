@@ -153,7 +153,6 @@ const DashboardLoadingSkeleton = () => (
 ============================================================================= */
 function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardProps) {
   const { user, isLoaded } = useUser();
-  const { getToken } = useAuth();
   const { getToken, userId } = useAuth();
 
 
