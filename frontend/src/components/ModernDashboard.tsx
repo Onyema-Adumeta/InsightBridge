@@ -540,7 +540,7 @@ export default function ModernDashboard({
     );
   }
 
-  if (!analysisData || !analysisData.kpiCardData) {
+  if (!analysisData || (!analysisData.kpiCardData && !analysisData.kpiChartData)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4 sm:p-8">
         <div className="max-w-2xl w-full text-center">
