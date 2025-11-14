@@ -152,8 +152,8 @@ const DashboardLoadingSkeleton = () => (
    MAIN DASHBOARD CONTENT
 ============================================================================= */
 function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardProps) {
+  const { user, isLoaded } = useUser();
   const { getToken, userId } = useAuth();
-
 
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(
     initialData || null
@@ -169,20 +169,13 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     if (!user?.id) return;
 
     try {
-      // 1. Get the auth token from Clerk
+      // Get the auth token from Clerk
       const token = await getToken();
       if (!token) {
         throw new Error("User is not authenticated.");
       }
 
-      // 2. Remove user_id from query params.
-      // The backend gets the user ID from the token, which is more secure.
-      const response = await fetch(`/api/v1/main/analysis_summary?user_id=${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const url = `/api/v1/main/analysis_summary?user_id=${userId}`;
       console.log("[Dashboard] Fetching analysis_summary:", url);
 
       const controller = new AbortController();
@@ -192,7 +185,6 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          // 3. Add the Authorization header
           Authorization: `Bearer ${token}`,
         },
         cache: "no-store",
@@ -244,7 +236,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
         );
       }
 
-      // 1. Get the auth token from Clerk
+      // Get the auth token from Clerk
       const token = await getToken();
       if (!token) {
         throw new Error("User is not authenticated.");
@@ -262,9 +254,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
       const response = await fetch(uploadURL, {
         method: "POST",
         headers: {
-          // 3. Add the Authorization header
           Authorization: `Bearer ${token}`,
-          // Do NOT set 'Content-Type' for FormData; the browser handles it.
         },
         body: formData,
       });
@@ -285,9 +275,6 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
           detail: { userId: user.id, timestamp: Date.now() },
         })
       );
-
-      // No need to call fetchAnalysisSummary() again,
-      // since the upload response *is* the analysis data.
     } catch (err: any) {
       console.error("[Dashboard] Upload error:", err);
       setError(err.message || "File upload failed");
@@ -312,7 +299,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     console.log("[Dashboard] ✓ Frontend state cleared");
 
     try {
-      // 1. Get the auth token from Clerk
+      // Get the auth token from Clerk
       const token = await getToken();
       if (!token) {
         throw new Error("User is not authenticated.");
@@ -324,12 +311,8 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
       const clearResponse = await fetch(clearUrl, {
         method: "POST",
         headers: {
-          // 2. Add the Authorization header
           Authorization: `Bearer ${token}`,
-          // 3. Content-Type is not needed if the body is empty
         },
-        // 4. REMOVED BODY. The backend will get the user_id from the token.
-        // body: `user_id=${encodeURIComponent(user.id)}`,
       });
 
       if (!clearResponse.ok) {
@@ -382,7 +365,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
 
     setIsLoading(true);
     try {
-      // 1. Get the auth token from Clerk
+      // Get the auth token from Clerk
       const token = await getToken();
       if (!token) {
         throw new Error("User is not authenticated.");
@@ -394,7 +377,6 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // 2. Add the Authorization header
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(analysisData),
