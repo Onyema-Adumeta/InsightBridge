@@ -13,6 +13,7 @@ if (typeof window !== "undefined") {
 import React, { useState, useEffect, Component, ReactNode } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { useAuth } from '@clerk/nextjs';
 
 // Import the production-ready dashboard
 import ModernDashboard from "./ModernDashboard";
@@ -154,6 +155,8 @@ const DashboardLoadingSkeleton = () => (
 function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardProps) {
   const { user, isLoaded } = useUser();
   const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
+
 
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(
     initialData || null
@@ -162,6 +165,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasInitialFetch, setHasInitialFetch] = useState(false);
+  
 
   /* -------------------- Fetch analysis summary -------------------- */
   const fetchAnalysisSummary = async () => {
@@ -176,7 +180,13 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
 
       // 2. Remove user_id from query params.
       // The backend gets the user ID from the token, which is more secure.
-      const url = `/api/v1/main/analysis_summary`;
+      const token = await getToken();
+      const response = await fetch(`/api/v1/main/analysis_summary?user_id=${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
       console.log("[Dashboard] Fetching analysis_summary:", url);
 
       const controller = new AbortController();
