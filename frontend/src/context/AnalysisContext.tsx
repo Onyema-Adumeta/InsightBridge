@@ -72,7 +72,7 @@ export const AnalysisProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
 
     try {
-      const response = await fetch(`/api/v1/main/analysis_summary?user_id=${userId}`);
+      const response = await fetch(`/api/v1/main/analysis_summary`);
       
       // If 404, user just hasn't uploaded data yet - this is fine, not an error
       if (response.status === 404) {

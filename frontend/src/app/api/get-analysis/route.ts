@@ -17,7 +17,7 @@ export async function GET() {
   }
 
   try {
-    const backendUrl = `${process.env.FASTAPI_URL}/api/v1/main/analysis_summary?user_id=${userId}`;
+    const backendUrl = `${process.env.BACKEND_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/v1/main/analysis_summary`;
     const res = await fetch(backendUrl, {
       cache: "no-store",
       headers: {

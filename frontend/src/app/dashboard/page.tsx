@@ -45,7 +45,7 @@ export default function DashboardPage() {
       setLoading(true);
       setConnectionStatus('connecting');
 
-      const url = `/api/v1/main/analysis_summary?user_id=${user.id}`;
+      const url = `/api/v1/main/analysis_summary`;
       
       if (isDevelopment) {
         console.log('🔍 Fetching from:', url);

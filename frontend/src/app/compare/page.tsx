@@ -48,7 +48,7 @@ export default function ComparePage() {
     try {
       setIsLoading(true);
       const userId = 'user_2xrpbDp0Snom3M43V3xwGGebho3'; // Get from auth
-      const response = await fetch(`/api/v1/main/analysis_summary?user_id=${userId}`);
+      const response = await fetch(`/api/v1/main/analysis_summary`);
       const data = await response.json();
 
       if (data?.kpiChartData && data.kpiChartData.length > 0) {
