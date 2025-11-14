@@ -200,7 +200,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
       const data = await response.json();
       console.log("[Dashboard] Analysis data received:", data);
 
-      if (data && data.kpiCardData && Object.keys(data.kpiCardData).length > 0) {
+      if (data && (data.kpiCardData || data.kpiChartData)) {
         setAnalysisData(data);
         setError(null);
       } else {
