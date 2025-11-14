@@ -177,7 +177,6 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
 
       // 2. Remove user_id from query params.
       // The backend gets the user ID from the token, which is more secure.
-      const token = await getToken();
       const response = await fetch(`/api/v1/main/analysis_summary?user_id=${userId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
