@@ -18,8 +18,6 @@ async def get_current_user_id(
     authorization: Optional[str] = Header(None),
 ) -> str:
     """
-    Decodes Clerk JWT token and extracts user ID.
-
     Normal path:
       - Expect Authorization: Bearer <Clerk JWT>
       - Decode token, return `sub` as user_id
@@ -29,7 +27,7 @@ async def get_current_user_id(
         trust that user_id (useful when frontend proxy isn't sending JWT yet).
     """
 
-    # --- 1) Normal path: Authorization header with Clerk JWT ---
+    # --- 1) Normal Clerk JWT path ---
     if authorization:
         try:
             parts = authorization.split(maxsplit=1)
@@ -66,7 +64,7 @@ async def get_current_user_id(
             logger.error(f"❌ JWT decode error: {e}")
             raise HTTPException(status_code=401, detail=f"Invalid token: {e}")
         except HTTPException:
-            # Already logged & raised above
+            # Already logged above
             raise
         except Exception as e:
             logger.error(f"❌ Unexpected error during authentication: {e}")
@@ -75,7 +73,7 @@ async def get_current_user_id(
                 detail=f"Authentication error: {e}",
             )
 
-    # --- 2) DEV fallback: trust ?user_id=... when there is NO Authorization header ---
+    # --- 2) DEV fallback: no Authorization, but user_id in query ---
     user_id_from_query = request.query_params.get("user_id")
     if user_id_from_query:
         logger.warning(
@@ -84,6 +82,6 @@ async def get_current_user_id(
         )
         return user_id_from_query
 
-    # --- 3) If neither header nor query param is present, reject ---
+    # --- 3) Neither present: reject ---
     logger.error("❌ No Authorization header and no user_id query param")
     raise HTTPException(status_code=401, detail="Missing Authorization header")

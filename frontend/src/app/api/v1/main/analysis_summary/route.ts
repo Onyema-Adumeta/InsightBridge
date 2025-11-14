@@ -1,6 +1,5 @@
 // src/app/api/v1/main/analysis_summary/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,43 +15,26 @@ const UPSTREAM_PATH = "/api/v1/main/analysis_summary";
 
 export async function GET(req: NextRequest) {
   try {
-    // Clerk server-side auth
-    const { userId: clerkUserId, getToken } = auth();
+    const url = new URL(req.url);
 
-    if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    // We EXPECT frontend to pass ?user_id=...
+    const userId = url.searchParams.get("user_id");
 
-    // Try to get a JWT from Clerk to forward to FastAPI
-    let token: string | null = null;
-    try {
-      // Default session token (good enough for your get_current_user_id)
-      token = await getToken();
-    } catch (err) {
-      console.error("[analysis_summary route] Failed to get Clerk token:", err);
-    }
-
-    if (!token) {
+    if (!userId) {
+      // No Clerk check here – just a bad request if user_id is missing
       return NextResponse.json(
-        { error: "Unable to obtain auth token from Clerk" },
-        { status: 401 }
+        { error: "Missing user_id query parameter" },
+        { status: 400 }
       );
     }
-
-    // Respect ?user_id=... override; otherwise use Clerk user
-    const url = new URL(req.url);
-    const userId = url.searchParams.get("user_id") || clerkUserId;
 
     const upstreamUrl = `${API_BASE}${UPSTREAM_PATH}?user_id=${encodeURIComponent(
       userId
     )}`;
 
+    // No Authorization header – we rely on DEV fallback in get_current_user_id()
     const upstream = await fetch(upstreamUrl, {
       method: "GET",
-      headers: {
-        // This is what your FastAPI get_current_user_id expects
-        Authorization: `Bearer ${token}`,
-      },
       cache: "no-store",
     });
 
