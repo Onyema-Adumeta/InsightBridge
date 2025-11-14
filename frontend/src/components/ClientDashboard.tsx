@@ -13,7 +13,6 @@ if (typeof window !== "undefined") {
 import React, { useState, useEffect, Component, ReactNode } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
 import { AlertCircle, RefreshCw } from "lucide-react";
-import { useAuth } from '@clerk/nextjs';
 
 // Import the production-ready dashboard
 import ModernDashboard from "./ModernDashboard";
