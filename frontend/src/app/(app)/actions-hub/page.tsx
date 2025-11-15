@@ -817,8 +817,8 @@ export default function ActionsHubPage() {
   return (
     <>
       <AppSidebar />
-      <div className="ml-64 min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-indigo-900">
-        <div className="p-4 md:p-8 text-white">
+      <div className="ml-64 min-h-screen bg-gray-50">
+        <div className="p-4 md:p-8">
           <header className="text-center mb-8">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Actions Hub</h1>
             <p className="text-gray-400 mt-2 text-lg">AI-powered business simulations with advanced analytics</p>
