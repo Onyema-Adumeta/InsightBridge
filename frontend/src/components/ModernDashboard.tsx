@@ -290,7 +290,7 @@ export default function ModernDashboard({
 
   // Clear search when data changes or is cleared
   useEffect(() => {
-    if (!analysisData || Object.keys(analysisData).length === 0) {
+    if (!analysisData || (!analysisData.kpiCardData && !analysisData.kpiChartData)) {
       setSearchQuery('');
       setSelectedPeriod('all');
     }
