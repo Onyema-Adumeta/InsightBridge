@@ -9,7 +9,16 @@ let nextConfig = {
     ignoreBuildErrors: true,
   },
   experimental: {
-    serverActions: {},
+    serverActions: {
+      bodySizeLimit: '10mb',  // ← ADDED
+    },
+  },
+  // ← ADDED API configuration
+  api: {
+    responseLimit: false,
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
   },
   async rewrites() {
     return [
