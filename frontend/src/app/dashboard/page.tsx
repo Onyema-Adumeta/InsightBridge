@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
@@ -45,26 +45,15 @@ export default function DashboardPage() {
       setLoading(true);
       setConnectionStatus('connecting');
 
-      const url = `/api/v1/main/analysis_summary`;
+      // ✅ FIX: Add user_id parameter
+      const url = `/api/v1/main/analysis_summary?user_id=${user.id}`;
       
       if (isDevelopment) {
         console.log('🔍 Fetching from:', url);
-        console.log('🌐 API Base URL:', apiUrl);
         console.log('🔑 User ID:', user.id);
       }
 
-      // ✅ Silent health check - don't show errors to users
-      try {
-        const healthCheck = await fetch(`${apiUrl}/health`, { 
-          method: 'GET',
-          cache: 'no-store',
-          signal: AbortSignal.timeout(5000) // 5 second timeout for health check
-        });
-        if (isDevelopment) console.log('💚 Health check status:', healthCheck.status);
-      } catch (healthError) {
-        if (isDevelopment) console.error('❌ Health check failed:', healthError);
-        // Don't throw - continue to main request
-      }
+      // ✅ REMOVED: Health check that references undefined apiUrl
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
@@ -92,7 +81,8 @@ export default function DashboardPage() {
       
       if (isDevelopment) {
         console.log('✅ Analysis data received:', data);
-        console.log('📊 Summary:', data.summary);
+        console.log('📊 Has kpiCardData:', !!data.kpiCardData);
+        console.log('📊 Has kpiChartData:', !!data.kpiChartData);
         console.log('📁 Items count:', data.items?.length || 0);
         console.log('🕐 Updated at:', data.updated_at);
       }
@@ -119,17 +109,11 @@ export default function DashboardPage() {
         return;
       }
 
-      // ✅ If all retries fail, show empty state (not error)
-      if (isDevelopment) console.warn('⚠️ All retries exhausted, showing empty state');
+      // ✅ If all retries fail, set to null (show welcome screen)
+      if (isDevelopment) console.warn('⚠️ All retries exhausted, showing welcome screen');
       
-      setAnalysisData({
-        user_id: user?.id || 'anonymous',
-        summary: "Welcome to InsightBridge! Upload your first financial document to get started.",
-        items: [],
-        updated_at: null,
-        company: "Your Company"
-      });
-      
+      setAnalysisData(null); // Changed from setting default data to null
+
     } finally {
       setLoading(false);
     }
@@ -168,7 +152,7 @@ export default function DashboardPage() {
   };
 
   // ✅ Loading states
-  if (!isLoaded && !analysisData) return <LoadingDashboard />;
+  if (!isLoaded) return <LoadingDashboard />;
   if (loading && !analysisData) return <LoadingDashboard />;
 
   // ✅ Not signed in
@@ -214,20 +198,11 @@ export default function DashboardPage() {
     </div>
   ) : null;
 
-  // Debug banner removed
-
-  // ✅ Render dashboard
-  if (analysisData) {
-    return (
-      <div>
-        {connectionBanner}
-        <DynamicClientDashboard initialData={analysisData} />
-      </div>
-    );
-  }
-
-  // Fallback
-  return <LoadingDashboard />;
+  // ✅ Render dashboard (even if analysisData is null - let ClientDashboard handle it)
+  return (
+    <div>
+      {connectionBanner}
+      <DynamicClientDashboard initialData={analysisData} />
+    </div>
+  );
 }
-
-
