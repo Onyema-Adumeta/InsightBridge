@@ -10,8 +10,8 @@ const API_BASE =
 
 export async function POST(request: NextRequest) {
   try {
-    // 1) Auth via Clerk
-    const { userId } = await auth();
+    // 1) Auth via Clerk - GET TOKEN HERE
+    const { userId, getToken } = await auth();
     if (!userId) {
       console.error("[clear_storage] Unauthorized: no Clerk userId");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -21,15 +21,23 @@ export async function POST(request: NextRequest) {
     const backendUrl = `${API_BASE}/api/v1/main/clear_storage`;
     console.log(`[clear_storage] → ${backendUrl} for user ${userId}`);
 
-    // 3) Server-side headers
+    // 3) Get the auth token
+    const token = await getToken();
+
+    // 4) Server-side headers
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
-    if (process.env.BACKEND_API_KEY) {
+
+    // Add Authorization header
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+      console.log("[clear_storage] 🔑 Forwarding auth token to backend");
+    } else if (process.env.BACKEND_API_KEY) {
       headers["X-API-Key"] = process.env.BACKEND_API_KEY;
     }
 
-    // 4) Forward to backend with user_id
+    // 5) Forward to backend with user_id
     const response = await fetch(backendUrl, {
       method: "POST",
       headers,
@@ -46,10 +54,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 5) Return success
+    // 6) Return success
     const data = await response.json();
     console.log("[clear_storage] ✅", { user_id: userId });
-    
     return NextResponse.json(data);
   } catch (err: any) {
     console.error("[clear_storage] ❌", err);
