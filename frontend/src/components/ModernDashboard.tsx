@@ -656,7 +656,7 @@ export default function ModernDashboard({
 
         {/* KPI Grid - Responsive */}
         {kpis.length > 0 && (
-          <section>
+          <section id="kpis" className="scroll-mt-20">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
               <div>
                 <h2 className="text-base sm:text-lg font-semibold text-slate-900">Key Performance Indicators</h2>
@@ -702,7 +702,7 @@ export default function ModernDashboard({
           
           {/* Main Trend Chart */}
           {analysisData?.kpiChartData && analysisData.kpiChartData.length > 0 && (
-             <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
+            <section id="trend-analysis" className="scroll-mt-20 bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
               <AdaptiveFinancialChart 
                 chartData={analysisData.kpiChartData}
                 title="Performance & Forecast"
@@ -757,7 +757,7 @@ export default function ModernDashboard({
 
           {/* Forecast Chart */}
           {forecastData && forecastData.length > 0 && analysisData?.kpiChartData && analysisData.kpiChartData.length > 0 && (
-            <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
+            <section id="forecast" className="scroll-mt-20 bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
               <div className="mb-4">
                 <h3 className="text-base sm:text-lg font-semibold text-slate-900">Future Projections</h3>
                 <p className="text-xs sm:text-sm text-slate-600">AI-powered forecast based on historical trends</p>
@@ -768,7 +768,7 @@ export default function ModernDashboard({
 
           {/* Mini Trend Cards - Responsive Grid */}
           {analysisData?.kpis?.profitLoss && (
-            <section>
+            <section id="trending-metrics" className="scroll-mt-20">
               <div className="mb-4">
                 <h3 className="text-base sm:text-lg font-semibold text-slate-900">Trending Metrics</h3>
                 <p className="text-xs sm:text-sm text-slate-600">Quick view of key performance indicators</p>
@@ -811,12 +811,14 @@ export default function ModernDashboard({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {analysisData?.predictiveAnalysis?.insights && analysisData.predictiveAnalysis.insights.length > 0 && (
-              <PredictiveInsightsSection insights={analysisData.predictiveAnalysis.insights} />
+              <section id="predictive-insights" className="scroll-mt-20">
+                <PredictiveInsightsSection insights={analysisData.predictiveAnalysis.insights} />
+              </section>
             )}
 
             {/* AI Analysis Section - Mobile Optimized */}
             {analysisData?.aiAnalysis && (
-              <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
+              <section id="executive-summary" className="scroll-mt-20 bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
                 <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                   <div className="p-2 sm:p-2.5 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-lg border border-purple-100">
                     <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
@@ -997,7 +999,9 @@ export default function ModernDashboard({
             )}
 
             {analysisData?.benchmarkAnalysis && (
-              <BenchmarkSection benchmarkAnalysis={analysisData.benchmarkAnalysis} />
+              <section id="benchmarks" className="scroll-mt-20">
+                <BenchmarkSection benchmarkAnalysis={analysisData.benchmarkAnalysis} />
+              </section>
             )}
 
             <CommentsSection analysisData={analysisData} userId={userId} />
@@ -1006,7 +1010,7 @@ export default function ModernDashboard({
           {/* Right Sidebar - Mobile: Full width, Desktop: 1/3 */}
           <div className="space-y-4 sm:space-y-6">
             {analysisData?.health_score && (
-              <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
+              <section id="health-score" className="scroll-mt-20 bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
                 <h3 className="text-sm sm:text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
                   <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
                   Financial Health Score
