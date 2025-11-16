@@ -680,7 +680,11 @@ export default function ModernDashboard({
                   key={idx} 
                   title={kpi.title} 
                   value={kpi.formatFn(kpi.value)}
-                  change={((kpi.value - kpi.previousValue) / (kpi.previousValue || 1) * 100) || 0}
+                  change={
+                    kpi.previousValue && kpi.previousValue > 0
+                      ? ((kpi.value - kpi.previousValue) / kpi.previousValue * 100)
+                      : 0
+                  }
                   trend={kpi.value >= kpi.previousValue ? 'up' : 'down'}
                   icon={kpi.icon}
                   sparklineData={kpi.sparkline} 
