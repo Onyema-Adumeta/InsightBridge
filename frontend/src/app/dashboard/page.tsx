@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import DynamicClientDashboard from '@/components/ClientDashboard';
 import LoadingDashboard from '@/components/LoadingDashboard';
+import { Lock } from 'lucide-react'; // Import a suitable icon
 
 
 export const dynamic = 'force-dynamic';
@@ -151,32 +152,26 @@ export default function DashboardPage() {
     fetchData();
   };
 
-  // ✅ Loading states
-  if (!isLoaded) return <LoadingDashboard />;
-  if (loading && !analysisData) return <LoadingDashboard />;
+  // ✅ FIX 1: Add layout wrapper to loading states
+  if (!isLoaded || (loading && !analysisData)) {
+    return (
+      <main className="ml-64 min-h-screen bg-gray-50 p-8">
+        <LoadingDashboard />
+      </main>
+    );
+  }
 
-  // ✅ Not signed in
+  // ✅ FIX 2: Add layout wrapper to "Not Signed In" state
+  // Also themed it to match the light layout
   if (isLoaded && !isSignedIn) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
-        <div className="text-center text-white max-w-md p-8">
+      <main className="ml-64 flex min-h-screen items-center justify-center bg-gray-50 p-8">
+        <div className="text-center text-gray-900 max-w-md p-8 bg-white border border-gray-200 rounded-lg shadow">
           <div className="mb-6">
-            <svg 
-              className="w-20 h-20 mx-auto text-blue-400" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" 
-              />
-            </svg>
+            <Lock className="w-16 h-16 mx-auto text-blue-600" />
           </div>
           <h2 className="text-3xl font-bold mb-4">Authentication Required</h2>
-          <p className="text-slate-300 mb-6">Please sign in to view your dashboard.</p>
+          <p className="text-gray-600 mb-6">Please sign in to view your dashboard.</p>
           <a 
             href="/sign-in" 
             className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
@@ -184,25 +179,25 @@ export default function DashboardPage() {
             Sign In
           </a>
         </div>
-      </div>
+      </main>
     );
   }
 
   // ✅ Connection status banner (minimal, non-intrusive)
   const connectionBanner = connectionStatus === 'connecting' && retryCount > 0 ? (
-    <div className="bg-blue-900/30 border-l-4 border-blue-500 p-3 mb-4">
+    <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mb-4">
       <div className="flex items-center">
-        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-3"></div>
-        <p className="text-blue-100 text-sm">Connecting to server...</p>
+        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
+        <p className="text-blue-700 text-sm">Connecting to server...</p>
       </div>
     </div>
   ) : null;
 
-  // ✅ Render dashboard (even if analysisData is null - let ClientDashboard handle it)
+  // ✅ FIX 3: Add layout wrapper to the main dashboard render
   return (
-    <div>
+    <main className="ml-64 min-h-screen bg-gray-50 p-8">
       {connectionBanner}
       <DynamicClientDashboard initialData={analysisData} />
-    </div>
+    </main>
   );
 }
