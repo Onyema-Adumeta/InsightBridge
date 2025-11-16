@@ -269,7 +269,7 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
           </NavSection>
 
           {/* Insights & Learning */}
-          <NavSection title="Insights">
+          <NavSection title="Insights" defaultOpen={false}>
             <NavItem
               href="#predictive-insights"
               icon={Brain}
@@ -292,7 +292,7 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
           </NavSection>
 
           {/* Collaboration */}
-          <NavSection title="Collaboration">
+          <NavSection title="Collaboration" defaultOpen={false}>
             <NavItem
               href="/comments"
               icon={MessageSquare}
