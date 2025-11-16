@@ -9,7 +9,7 @@ export default async function ReconciliationPage() {
   if (!userId) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-center text-white">
+        <div className="text-center text-gray-900">
           <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
           <p className="text-slate-400">Please sign in to access reconciliation</p>
         </div>
