@@ -46,14 +46,14 @@ export default function TrendAnalysisPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-white" />
+                <TrendingUp className="w-5 h-5 text-gray-900" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">Trend Analysis</h1>
                 <p className="text-sm text-slate-600">Compare metrics across different time periods</p>
               </div>
             </div>
-            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition">
+            <button className="px-4 py-2 bg-indigo-600 text-gray-900 rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition">
               <Download className="w-4 h-4" />
               Export Report
             </button>
@@ -153,7 +153,7 @@ export default function TrendAnalysisPage() {
             <button
               onClick={handleCompare}
               disabled={isLoading}
-              className="px-6 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition font-medium"
+              className="px-6 py-2.5 bg-indigo-600 text-gray-900 rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition font-medium"
             >
               {isLoading ? 'Loading...' : 'Run Comparison'}
             </button>
