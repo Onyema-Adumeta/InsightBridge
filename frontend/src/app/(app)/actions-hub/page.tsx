@@ -72,7 +72,7 @@ const ScenarioCheckbox: React.FC<{
 }> = ({ scenario, isChecked, onChange, isRecommended = false, suggestion }) => (
   <div
     onClick={onChange}
-    className={`relative p-4 border rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 ${
+    className={`relative p-5 border rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 ${
       isChecked
         ? "bg-gradient-to-r from-indigo-600 to-purple-600 border-indigo-400 shadow-lg shadow-indigo-500/25"
         : "bg-gray-700/50 border-gray-600 hover:border-gray-500 hover:bg-gray-700"
