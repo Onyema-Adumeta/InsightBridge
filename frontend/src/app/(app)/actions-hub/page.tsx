@@ -79,7 +79,7 @@ const ScenarioCheckbox: React.FC<{
     } ${isRecommended ? "ring-2 ring-yellow-400/50" : ""}`}
   >
     {isRecommended && (
-      <div className="absolute -top-2 -right-2 bg-yellow-400 text-black text-xs px-2 py-1 rounded-full font-bold">
+      <div className="absolute -top-3 -right-3 bg-gradient-to-r from-yellow-400 to-orange-400 text-black text-xs px-3 py-1 rounded-full font-bold shadow-lg animate-pulse">
         AI Recommended
       </div>
     )}
