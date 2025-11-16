@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useClerk, useUser } from '@clerk/nextjs';
 import {
   LayoutDashboard,
   Upload,
@@ -21,7 +22,11 @@ import {
   Activity,
   Users,
   CheckCircle,
-  X
+  X,
+  LogOut,
+  User,
+  Bell,
+  HelpCircle
 } from "lucide-react";
 
 interface NavItemProps {
@@ -118,11 +123,21 @@ interface AppSidebarProps {
 
 export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const pathname = usePathname();
+  const { signOut } = useClerk();
+  const { user, isLoaded } = useUser();
 
   // Hide sidebar on auth pages
   if (pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up')) {
     return null;
   }
+
+  const handleSignOut = async () => {
+    try {
+      await signOut({ redirectUrl: '/sign-in' });
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <>
@@ -306,22 +321,71 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
           </NavSection>
         </nav>
 
-        {/* Footer */}
-        <div className="p-4 md:p-3 border-t border-border flex-shrink-0">
-          <div className="card-mobile border-primary/30">
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="w-5 h-5 md:w-4 md:h-4 text-primary" />
-              <span className="text-sm md:text-xs font-semibold text-foreground">Pro Features</span>
+        {/* User Profile & Sign Out Section */}
+        <div className="border-t border-border flex-shrink-0">
+          {/* User Info Card */}
+          {isLoaded && user && (
+            <div className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer border-b border-border/50">
+              <div className="flex items-center gap-3">
+                {/* Avatar */}
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center flex-shrink-0 border-2 border-primary/30 ring-2 ring-primary/10">
+                  {user.imageUrl ? (
+                    <img 
+                      src={user.imageUrl} 
+                      alt={user.firstName || 'User'} 
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-5 h-5 text-primary-foreground" />
+                  )}
+                </div>
+                
+                {/* User Details */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">
+                    {user.firstName && user.lastName 
+                      ? `${user.firstName} ${user.lastName}` 
+                      : user.firstName || user.username || 'User'}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {user.emailAddresses[0]?.emailAddress}
+                  </p>
+                </div>
+
+                {/* Notification Badge (optional) */}
+                <button 
+                  className="p-1.5 hover:bg-muted rounded-lg transition-colors flex-shrink-0"
+                  aria-label="Notifications"
+                >
+                  <Bell className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
             </div>
-            <p className="text-sm md:text-xs text-muted-foreground mb-3">
-              Advanced forecasting, unlimited uploads, and team collaboration
-            </p>
-            <button className="btn-primary w-full touch-target">
-              Upgrade Now
+          )}
+
+          {/* Action Buttons */}
+          <div className="p-3 space-y-2">
+            {/* Help/Support Button */}
+            <button
+              className="w-full px-3 py-2 flex items-center gap-3 text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all rounded-lg group"
+              onClick={() => window.open('/help', '_blank')}
+            >
+              <HelpCircle className="w-5 h-5 flex-shrink-0 opacity-80 group-hover:opacity-100" />
+              <span>Help & Support</span>
+            </button>
+
+            {/* Sign Out Button */}
+            <button
+              onClick={handleSignOut}
+              className="w-full px-3 py-2.5 flex items-center gap-3 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all rounded-lg group border border-transparent hover:border-red-200 dark:hover:border-red-900"
+            >
+              <LogOut className="w-5 h-5 flex-shrink-0 transition-transform group-hover:translate-x-1" />
+              <span>Sign Out</span>
             </button>
           </div>
-          
-          <div className="mt-3 text-xs text-muted-foreground text-center">
+
+          {/* Copyright Footer */}
+          <div className="px-4 py-2 text-xs text-muted-foreground text-center border-t border-border/50">
             © {new Date().getFullYear()} InsightBridge
           </div>
         </div>
