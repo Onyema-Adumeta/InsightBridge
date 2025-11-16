@@ -1,9 +1,12 @@
-﻿# Quick UI Fix Script
+﻿# Define the absolute path to your project's root
+$projectRoot = "C:\Users\Devops\InsightBridgeParent\frontend"
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $fixedFiles = @()
 
-# Fix Reconciliation (Dark to Light)
-$reconFile = "src\app\(app)\reconciliation\page.tsx"
+Write-Host "Running fixes in: $projectRoot"
+
+# --- Fix Reconciliation (Dark to Light) ---
+$reconFile = Join-Path $projectRoot "src\app\(app)\reconciliation\page.tsx"
 if (Test-Path $reconFile) {
     Copy-Item $reconFile "$reconFile.backup-$timestamp"
     $content = Get-Content $reconFile -Raw
@@ -22,10 +25,12 @@ if (Test-Path $reconFile) {
     Set-Content $reconFile -Value $content -NoNewline
     Write-Host "✓ Fixed Reconciliation" -ForegroundColor Green
     $fixedFiles += $reconFile
+} else {
+    Write-Host "✗ WARN: Could not find Reconciliation file at $reconFile" -ForegroundColor Yellow
 }
 
-# Fix Upload (Center content)
-$uploadFile = "src\app\(app)\upload\page.tsx"
+# --- Fix Upload (Center content) ---
+$uploadFile = Join-Path $projectRoot "src\app\(app)\upload\page.tsx"
 if (Test-Path $uploadFile) {
     Copy-Item $uploadFile "$uploadFile.backup-$timestamp"
     $content = Get-Content $uploadFile -Raw
@@ -35,10 +40,12 @@ if (Test-Path $uploadFile) {
     Set-Content $uploadFile -Value $content -NoNewline
     Write-Host "✓ Fixed Upload page" -ForegroundColor Green
     $fixedFiles += $uploadFile
+} else {
+    Write-Host "✗ WARN: Could not find Upload file at $uploadFile" -ForegroundColor Yellow
 }
 
-# Fix Trends
-$trendsFile = "src\app\(app)\trends\page.tsx"
+# --- Fix Trends ---
+$trendsFile = Join-Path $projectRoot "src\app\(app)\trends\page.tsx"
 if (Test-Path $trendsFile) {
     Copy-Item $trendsFile "$trendsFile.backup-$timestamp"
     $content = Get-Content $trendsFile -Raw
@@ -51,14 +58,21 @@ if (Test-Path $trendsFile) {
     Set-Content $trendsFile -Value $content -NoNewline
     Write-Host "✓ Fixed Trends page" -ForegroundColor Green
     $fixedFiles += $trendsFile
+} else {
+    Write-Host "✗ WARN: Could not find Trends file at $trendsFile" -ForegroundColor Yellow
 }
 
-Write-Host "`nFixed $($fixedFiles.Count) files!" -ForegroundColor Cyan
-Write-Host "`nNow committing and pushing..." -ForegroundColor Yellow
 
-# Git operations
-git add .
-git commit -m "Fix UI: Light theme for reconciliation/trends, center upload page"
-git push
+if ($fixedFiles.Count -gt 0) {
+    Write-Host "`nFixed $($fixedFiles.Count) files!" -ForegroundColor Cyan
+    Write-Host "`nNow committing and pushing..." -ForegroundColor Yellow
 
-Write-Host "`n✅ DONE! Wait 10 minutes for Azure to deploy." -ForegroundColor Green
+    # Git operations
+    git add .
+    git commit -m "Fix UI: Light theme for reconciliation/trends, center upload page"
+    git push
+
+    Write-Host "`n✅ DONE! Wait for Azure to build and deploy." -ForegroundColor Green
+} else {
+    Write-Host "`nNo files were fixed. Check paths and ensure you are in the correct directory." -ForegroundColor Red
+}
