@@ -46,12 +46,23 @@ const NavItem: React.FC<NavItemProps> = ({
   isActive = false,
   onClick 
 }) => {
+  const currentPath = usePathname();
+  
   const handleClick = (e: React.MouseEvent) => {
     if (href.startsWith('#')) {
       e.preventDefault();
-      const element = document.getElementById(href.substring(1));
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
+      const sectionId = href.substring(1);
+      
+      // If already on dashboard, just scroll
+      if (currentPath === '/dashboard') {
+        const element = document.getElementById(sectionId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      } else {
+        // Navigate to dashboard with hash
+        window.location.href = `/dashboard${href}`;
       }
     }
     onClick?.();
