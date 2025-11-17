@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation'; // ✅ 1. IMPORT THE ROUTER
+import { useRouter } from 'next/navigation';
 import { useSettings } from '@/context/SettingsContext';
+import { useAuth } from '@clerk/nextjs'; // ✅ 1. IMPORT useAuth
 import { Settings as SettingsIcon, Building2, Target, TrendingUp, Sparkles, Info, ChevronDown, ChevronRight } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -18,9 +19,11 @@ const ToggleSwitch = ({ enabled, onChange }) => (
     </button>
 );
 
-export default function SettingsPage() {
+// The component name must match the file name, but let's assume it's default exported
+export default function SettingsClientPage() { 
     const { settings, setSettings, isLoading } = useSettings();
-    const router = useRouter(); // ✅ 2. INITIALIZE THE ROUTER
+    const router = useRouter(); 
+    const { getToken } = useAuth(); // ✅ 2. INITIALIZE useAuth
     const [expandedSections, setExpandedSections] = useState({
         company: true,
         benchmarks: false,
@@ -58,30 +61,35 @@ export default function SettingsPage() {
         setExpandedSections(prev => ({...prev, [section]: !prev[section]}));
     };
 
-    // ✅ 3. UPDATED SAVE FUNCTION
+    // ✅ 3. THIS IS THE FIXED SAVE FUNCTION
     const saveCompanyContext = async () => {
         try {
+            const token = await getToken(); // Gets the auth token
+
             const response = await fetch('/api/company-context', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // Adds the token to the request
+                },
                 body: JSON.stringify(companyContext)
             });
             
             if (response.ok) {
-                // Show success and redirect to the dashboard
                 alert('Company context saved successfully!');
-                router.push('/dashboard'); // This will un-stuck you
+                router.push('/dashboard'); 
             } else {
-                // Show an error if the API failed
-                const errorData = await response.json();
-                alert(`Error saving profile: ${errorData.message || 'Please try again.'}`);
+                // This now uses .text() to avoid the JSON error
+                const errorText = await response.text(); 
+                alert(`Error saving profile: ${errorText}`);
             }
-        } catch (error) {
+        } catch (error: any) { 
             console.error('Failed to save company context:', error);
-            alert('A connection error occurred. Please try again.');
+            alert(`A connection error occurred: ${error.message}`);
         }
     };
 
+    // ... (rest of the file is just UI, it's all correct) ...
     const industries = [
         { value: 'SaaS', label: 'SaaS' },
         { value: 'ecommerce', label: 'E-Commerce' },
@@ -130,7 +138,6 @@ export default function SettingsPage() {
         );
     }
 
-    // ✅ 4. REMOVED the "ml-64" and "bg-slate-50" wrappers as our layout now handles this
     return (
         <>
             {/* Header */}
@@ -151,7 +158,6 @@ export default function SettingsPage() {
             {/* Main Content */}
             <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
                 
-                {/* NEW: Company Context Section */}
                 <section className="bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-50 rounded-xl border-2 border-indigo-200 shadow-sm overflow-hidden">
                     <div className="p-6 border-b border-indigo-200 bg-white/50 backdrop-blur">
                         <div className="flex items-start justify-between">
@@ -193,25 +199,21 @@ export default function SettingsPage() {
                             <div className="px-6 pb-6 space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        {/* ✅ STYLING FIX */}
                                         <label className="block text-sm font-medium text-gray-900 mb-2">Company Name</label>
                                         <input
                                             type="text"
                                             value={companyContext.companyName}
                                             onChange={(e) => updateCompanyContext('companyName', e.target.value)}
                                             placeholder="Your Company"
-                                            // ✅ STYLING FIX
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm text-gray-900"
                                         />
                                     </div>
                                     
                                     <div>
-                                        {/* ✅ STYLING FIX */}
                                         <label className="block text-sm font-medium text-gray-900 mb-2">Fiscal Year End</label>
                                         <select
                                             value={companyContext.fiscalYearEnd}
                                             onChange={(e) => updateCompanyContext('fiscalYearEnd', e.target.value)}
-                                            // ✅ STYLING FIX
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm text-gray-900"
                                         >
                                             <option>January</option>
@@ -225,12 +227,10 @@ export default function SettingsPage() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        {/* ✅ STYLING FIX */}
                                         <label className="block text-sm font-medium text-gray-900 mb-2">Industry</label>
                                         <select
                                             value={companyContext.industry}
                                             onChange={(e) => updateCompanyContext('industry', e.target.value)}
-                                            // ✅ STYLING FIX
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm text-gray-900"
                                         >
                                             {industries.map(ind => (
@@ -240,14 +240,12 @@ export default function SettingsPage() {
                                     </div>
 
                                     <div>
-                                        {/* ✅ STYLING FIX */}
                                         <label className="block text-sm font-medium text-gray-900 mb-2">Sub-Industry</label>
                                         <input
                                             type="text"
                                             value={companyContext.subIndustry}
                                             onChange={(e) => updateCompanyContext('subIndustry', e.target.value)}
                                             placeholder="e.g., B2B Enterprise Software"
-                                            // ✅ STYLING FIX
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm text-gray-900"
                                         />
                                     </div>
@@ -255,12 +253,10 @@ export default function SettingsPage() {
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        {/* ✅ STYLING FIX */}
                                         <label className="block text-sm font-medium text-gray-900 mb-2">Company Size</label>
                                         <select
                                             value={companyContext.companySize}
                                             onChange={(e) => updateCompanyContext('companySize', e.target.value)}
-                                            // ✅ STYLING FIX
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm text-gray-900"
                                         >
                                             {companySizes.map(size => (
@@ -270,12 +266,10 @@ export default function SettingsPage() {
                                     </div>
                                     
                                     <div>
-                                        {/* ✅ STYLING FIX */}
                                         <label className="block text-sm font-medium text-gray-900 mb-2">Annual Revenue</label>
                                         <select
                                             value={companyContext.revenue}
                                             onChange={(e) => updateCompanyContext('revenue', e.target.value)}
-                                            // ✅ STYLING FIX
                                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm text-gray-900"
                                         >
                                             {revenueRanges.map(range => (
@@ -286,7 +280,6 @@ export default function SettingsPage() {
                                 </div>
 
                                 <div>
-                                    {/* ✅ STYLING FIX */}
                                     <label className="block text-sm font-medium text-gray-900 mb-3">Growth Stage</label>
                                     <div className="grid grid-cols-5 gap-2">
                                         {stages.map(stage => (
@@ -300,7 +293,6 @@ export default function SettingsPage() {
                                                 }`}
                                             >
                                                 <div className="text-xl mb-1">{stage.icon}</div>
-                                                {/* ✅ STYLING FIX */}
                                                 <div className="text-xs font-medium text-gray-800">{stage.label}</div>
                                             </button>
                                         ))}
@@ -368,7 +360,6 @@ export default function SettingsPage() {
                         {expandedSections.analysisPrefs && (
                             <div className="px-6 pb-6 space-y-4">
                                 <div>
-                                    {/* ✅ STYLING FIX */}
                                     <label className="block text-sm font-medium text-gray-900 mb-3">Key Metrics to Track</label>
                                     <div className="grid grid-cols-2 gap-2">
                                         {keyMetrics.map(metric => (
@@ -385,7 +376,6 @@ export default function SettingsPage() {
                                                     }}
                                                     className="w-4 h-4 text-indigo-600 rounded"
                                                 />
-                                                {/* ✅ STYLING FIX */}
                                                 <span className="text-sm text-gray-800">{metric}</span>
                                             </label>
                                         ))}
@@ -458,7 +448,6 @@ export default function SettingsPage() {
                                 id="font-family"
                                 value={settings.fontFamily}
                                 onChange={(e) => updateSetting('fontFamily', e.target.value)}
-                                // ✅ STYLING FIX
                                 className="bg-white border border-slate-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                             >
                                 <option value="Inter">Inter</option>
