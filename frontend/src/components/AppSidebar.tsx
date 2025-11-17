@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useClerk, useUser } from '@clerk/nextjs';
 import {
   LayoutDashboard,
@@ -47,6 +47,7 @@ const NavItem: React.FC<NavItemProps> = ({
   onClick 
 }) => {
   const currentPath = usePathname();
+  const router = useRouter();
   
   const handleClick = (e: React.MouseEvent) => {
     if (href.startsWith('#')) {
@@ -61,8 +62,8 @@ const NavItem: React.FC<NavItemProps> = ({
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       } else {
-        // Navigate to dashboard with hash
-        window.location.href = `/dashboard${href}`;
+        // Navigate to dashboard first, then scroll
+        router.push(`/dashboard#${sectionId}`);
       }
     }
     onClick?.();
@@ -85,7 +86,7 @@ const NavItem: React.FC<NavItemProps> = ({
         <span className="text-sm font-medium">{label}</span>
       </div>
       {badge && (
-        <span className="badge badge-success flex-shrink-0">
+        <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 flex-shrink-0">
           {badge}
         </span>
       )}
@@ -134,21 +135,39 @@ interface AppSidebarProps {
 
 export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { signOut } = useClerk();
   const { user, isLoaded } = useUser();
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Hide sidebar on auth pages
   if (pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up')) {
     return null;
   }
 
+  // ✅ IMPROVED: Better sign-out with loading state and forced redirect
   const handleSignOut = async () => {
+    if (isSigningOut) return; // Prevent double-clicks
+    
+    setIsSigningOut(true);
+    
     try {
-      await signOut({ redirectUrl: '/sign-in' });
+      // Sign out from Clerk
+      await signOut();
     } catch (error) {
       console.error('Error signing out:', error);
+    } finally {
+      // Always redirect to sign-in, even if there's an error
+      window.location.href = '/sign-in';
     }
   };
+
+  // ✅ IMPROVED: Auto-close sidebar on route change (mobile)
+  useEffect(() => {
+    if (onClose) {
+      onClose();
+    }
+  }, [pathname]);
 
   return (
     <>
@@ -179,14 +198,14 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
       >
         {/* Header */}
         <div className="h-16 md:h-14 flex items-center justify-between px-4 border-b border-border flex-shrink-0">
-          <div className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition">
             <div className="w-9 h-9 md:w-8 md:h-8 bg-gradient-to-br from-[var(--ring)] to-primary rounded-lg flex items-center justify-center">
               <BarChart3 className="w-5 h-5 md:w-4 md:h-4 text-primary-foreground" />
             </div>
             <span className="text-base md:text-sm font-bold tracking-wide text-foreground">
               InsightBridge
             </span>
-          </div>
+          </Link>
           
           {/* Mobile Close Button */}
           <button
@@ -217,6 +236,7 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
               icon={Upload}
               label="Upload Data"
               badge="NEW"
+              isActive={pathname === "/upload"}
               onClick={onClose}
             />
             <NavItem
@@ -336,7 +356,10 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
         <div className="border-t border-border flex-shrink-0">
           {/* User Info Card */}
           {isLoaded && user && (
-            <div className="px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer border-b border-border/50">
+            <Link 
+              href="/settings"
+              className="block px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border/50"
+            >
               <div className="flex items-center gap-3">
                 {/* Avatar */}
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center flex-shrink-0 border-2 border-primary/30 ring-2 ring-primary/10">
@@ -363,15 +386,10 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
                   </p>
                 </div>
 
-                {/* Notification Badge (optional) */}
-                <button 
-                  className="p-1.5 hover:bg-muted rounded-lg transition-colors flex-shrink-0"
-                  aria-label="Notifications"
-                >
-                  <Bell className="w-4 h-4 text-muted-foreground" />
-                </button>
+                {/* Settings indicator */}
+                <Settings className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-            </div>
+            </Link>
           )}
 
           {/* Action Buttons */}
@@ -388,10 +406,11 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
             {/* Sign Out Button */}
             <button
               onClick={handleSignOut}
-              className="w-full px-3 py-2.5 flex items-center gap-3 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all rounded-lg group border border-transparent hover:border-red-200 dark:hover:border-red-900"
+              disabled={isSigningOut}
+              className="w-full px-3 py-2.5 flex items-center gap-3 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all rounded-lg group border border-transparent hover:border-red-200 dark:hover:border-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <LogOut className="w-5 h-5 flex-shrink-0 transition-transform group-hover:translate-x-1" />
-              <span>Sign Out</span>
+              <span>{isSigningOut ? 'Signing out...' : 'Sign Out'}</span>
             </button>
           </div>
 
