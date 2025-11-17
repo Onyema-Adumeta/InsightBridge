@@ -69,17 +69,20 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
   const [showUploadSection, setShowUploadSection] = useState(true);
   const [isPdfFile, setIsPdfFile] = useState(false);
 
+  // ✅ DEFINE API URL ONCE
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+
   // Load pending matches and transactions on component mount
   useEffect(() => {
     fetchPendingMatches();
     fetchTransactions();
-  }, []);
+  }, [userId]); // Add userId as dependency
 
   const fetchPendingMatches = async () => {
     setIsLoading(true);
     
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      // ✅ Use apiUrl
       const response = await fetch(`${apiUrl}/api/v1/reconciliation/pending_matches?user_id=${userId}`);
 
       if (!response.ok) {
@@ -116,13 +119,16 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
   const fetchTransactions = async () => {
     setLoadingTransactions(true);
     try {
+      // ✅ Use apiUrl
       const response = await fetch(
-        `http://localhost:8000/api/v1/reconciliation/bank_transactions?user_id=${userId}`
+        `${apiUrl}/api/v1/reconciliation/bank_transactions?user_id=${userId}`
       );
       const data = await response.json();
       setTransactions(data.transactions || []);
     } catch (err) {
       console.error('Failed to fetch transactions:', err);
+      // Add error state for transactions
+      setError('Failed to fetch transactions. Please check if the backend is running.');
     } finally {
       setLoadingTransactions(false);
     }
@@ -140,7 +146,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
       return;
     }
 
-    // Check if it's a PDF
     const isPdf = fileExtension === '.pdf';
     setIsPdfFile(isPdf);
 
@@ -152,8 +157,9 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
       const formData = new FormData();
       formData.append('file', file);
 
+      // ✅ Use apiUrl
       const response = await fetch(
-        `http://localhost:8000/api/v1/reconciliation/upload_bank_statement?user_id=${userId}`,
+        `${apiUrl}/api/v1/reconciliation/upload_bank_statement?user_id=${userId}`,
         {
           method: 'POST',
           body: formData,
@@ -168,13 +174,13 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
       const result: UploadResult = await response.json();
       setUploadResult(result);
       
-      await fetchTransactions();
+      await fetchTransactions(); // Refresh transactions list
       
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setUploading(false);
-      event.target.value = '';
+      event.target.value = ''; // Reset file input
     }
   };
 
@@ -182,14 +188,15 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     if (!confirm('Are you sure you want to delete this transaction?')) return;
 
     try {
+      // ✅ Use apiUrl
       const response = await fetch(
-        `http://localhost:8000/api/v1/reconciliation/bank_transactions/${transactionId}`,
+        `${apiUrl}/api/v1/reconciliation/bank_transactions/${transactionId}`,
         { method: 'DELETE' }
       );
 
       if (!response.ok) throw new Error('Delete failed');
 
-      await fetchTransactions();
+      await fetchTransactions(); // Refresh transactions list
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Delete failed');
     }
@@ -200,7 +207,8 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/reconciliation/auto_match?user_id=${userId}`, {
+      // ✅ Use apiUrl
+      const response = await fetch(`${apiUrl}/api/v1/reconciliation/auto_match?user_id=${userId}`, {
         method: 'POST',
       });
 
@@ -217,7 +225,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
         setSummary(data.summary);
       }
       
-      await fetchPendingMatches();
+      await fetchPendingMatches(); // Refresh matches list
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Auto-match failed');
     } finally {
@@ -229,7 +237,8 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     setProcessingMatch(matchId);
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/reconciliation/approve_match/${matchId}?user_id=${userId}`, {
+      // ✅ Use apiUrl
+      const response = await fetch(`${apiUrl}/api/v1/reconciliation/approve_match/${matchId}?user_id=${userId}`, {
         method: 'POST',
       });
 
@@ -251,7 +260,8 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     setProcessingMatch(matchId);
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/reconciliation/reject_match/${matchId}?user_id=${userId}`, {
+      // ✅ Use apiUrl
+      const response = await fetch(`${apiUrl}/api/v1/reconciliation/reject_match/${matchId}?user_id=${userId}`, {
         method: 'POST',
       });
 
@@ -273,7 +283,8 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/reconciliation/bulk_approve?user_id=${userId}`, {
+      // ✅ Use apiUrl
+      const response = await fetch(`${apiUrl}/api/v1/reconciliation/bulk_approve?user_id=${userId}`, {
         method: 'POST',
       });
 
@@ -282,7 +293,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
         throw new Error(errorData.detail || 'Bulk approve failed');
       }
 
-      await fetchPendingMatches();
+      await fetchPendingMatches(); // Refresh matches list
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Bulk approve failed');
