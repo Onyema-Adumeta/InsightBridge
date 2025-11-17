@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
-import AppSidebar from "@/components/AppSidebar";
+// import AppSidebar from "@/components/AppSidebar"; // No longer needed here, layout handles it
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -74,8 +74,8 @@ const ScenarioCheckbox: React.FC<{
     onClick={onChange}
     className={`relative p-5 border rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 ${
       isChecked
-        ? "bg-gradient-to-r from-indigo-600 to-purple-600 border-indigo-400 shadow-lg shadow-indigo-500/25"
-        : "bg-gray-700/50 border-gray-600 hover:border-gray-500 hover:bg-gray-700"
+        ? "bg-gradient-to-r from-indigo-600 to-purple-600 border-indigo-400 shadow-lg shadow-indigo-500/25" // Selected state
+        : "bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50" // Unselected state
     } ${isRecommended ? "ring-2 ring-yellow-400/50" : ""}`}
   >
     {isRecommended && (
@@ -86,7 +86,7 @@ const ScenarioCheckbox: React.FC<{
     <div className="flex items-center">
       <div
         className={`w-6 h-6 rounded-lg flex-shrink-0 mr-3 flex items-center justify-center transition-all ${
-          isChecked ? "bg-white shadow-lg" : "bg-gray-800 border-2 border-gray-500"
+          isChecked ? "bg-white shadow-lg" : "bg-white border-2 border-gray-300" // Checkbox icon
         }`}
       >
         {isChecked && (
@@ -96,9 +96,9 @@ const ScenarioCheckbox: React.FC<{
         )}
       </div>
       <div>
-        <span className="text-sm font-medium">{scenario.label}</span>
-        {scenario.description && <p className="text-xs text-gray-400 mt-1">{scenario.description}</p>}
-        {suggestion && <p className="text-xs text-yellow-300 mt-1 font-medium">{suggestion}</p>}
+        <span className={`text-sm font-medium ${isChecked ? 'text-white' : 'text-gray-900'}`}>{scenario.label}</span>
+        {scenario.description && <p className={`text-xs ${isChecked ? 'text-indigo-100' : 'text-gray-500'} mt-1`}>{scenario.description}</p>}
+        {suggestion && <p className="text-xs text-yellow-500 mt-1 font-medium">{suggestion}</p>}
       </div>
     </div>
   </div>
@@ -120,78 +120,78 @@ const SimulationResultsDisplay: React.FC<{
 
   const getRiskColor = (risk: string) => {
     const colors: Record<string, string> = {
-      LOW: "text-green-400",
-      MODERATE: "text-yellow-400",
-      MEDIUM: "text-orange-400",
-      HIGH: "text-red-400",
-      CRITICAL: "text-red-600",
+      LOW: "text-green-600",
+      MODERATE: "text-yellow-600",
+      MEDIUM: "text-orange-600",
+      HIGH: "text-red-600",
+      CRITICAL: "text-red-700",
     };
-    return colors[risk] || "text-gray-400";
+    return colors[risk] || "text-gray-500";
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-xl p-6">
+      <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl p-6">
         <div className="flex items-center gap-2 mb-4">
-          <SparklesIcon className="h-6 w-6 text-purple-400" />
-          <h2 className="text-2xl font-bold">Simulation Results</h2>
+          <SparklesIcon className="h-6 w-6 text-purple-600" />
+          <h2 className="text-2xl font-bold text-gray-900">Simulation Results</h2>
         </div>
-        <p className="text-slate-300">{results.summary}</p>
+        <p className="text-gray-600">{results.summary}</p>
       </div>
 
       {/* Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Revenue Change */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 hover:scale-105 transition-transform">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 hover:scale-105 transition-transform shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-sm">Revenue Change</span>
+            <span className="text-gray-500 text-sm">Revenue Change</span>
             {revenueChange > 0 ? (
-              <TrendingUpIcon className="h-5 w-5 text-green-400" />
+              <TrendingUpIcon className="h-5 w-5 text-green-500" />
             ) : (
-              <TrendingDownIcon className="h-5 w-5 text-red-400" />
+              <TrendingDownIcon className="h-5 w-5 text-red-500" />
             )}
           </div>
-          <div className={`text-3xl font-bold ${revenueChange > 0 ? "text-green-400" : "text-red-400"}`}>
+          <div className={`text-3xl font-bold ${revenueChange > 0 ? "text-green-600" : "text-red-600"}`}>
             {revenueChange > 0 ? "+" : ""}
             {revenueChange.toFixed(1)}%
           </div>
-          <div className="mt-2 text-xs text-slate-400">${(projectedRevenue / 1_000_000).toFixed(2)}M projected</div>
+          <div className="mt-2 text-xs text-gray-500">${(projectedRevenue / 1_000_000).toFixed(2)}M projected</div>
         </div>
 
         {/* Margin Change */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 hover:scale-105 transition-transform">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 hover:scale-105 transition-transform shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-sm">Margin Change</span>
-            <svg className="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <span className="text-gray-500 text-sm">Margin Change</span>
+            <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
           </div>
-          <div className={`text-3xl font-bold ${marginChange > 0 ? "text-green-400" : "text-red-400"}`}>
+          <div className={`text-3xl font-bold ${marginChange > 0 ? "text-green-600" : "text-red-600"}`}>
             {marginChange > 0 ? "+" : ""}
             {marginChange.toFixed(1)} pts
           </div>
-          <div className="mt-2 text-xs text-slate-400">{(results.key_metrics?.avg_margin || 0).toFixed(1)}% avg margin</div>
+          <div className="mt-2 text-xs text-gray-500">{(results.key_metrics?.avg_margin || 0).toFixed(1)}% avg margin</div>
         </div>
 
         {/* NPV */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 hover:scale-105 transition-transform">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 hover:scale-105 transition-transform shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-sm">Net Present Value</span>
-            <svg className="h-5 w-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <span className="text-gray-500 text-sm">Net Present Value</span>
+            <svg className="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <div className={`text-3xl font-bold ${(results.key_metrics?.npv || 0) > 0 ? "text-green-400" : "text-red-400"}`}>
+          <div className={`text-3xl font-bold ${(results.key_metrics?.npv || 0) > 0 ? "text-green-600" : "text-red-600"}`}>
             ${((results.key_metrics?.npv || 0) / 1_000_000).toFixed(2)}M
           </div>
-          <div className="mt-2 text-xs text-slate-400">{(results.key_metrics?.roi || 0).toFixed(1)}% ROI</div>
+          <div className="mt-2 text-xs text-gray-500">{(results.key_metrics?.roi || 0).toFixed(1)}% ROI</div>
         </div>
 
         {/* Risk */}
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 hover:scale-105 transition-transform">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 hover:scale-105 transition-transform shadow-sm">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-400 text-sm">Risk Assessment</span>
+            <span className="text-gray-500 text-sm">Risk Assessment</span>
             <svg
               className={`h-5 w-5 ${getRiskColor(results.key_metrics?.risk_level || "MODERATE")}`}
               fill="none"
@@ -204,7 +204,7 @@ const SimulationResultsDisplay: React.FC<{
           <div className={`text-2xl font-bold ${getRiskColor(results.key_metrics?.risk_level || "MODERATE")}`}>
             {results.key_metrics?.risk_level || "MODERATE"}
           </div>
-          <div className="mt-2 text-xs text-slate-400">
+          <div className="mt-2 text-xs text-gray-500">
             {(results.key_metrics?.probability_of_success || 0)}% success rate
           </div>
         </div>
@@ -212,12 +212,12 @@ const SimulationResultsDisplay: React.FC<{
 
       {/* Revenue Projection Bars */}
       {results.simulated_forecast_data && results.simulated_forecast_data.length > 0 && (
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
+        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
-            <svg className="h-5 w-5 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
             </svg>
-            <h3 className="text-lg font-semibold">Revenue Projection</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Revenue Projection</h3>
           </div>
           <div className="relative h-64">
             <div className="flex items-end justify-between h-full gap-2">
@@ -227,17 +227,17 @@ const SimulationResultsDisplay: React.FC<{
                 return (
                   <div key={idx} className="flex-1 flex flex-col items-center gap-2">
                     <div className="relative w-full group">
-                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 rounded px-3 py-2 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                        <div className="font-semibold text-blue-400">${((d.revenue || 0) / 1000).toFixed(0)}K</div>
-                        <div className="text-slate-400">Margin: {(d.gross_margin || 0).toFixed(1)}%</div>
-                        <div className="text-slate-400">Profit: ${((d.net_income || 0) / 1000).toFixed(0)}K</div>
+                      <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-white border border-gray-200 shadow-lg rounded px-3 py-2 text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                        <div className="font-semibold text-blue-600">${((d.revenue || 0) / 1000).toFixed(0)}K</div>
+                        <div className="text-gray-500">Margin: {(d.gross_margin || 0).toFixed(1)}%</div>
+                        <div className="text-gray-500">Profit: ${((d.net_income || 0) / 1000).toFixed(0)}K</div>
                       </div>
                       <div
                         className="w-full bg-gradient-to-t from-blue-600 to-blue-400 rounded-t transition-all hover:from-blue-500 hover:to-blue-300"
                         style={{ height: `${heightPercent}%` }}
                       />
                     </div>
-                    <span className="text-xs text-slate-400 -rotate-45 origin-top-left mt-4">
+                    <span className="text-xs text-gray-500 -rotate-45 origin-top-left mt-4">
                       {d.period_end_date ? new Date(d.period_end_date).toLocaleDateString("en-US", { month: "short" }) : ""}
                     </span>
                   </div>
@@ -250,19 +250,19 @@ const SimulationResultsDisplay: React.FC<{
 
       {/* Impacts */}
       {Array.isArray(results.impacts) && results.impacts.length > 0 && (
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-          <h3 className="text-lg font-semibold mb-4">Key Impacts</h3>
+        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Key Impacts</h3>
           <div className="space-y-3">
             {results.impacts.map((impact: string, idx: number) => (
               <div key={idx} className="flex items-start gap-3 text-sm">
-                <svg className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                   <path
                     fillRule="evenodd"
                     d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                     clipRule="evenodd"
                   />
                 </svg>
-                <span className="text-slate-300">{impact}</span>
+                <span className="text-gray-700">{impact}</span>
               </div>
             ))}
           </div>
@@ -274,15 +274,15 @@ const SimulationResultsDisplay: React.FC<{
         <div
           className={`border rounded-xl p-6 ${
             results.recommendation.includes("PROCEED") && !results.recommendation.includes("CAUTION")
-              ? "bg-green-500/10 border-green-500/30"
+              ? "bg-green-50 border-green-200"
               : results.recommendation.includes("CAUTION")
-              ? "bg-yellow-500/10 border-yellow-500/30"
-              : "bg-red-500/10 border-red-500/30"
+              ? "bg-yellow-50 border-yellow-200"
+              : "bg-red-50 border-red-200"
           }`}
         >
           <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
             {results.recommendation.includes("PROCEED") && !results.recommendation.includes("CAUTION") ? (
-              <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
                   d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
@@ -290,7 +290,7 @@ const SimulationResultsDisplay: React.FC<{
                 />
               </svg>
             ) : (
-              <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
                   d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
@@ -298,60 +298,60 @@ const SimulationResultsDisplay: React.FC<{
                 />
               </svg>
             )}
-            Strategic Recommendation
+            <span className="text-gray-900">Strategic Recommendation</span>
           </h3>
-          <p className="text-slate-300 text-sm leading-relaxed">{results.recommendation}</p>
+          <p className="text-gray-700 text-sm leading-relaxed">{results.recommendation}</p>
         </div>
       )}
 
       {/* Comparison Table */}
-      <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6">
-        <h3 className="text-lg font-semibold mb-4">Before vs. After Comparison</h3>
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Before vs. After Comparison</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-700">
-                <th className="text-left py-3 px-4 text-slate-400 font-medium">Metric</th>
-                <th className="text-right py-3 px-4 text-slate-400 font-medium">Baseline</th>
-                <th className="text-right py-3 px-4 text-slate-400 font-medium">Projected</th>
-                <th className="text-right py-3 px-4 text-slate-400 font-medium">Change</th>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-3 px-4 text-gray-500 font-medium">Metric</th>
+                <th className="text-right py-3 px-4 text-gray-500 font-medium">Baseline</th>
+                <th className="text-right py-3 px-4 text-gray-500 font-medium">Projected</th>
+                <th className="text-right py-3 px-4 text-gray-500 font-medium">Change</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-slate-700/50">
-                <td className="py-3 px-4">Annual Revenue</td>
-                <td className="text-right py-3 px-4 text-slate-300">
+              <tr className="border-b border-gray-100">
+                <td className="py-3 px-4 text-gray-800">Annual Revenue</td>
+                <td className="text-right py-3 px-4 text-gray-700">
                   ${(baselineRevenue / 1_000_000).toFixed(2)}M
                 </td>
-                <td className="text-right py-3 px-4 text-slate-300">
+                <td className="text-right py-3 px-4 text-gray-700">
                   ${(projectedRevenue / 1_000_000).toFixed(2)}M
                 </td>
                 <td className="text-right py-3 px-4">
-                  <span className={`font-semibold ${revenueChange > 0 ? "text-green-400" : "text-red-400"}`}>
+                  <span className={`font-semibold ${revenueChange > 0 ? "text-green-600" : "text-red-600"}`}>
                     {revenueChange > 0 ? "+" : ""}
                     {revenueChange.toFixed(1)}%
                   </span>
                 </td>
               </tr>
-              <tr className="border-b border-slate-700/50">
-                <td className="py-3 px-4">Gross Margin</td>
-                <td className="text-right py-3 px-4 text-slate-300">{baselineMargin.toFixed(1)}%</td>
-                <td className="text-right py-3 px-4 text-slate-300">
+              <tr className="border-b border-gray-100">
+                <td className="py-3 px-4 text-gray-800">Gross Margin</td>
+                <td className="text-right py-3 px-4 text-gray-700">{baselineMargin.toFixed(1)}%</td>
+                <td className="text-right py-3 px-4 text-gray-700">
                   {(results.key_metrics?.avg_margin || 0).toFixed(1)}%
                 </td>
                 <td className="text-right py-3 px-4">
-                  <span className={`font-semibold ${marginChange > 0 ? "text-green-400" : "text-red-400"}`}>
+                  <span className={`font-semibold ${marginChange > 0 ? "text-green-600" : "text-red-600"}`}>
                     {marginChange > 0 ? "+" : ""}
                     {marginChange.toFixed(1)} pts
                   </span>
                 </td>
               </tr>
               <tr>
-                <td className="py-3 px-4">ROI</td>
-                <td className="text-right py-3 px-4 text-slate-300">-</td>
-                <td className="text-right py-3 px-4 text-slate-300">{(results.key_metrics?.roi || 0).toFixed(1)}%</td>
+                <td className="py-3 px-4 text-gray-800">ROI</td>
+                <td className="text-right py-3 px-4 text-gray-700">-</td>
+                <td className="text-right py-3 px-4 text-gray-700">{(results.key_metrics?.roi || 0).toFixed(1)}%</td>
                 <td className="text-right py-3 px-4">
-                  <span className="font-semibold text-green-400">New</span>
+                  <span className="font-semibold text-green-600">New</span>
                 </td>
               </tr>
             </tbody>
@@ -367,22 +367,22 @@ const RoleBasedAnalysisSelector: React.FC<{ selectedRole: string; onRoleChange: 
   selectedRole,
   onRoleChange,
 }) => (
-  <div className="bg-gray-800/50 p-4 rounded-lg mb-4">
-    <label className="block text-sm font-medium text-gray-300 mb-2">
-      <SparklesIcon className="inline h-4 w-4 mr-1" />
+  <div className="bg-white p-4 rounded-lg mb-4 shadow-sm border border-gray-200">
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      <SparklesIcon className="inline h-4 w-4 mr-1 text-indigo-600" />
       Analysis Detail Level
     </label>
     <select
       value={selectedRole}
       onChange={(e) => onRoleChange(e.target.value)}
-      className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+      className="w-full bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
     >
       <option value="executive">Executive Summary - Strategic insights for leadership</option>
       <option value="manager">Management Analysis - Operational insights for managers</option>
       <option value="accountant">Financial Analysis - Detailed financial metrics</option>
       <option value="bookkeeper">Transaction Analysis - Data quality and records focus</option>
     </select>
-    <p className="text-xs text-gray-400 mt-1">Choose your role for tailored insights and recommendations</p>
+    <p className="text-xs text-gray-500 mt-1">Choose your role for tailored insights and recommendations</p>
   </div>
 );
 
@@ -421,8 +421,8 @@ const InteractiveChart: React.FC<{ chartData: any[]; type?: string }> = ({ chart
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-gray-800 p-3 rounded-lg border border-gray-600 shadow-xl">
-          <p className="text-white font-medium mb-2">{label}</p>
+        <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-xl">
+          <p className="text-gray-900 font-medium mb-2">{label}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} style={{ color: entry.color }} className="text-sm">
               {`${entry.dataKey.replace("_", " ")}: ${entry.value?.toLocaleString("en-US", {
@@ -445,7 +445,7 @@ const InteractiveChart: React.FC<{ chartData: any[]; type?: string }> = ({ chart
             key={metric}
             onClick={() => setActiveMetric(metric)}
             className={`px-3 py-1 rounded-full text-sm transition-all ${
-              activeMetric === metric ? "bg-indigo-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+              activeMetric === metric ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             {metric === "comparison" ? "COMPARISON VIEW" : metric.replace("_", " ").toUpperCase()}
@@ -456,9 +456,9 @@ const InteractiveChart: React.FC<{ chartData: any[]; type?: string }> = ({ chart
       <div className="h-[400px]">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.1} />
-            <XAxis dataKey="date" stroke="#9ca3af" />
-            <YAxis stroke="#9ca3af" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+            <XAxis dataKey="date" stroke="#6b7280" />
+            <YAxis stroke="#6b7280" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
 
@@ -502,7 +502,7 @@ const InteractiveChart: React.FC<{ chartData: any[]; type?: string }> = ({ chart
         </ResponsiveContainer>
       </div>
 
-      <div className="text-xs text-gray-400 text-center">
+      <div className="text-xs text-gray-500 text-center">
         Dashed lines = Baseline forecast | Solid lines = Simulated results | Bars = Delta (difference)
       </div>
     </div>
@@ -814,339 +814,337 @@ export default function ActionsHubPage() {
 
   const anyScenarioSelected = Object.values(activeSimulations).some(Boolean);
 
+  // Return content directly, layout handles the rest
   return (
     <>
-      <AppSidebar />
-      <div className="ml-64 min-h-screen bg-gray-50">
-        <div className="p-4 md:p-8">
-          <header className="text-center mb-8">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">Actions Hub</h1>
-            <p className="text-gray-400 mt-2 text-lg">AI-powered business simulations with advanced analytics</p>
-          </header>
+      <div className="p-4 md:p-8">
+        <header className="text-center mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Actions Hub</h1>
+          <p className="text-gray-500 mt-2 text-lg">AI-powered business simulations with advanced analytics</p>
+        </header>
 
-          {/* Tabs */}
-          <div className="flex border-b border-gray-700 mb-8 justify-center space-x-6">
-            <button
-              className={`flex items-center px-6 py-3 text-lg rounded-t-lg transition-all ${
-                activeView === "workflows"
-                  ? "bg-gradient-to-r from-indigo-600 to-purple-600 font-bold text-white shadow-lg"
-                  : "text-gray-400 hover:text-white hover:bg-gray-800"
-              }`}
-              onClick={() => setActiveView("workflows")}
-            >
-              <BoltIcon /> Workflows
-            </button>
-            <button
-              className={`flex items-center px-6 py-3 text-lg rounded-t-lg transition-all ${
-                activeView === "simulations"
-                  ? "bg-gradient-to-r from-indigo-600 to-purple-600 font-bold text-white shadow-lg"
-                  : "text-gray-400 hover:text-white hover:bg-gray-800"
-              }`}
-              onClick={() => setActiveView("simulations")}
-            >
-              <BeakerIcon /> Smart Simulations
-            </button>
-          </div>
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200 mb-8 justify-center space-x-6">
+          <button
+            className={`flex items-center px-6 py-3 text-lg transition-all ${
+              activeView === "workflows"
+                ? "border-b-2 border-indigo-600 font-bold text-indigo-600"
+                : "text-gray-500 hover:text-gray-900"
+            }`}
+            onClick={() => setActiveView("workflows")}
+          >
+            <BoltIcon /> Workflows
+          </button>
+          <button
+            className={`flex items-center px-6 py-3 text-lg transition-all ${
+              activeView === "simulations"
+                ? "border-b-2 border-indigo-600 font-bold text-indigo-600"
+                : "text-gray-500 hover:text-gray-900"
+            }`}
+            onClick={() => setActiveView("simulations")}
+          >
+            <BeakerIcon /> Smart Simulations
+          </button>
+        </div>
 
-          {/* Simulations */}
-          {activeView === "simulations" && (
-            <div className="animate-fade-in max-w-6xl mx-auto space-y-8">
-              {/* Role Selection */}
-              <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700">
-                <RoleBasedAnalysisSelector selectedRole={selectedRole} onRoleChange={setSelectedRole} />
+        {/* Simulations */}
+        {activeView === "simulations" && (
+          <div className="animate-fade-in max-w-6xl mx-auto space-y-8">
+            {/* Role Selection */}
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+              <RoleBasedAnalysisSelector selectedRole={selectedRole} onRoleChange={setSelectedRole} />
+            </div>
+
+            {/* Scenario Selection */}
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+              <h2 className="text-xl font-bold mb-4 flex items-center text-gray-900">
+                <SparklesIcon className="mr-2 h-5 w-5 text-indigo-600" />
+                1. Select Scenarios to Analyze
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {SCENARIOS.map((scenario) => (
+                  <ScenarioCheckbox
+                    key={scenario.key}
+                    scenario={scenario}
+                    isChecked={activeSimulations[scenario.key]}
+                    onChange={() => toggleSimulation(scenario.key)}
+                    isRecommended={!!smartSuggestions?.suggestions?.[scenario.key]?.rationale}
+                    suggestion={smartSuggestions?.suggestions?.[scenario.key]?.rationale}
+                  />
+                ))}
               </div>
+            </div>
 
-              {/* Scenario Selection */}
-              <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700">
-                <h2 className="text-xl font-bold mb-4 flex items-center">
-                  <SparklesIcon className="mr-2 h-5 w-5" />
-                  1. Select Scenarios to Analyze
-                </h2>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {SCENARIOS.map((scenario) => (
-                    <ScenarioCheckbox
-                      key={scenario.key}
-                      scenario={scenario}
-                      isChecked={activeSimulations[scenario.key]}
-                      onChange={() => toggleSimulation(scenario.key)}
-                      isRecommended={!!smartSuggestions?.suggestions?.[scenario.key]?.rationale}
-                      suggestion={smartSuggestions?.suggestions?.[scenario.key]?.rationale}
-                    />
-                  ))}
+            {/* Parameters */}
+            {anyScenarioSelected && (
+              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold flex items-center text-gray-900">
+                    <SparklesIcon className="mr-2 text-indigo-600" />
+                    2. AI-Optimized Parameters
+                  </h2>
+                  <button
+                    onClick={() => setShowAdvanced(!showAdvanced)}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+                  >
+                    {showAdvanced ? "Hide Advanced" : "Show Advanced"}
+                  </button>
                 </div>
-              </div>
 
-              {/* Parameters */}
-              {anyScenarioSelected && (
-                <div className="bg-gray-800/50 backdrop-blur-sm p-4 rounded-xl border border-gray-700">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold flex items-center">
-                      <SparklesIcon className="mr-2" />
-                      2. AI-Optimized Parameters
-                    </h2>
-                    <button
-                      onClick={() => setShowAdvanced(!showAdvanced)}
-                      className="px-4 py-2 bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
-                    >
-                      {showAdvanced ? "Hide Advanced" : "Show Advanced"}
-                    </button>
-                  </div>
-
-                  {/* Suggestions */}
-                  {smartSuggestions && (
-                    <div className="bg-blue-900/20 border border-blue-500/20 rounded-lg p-4 mb-6">
-                      <h3 className="font-semibold text-blue-400 mb-2">
-                        <SparklesIcon className="inline h-4 w-4 mr-1" />
-                        AI Recommendations:
-                      </h3>
-                      <div className="space-y-2 text-sm">
-                        {Object.entries(smartSuggestions.suggestions || {}).map(([key, suggestion]: any) => (
-                          <div key={key} className="text-gray-300 bg-gray-800/30 p-2 rounded">
-                            <span className="font-medium text-blue-400">{String(key).replace("_", " ")}:</span>{" "}
-                            {suggestion?.rationale}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Inputs */}
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {Object.keys(activeSimulations)
-                      .filter((key) => activeSimulations[key as SimKey])
-                      .map((scenarioType) => (
-                        <div key={scenarioType} className="bg-gray-900/50 p-4 rounded-lg">
-                          <h3 className="font-semibold mb-3 capitalize text-indigo-400">{scenarioType.replace("_", " ")} Parameters</h3>
-
-                          {scenarioType === "hiring" && (
-                            <div className="space-y-3">
-                              <LabeledNumber name="newHires" label="New Hires" value={simulationParams.newHires} onChange={handleSimParamChange} />
-                              <LabeledNumber name="avgSalary" label="Average Salary ($)" value={simulationParams.avgSalary} onChange={handleSimParamChange} />
-                            </div>
-                          )}
-
-                          {scenarioType === "lose_customer" && (
-                            <LabeledNumber
-                              name="customerRevenueLoss"
-                              label="Monthly Revenue Loss ($)"
-                              value={simulationParams.customerRevenueLoss}
-                              onChange={handleSimParamChange}
-                            />
-                          )}
-
-                          {scenarioType === "marketing_spend" && (
-                            <LabeledNumber
-                              name="marketingSpendIncrease"
-                              label="Additional Monthly Marketing Spend ($)"
-                              value={simulationParams.marketingSpendIncrease}
-                              onChange={handleSimParamChange}
-                            />
-                          )}
-
-                          {scenarioType === "supply_cost_spike" && (
-                            <LabeledNumber
-                              name="supplyCostIncrease"
-                              label="Cost Increase Percentage (%)"
-                              value={simulationParams.supplyCostIncrease}
-                              onChange={handleSimParamChange}
-                            />
-                          )}
-
-                          {scenarioType === "pricing_change" && (
-                            <LabeledNumber
-                              name="priceChangePercentage"
-                              label="Price Change Percentage (%)"
-                              value={simulationParams.priceChangePercentage}
-                              onChange={handleSimParamChange}
-                            />
-                          )}
-
-                          {scenarioType === "cogs_reduction" && (
-                            <LabeledNumber
-                              name="cogsReductionPercentage"
-                              label="COGS Reduction Percentage (%)"
-                              value={simulationParams.cogsReductionPercentage}
-                              onChange={handleSimParamChange}
-                            />
-                          )}
-
-                          {scenarioType === "new_product_launch" && (
-                            <div className="space-y-3">
-                              <LabeledNumber name="newProductRevenue" label="Monthly Revenue ($)" value={simulationParams.newProductRevenue} onChange={handleSimParamChange} />
-                              <LabeledNumber name="newProductCOGS" label="Monthly COGS ($)" value={simulationParams.newProductCOGS} onChange={handleSimParamChange} />
-                            </div>
-                          )}
-
-                          {scenarioType === "automation" && (
-                            <div className="space-y-3">
-                              <LabeledNumber
-                                name="laborCostReduction"
-                                label="Annual Labor Cost Reduction ($)"
-                                value={simulationParams.laborCostReduction}
-                                onChange={handleSimParamChange}
-                              />
-                              <LabeledNumber
-                                name="technologyInvestment"
-                                label="Technology Investment ($)"
-                                value={simulationParams.technologyInvestment}
-                                onChange={handleSimParamChange}
-                              />
-                              <LabeledNumber
-                                name="efficiencyGainPercentage"
-                                label="Efficiency Gain (%)"
-                                value={simulationParams.efficiencyGainPercentage}
-                                onChange={handleSimParamChange}
-                              />
-                            </div>
-                          )}
-
-                          {scenarioType === "tax_optimization" && (
-                            <div className="space-y-3">
-                              <LabeledNumber
-                                name="taxSavingsPercentage"
-                                label="Tax Savings Percentage (%)"
-                                value={simulationParams.taxSavingsPercentage}
-                                onChange={handleSimParamChange}
-                              />
-                              <LabeledNumber
-                                name="implementationCost"
-                                label="Implementation Cost ($)"
-                                value={simulationParams.implementationCost}
-                                onChange={handleSimParamChange}
-                              />
-                            </div>
-                          )}
-
-                          {scenarioType === "seasonality" && (
-                            <div className="space-y-3">
-                              <LabeledNumber
-                                name="seasonalBoostPercentage"
-                                label="Seasonal Boost Percentage (%)"
-                                value={simulationParams.seasonalBoostPercentage}
-                                onChange={handleSimParamChange}
-                              />
-                              <LabeledNumber
-                                name="durationMonths"
-                                label="Duration (Months)"
-                                value={simulationParams.durationMonths}
-                                onChange={handleSimParamChange}
-                              />
-                            </div>
-                          )}
-
-                          {scenarioType === "market_expansion" && (
-                            <div className="space-y-3">
-                              <LabeledNumber
-                                name="newMarketRevenue"
-                                label="New Market Revenue ($)"
-                                value={simulationParams.newMarketRevenue}
-                                onChange={handleSimParamChange}
-                              />
-                              <LabeledNumber
-                                name="expansionCosts"
-                                label="Expansion Costs ($)"
-                                value={simulationParams.expansionCosts}
-                                onChange={handleSimParamChange}
-                              />
-                              <LabeledNumber
-                                name="rampUpMonths"
-                                label="Ramp Up Months"
-                                value={simulationParams.rampUpMonths}
-                                onChange={handleSimParamChange}
-                              />
-                            </div>
-                          )}
+                {/* Suggestions */}
+                {smartSuggestions && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                    <h3 className="font-semibold text-blue-700 mb-2">
+                      <SparklesIcon className="inline h-4 w-4 mr-1" />
+                      AI Recommendations:
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      {Object.entries(smartSuggestions.suggestions || {}).map(([key, suggestion]: any) => (
+                        <div key={key} className="text-gray-700 bg-white p-2 rounded border border-blue-100">
+                          <span className="font-medium text-blue-600">{String(key).replace("_", " ")}:</span>{" "}
+                          {suggestion?.rationale}
                         </div>
                       ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Run Button */}
-              <div className="text-center">
-                <button
-                  onClick={runSimulation}
-                  disabled={!anyScenarioSelected || isLoading}
-                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl flex items-center justify-center mx-auto transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-xl"
-                >
-                  {isLoading ? (
-                    <>
-                      <LoadingSpinner />
-                      <span className="ml-2">Running AI Analysis...</span>
-                    </>
-                  ) : (
-                    <>
-                      <SparklesIcon className="mr-2" />
-                      Run Advanced Simulation
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Error */}
-              {error && (
-                <div className="bg-red-900/50 border border-red-500/50 text-red-200 p-4 rounded-xl text-center backdrop-blur-sm">
-                  <strong>Simulation Error:</strong> {error}
-                </div>
-              )}
-
-              {/* Results & Chart */}
-              {simulationResult && (
-                <>
-                  <SimulationResultsDisplay results={simulationResult} baselineData={analysisDataLocal} />
-
-                  {chartData.length > 0 && (
-                    <div className="bg-gray-800/50 backdrop-blur-sm p-6 rounded-xl border border-gray-700">
-                      <h3 className="text-xl font-bold mb-4">Interactive Forecast Comparison</h3>
-                      <InteractiveChart chartData={chartData} />
                     </div>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex flex-wrap gap-4 justify-center">
-                    <button
-                      onClick={handleGoToAdvisor}
-                      className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-all transform hover:scale-105 shadow-lg"
-                    >
-                      Open in Strategic Advisor
-                    </button>
-                    <button
-                      onClick={handleExport}
-                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg font-medium transition-all transform hover:scale-105 shadow-lg"
-                    >
-                      Export Analysis
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setSimulationResult(null);
-                        setActiveSimulations({
-                          lose_customer: false,
-                          marketing_spend: false,
-                          hiring: false,
-                          supply_cost_spike: false,
-                          pricing_change: false,
-                          cogs_reduction: false,
-                          new_product_launch: false,
-                          automation: false,
-                          tax_optimization: false,
-                          seasonality: false,
-                          market_expansion: false,
-                        });
-                        setSmartSuggestions(null);
-                        setError("");
-                      }}
-                      className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium transition-all"
-                    >
-                      Reset Simulation
-                    </button>
                   </div>
-                </>
-              )}
+                )}
+
+                {/* Inputs */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {Object.keys(activeSimulations)
+                    .filter((key) => activeSimulations[key as SimKey])
+                    .map((scenarioType) => (
+                      <div key={scenarioType} className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
+                        <h3 className="font-semibold mb-3 capitalize text-indigo-600">{scenarioType.replace("_", " ")} Parameters</h3>
+
+                        {scenarioType === "hiring" && (
+                          <div className="space-y-3">
+                            <LabeledNumber name="newHires" label="New Hires" value={simulationParams.newHires} onChange={handleSimParamChange} />
+                            <LabeledNumber name="avgSalary" label="Average Salary ($)" value={simulationParams.avgSalary} onChange={handleSimParamChange} />
+                          </div>
+                        )}
+
+                        {scenarioType === "lose_customer" && (
+                          <LabeledNumber
+                            name="customerRevenueLoss"
+                            label="Monthly Revenue Loss ($)"
+                            value={simulationParams.customerRevenueLoss}
+                            onChange={handleSimParamChange}
+                          />
+                        )}
+
+                        {scenarioType === "marketing_spend" && (
+                          <LabeledNumber
+                            name="marketingSpendIncrease"
+                            label="Additional Monthly Marketing Spend ($)"
+                            value={simulationParams.marketingSpendIncrease}
+                            onChange={handleSimParamChange}
+                          />
+                        )}
+
+                        {scenarioType === "supply_cost_spike" && (
+                          <LabeledNumber
+                            name="supplyCostIncrease"
+                            label="Cost Increase Percentage (%)"
+                            value={simulationParams.supplyCostIncrease}
+                            onChange={handleSimParamChange}
+                          />
+                        )}
+
+                        {scenarioType === "pricing_change" && (
+                          <LabeledNumber
+                            name="priceChangePercentage"
+                            label="Price Change Percentage (%)"
+                            value={simulationParams.priceChangePercentage}
+                            onChange={handleSimParamChange}
+                          />
+                        )}
+
+                        {scenarioType === "cogs_reduction" && (
+                          <LabeledNumber
+                            name="cogsReductionPercentage"
+                            label="COGS Reduction Percentage (%)"
+                            value={simulationParams.cogsReductionPercentage}
+                            onChange={handleSimParamChange}
+                          />
+                        )}
+
+                        {scenarioType === "new_product_launch" && (
+                          <div className="space-y-3">
+                            <LabeledNumber name="newProductRevenue" label="Monthly Revenue ($)" value={simulationParams.newProductRevenue} onChange={handleSimParamChange} />
+                            <LabeledNumber name="newProductCOGS" label="Monthly COGS ($)" value={simulationParams.newProductCOGS} onChange={handleSimParamChange} />
+                          </div>
+                        )}
+
+                        {scenarioType === "automation" && (
+                          <div className="space-y-3">
+                            <LabeledNumber
+                              name="laborCostReduction"
+                              label="Annual Labor Cost Reduction ($)"
+                              value={simulationParams.laborCostReduction}
+                              onChange={handleSimParamChange}
+                            />
+                            <LabeledNumber
+                              name="technologyInvestment"
+                              label="Technology Investment ($)"
+                              value={simulationParams.technologyInvestment}
+                              onChange={handleSimParamChange}
+                            />
+                            <LabeledNumber
+                              name="efficiencyGainPercentage"
+                              label="Efficiency Gain (%)"
+                              value={simulationParams.efficiencyGainPercentage}
+                              onChange={handleSimParamChange}
+                            />
+                          </div>
+                        )}
+
+                        {scenarioType === "tax_optimization" && (
+                          <div className="space-y-3">
+                            <LabeledNumber
+                              name="taxSavingsPercentage"
+                              label="Tax Savings Percentage (%)"
+                              value={simulationParams.taxSavingsPercentage}
+                              onChange={handleSimParamChange}
+                            />
+                            <LabeledNumber
+                              name="implementationCost"
+                              label="Implementation Cost ($)"
+                              value={simulationParams.implementationCost}
+                              onChange={handleSimParamChange}
+                            />
+                          </div>
+                        )}
+
+                        {scenarioType === "seasonality" && (
+                          <div className="space-y-3">
+                            <LabeledNumber
+                              name="seasonalBoostPercentage"
+                              label="Seasonal Boost Percentage (%)"
+                              value={simulationParams.seasonalBoostPercentage}
+                              onChange={handleSimParamChange}
+                            />
+                            <LabeledNumber
+                              name="durationMonths"
+                              label="Duration (Months)"
+                              value={simulationParams.durationMonths}
+                              onChange={handleSimParamChange}
+                            />
+                          </div>
+                        )}
+
+                        {scenarioType === "market_expansion" && (
+                          <div className="space-y-3">
+                            <LabeledNumber
+                              name="newMarketRevenue"
+                              label="New Market Revenue ($)"
+                              value={simulationParams.newMarketRevenue}
+                              onChange={handleSimParamChange}
+                            />
+                            <LabeledNumber
+                              name="expansionCosts"
+                              label="Expansion Costs ($)"
+                              value={simulationParams.expansionCosts}
+                              onChange={handleSimParamChange}
+                            />
+                            <LabeledNumber
+                              name="rampUpMonths"
+                              label="Ramp Up Months"
+                              value={simulationParams.rampUpMonths}
+                              onChange={handleSimParamChange}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Run Button */}
+            <div className="text-center">
+              <button
+                onClick={runSimulation}
+                disabled={!anyScenarioSelected || isLoading}
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 px-8 rounded-xl flex items-center justify-center mx-auto transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
+              >
+                {isLoading ? (
+                  <>
+                    <LoadingSpinner />
+                    <span className="ml-2">Running AI Analysis...</span>
+                  </>
+                ) : (
+                  <>
+                    <SparklesIcon className="mr-2" />
+                    Run Advanced Simulation
+                  </>
+                )}
+              </button>
             </div>
-          )} {/* ← closes the conditional correctly */}
-        </div>
+
+            {/* Error */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl text-center">
+                <strong>Simulation Error:</strong> {error}
+              </div>
+            )}
+
+            {/* Results & Chart */}
+            {simulationResult && (
+              <>
+                <SimulationResultsDisplay results={simulationResult} baselineData={analysisDataLocal} />
+
+                {chartData.length > 0 && (
+                  <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 className="text-xl font-bold text-gray-900 mb-4">Interactive Forecast Comparison</h3>
+                    <InteractiveChart chartData={chartData} />
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex flex-wrap gap-4 justify-center">
+                  <button
+                    onClick={handleGoToAdvisor}
+                    className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-all transform hover:scale-105 shadow-lg"
+                  >
+                    Open in Strategic Advisor
+                  </button>
+                  <button
+                    onClick={handleExport}
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-lg font-medium transition-all transform hover:scale-105 shadow-lg"
+                  >
+                    Export Analysis
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setSimulationResult(null);
+                      setActiveSimulations({
+                        lose_customer: false,
+                        marketing_spend: false,
+                        hiring: false,
+                        supply_cost_spike: false,
+                        pricing_change: false,
+                        cogs_reduction: false,
+                        new_product_launch: false,
+                        automation: false,
+                        tax_optimization: false,
+                        seasonality: false,
+                        market_expansion: false,
+                      });
+                      setSmartSuggestions(null);
+                      setError("");
+                    }}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-medium transition-all"
+                  >
+                    Reset Simulation
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </>
   );
@@ -1166,13 +1164,13 @@ function LabeledNumber({
 }) {
   return (
     <div>
-      <label className="block text-sm text-gray-400 mb-1">{label}</label>
+      <label className="block text-sm text-gray-500 mb-1">{label}</label>
       <input
         type="number"
         name={name}
         value={value}
         onChange={onChange}
-        className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-indigo-500"
+        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-indigo-500"
       />
     </div>
   );
