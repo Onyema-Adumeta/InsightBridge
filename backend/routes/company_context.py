@@ -4,7 +4,7 @@ from typing import List, Optional
 from database import get_db_connection
 import json
 import logging
-from auth import get_current_user_id  # Use your existing auth
+from routes.auth import get_current_user_id  
 
 logger = logging.getLogger(__name__)
 
