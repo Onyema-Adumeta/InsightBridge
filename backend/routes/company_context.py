@@ -4,7 +4,7 @@ from typing import List, Optional
 from database import get_db_connection
 import json
 import logging
-from routes.auth import get_current_user_id  
+from .auth import get_current_user_id  # ✅ Import from same directory (routes/)
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,6 @@ async def get_company_context(
         }
         
     except HTTPException:
-        # Re-raise auth errors
         raise
     except Exception as e:
         logger.error(f"❌ Error fetching company context: {str(e)}")
@@ -98,49 +97,32 @@ async def save_company_context(
     Save company context for the authenticated user
     """
     try:
-        # Get authenticated user ID using your existing auth
         user_id = await get_current_user_id(request, authorization)
         logger.info(f"💾 Saving company context for user: {user_id}")
         
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Check if context exists for this user
         cursor.execute("SELECT id FROM company_context WHERE user_id = ?", (user_id,))
         existing = cursor.fetchone()
         
         preferred_metrics_json = json.dumps(context.preferredMetrics)
         
         if existing:
-            # Update existing record
             logger.info(f"🔄 Updating existing company context for user: {user_id}")
             cursor.execute("""
                 UPDATE company_context
-                SET company_name = ?,
-                    industry = ?,
-                    sub_industry = ?,
-                    company_size = ?,
-                    revenue_range = ?,
-                    growth_stage = ?,
-                    geography = ?,
-                    fiscal_year_end = ?,
-                    compare_to_industry = ?,
-                    compare_to_size = ?,
-                    compare_to_stage = ?,
-                    compare_to_region = ?,
-                    preferred_metrics = ?,
-                    auto_enrich = ?,
-                    smart_suggestions = ?
+                SET company_name = ?, industry = ?, sub_industry = ?,
+                    company_size = ?, revenue_range = ?, growth_stage = ?,
+                    geography = ?, fiscal_year_end = ?,
+                    compare_to_industry = ?, compare_to_size = ?,
+                    compare_to_stage = ?, compare_to_region = ?,
+                    preferred_metrics = ?, auto_enrich = ?, smart_suggestions = ?
                 WHERE user_id = ?
             """, (
-                context.companyName,
-                context.industry,
-                context.subIndustry,
-                context.companySize,
-                context.revenue,
-                context.stage,
-                context.geography,
-                context.fiscalYearEnd,
+                context.companyName, context.industry, context.subIndustry,
+                context.companySize, context.revenue, context.stage,
+                context.geography, context.fiscalYearEnd,
                 1 if context.compareToIndustry else 0,
                 1 if context.compareToSize else 0,
                 1 if context.compareToStage else 0,
@@ -151,26 +133,19 @@ async def save_company_context(
                 user_id
             ))
         else:
-            # Insert new record
             logger.info(f"➕ Creating new company context for user: {user_id}")
             cursor.execute("""
                 INSERT INTO company_context (
                     user_id, company_name, industry, sub_industry, company_size,
                     revenue_range, growth_stage, geography, fiscal_year_end,
-                    compare_to_industry, compare_to_size, compare_to_stage, compare_to_region,
-                    preferred_metrics, auto_enrich, smart_suggestions
+                    compare_to_industry, compare_to_size, compare_to_stage,
+                    compare_to_region, preferred_metrics, auto_enrich, smart_suggestions
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
-                user_id,
-                context.companyName,
-                context.industry,
-                context.subIndustry,
-                context.companySize,
-                context.revenue,
-                context.stage,
-                context.geography,
-                context.fiscalYearEnd,
+                user_id, context.companyName, context.industry, context.subIndustry,
+                context.companySize, context.revenue, context.stage,
+                context.geography, context.fiscalYearEnd,
                 1 if context.compareToIndustry else 0,
                 1 if context.compareToSize else 0,
                 1 if context.compareToStage else 0,
@@ -187,11 +162,9 @@ async def save_company_context(
         return {'success': True, 'message': 'Company context saved successfully'}
         
     except HTTPException:
-        # Re-raise auth errors
         raise
     except Exception as e:
         logger.error(f"❌ Error saving company context: {str(e)}")
-        logger.error(f"Failed to execute query. Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to execute query. Error: {str(e)}")
 
 # Delete company context
@@ -204,7 +177,6 @@ async def delete_company_context(
     Delete company context for the authenticated user
     """
     try:
-        # Get authenticated user ID using your existing auth
         user_id = await get_current_user_id(request, authorization)
         logger.info(f"🗑️ Deleting company context for user: {user_id}")
         
@@ -212,7 +184,6 @@ async def delete_company_context(
         cursor = conn.cursor()
         
         cursor.execute("DELETE FROM company_context WHERE user_id = ?", (user_id,))
-        
         conn.commit()
         conn.close()
         
@@ -220,7 +191,6 @@ async def delete_company_context(
         return {'success': True, 'message': 'Company context deleted successfully'}
         
     except HTTPException:
-        # Re-raise auth errors
         raise
     except Exception as e:
         logger.error(f"❌ Error deleting company context: {str(e)}")
