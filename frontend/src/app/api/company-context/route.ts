@@ -1,35 +1,80 @@
-import { NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
+// src/app/api/company-context/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 
-export async function POST(request: Request) {
+export async function GET(_req: NextRequest) {
   try {
     const { userId } = auth();
     if (!userId) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
-    const companyContext = await request.json();
+    const user = await clerkClient.users.getUser(userId);
+    const publicMetadata = (user.publicMetadata || {}) as Record<string, any>;
 
-    // --- YOUR LOGIC HERE ---
-    // 1. Save the companyContext data to your own database
-    // await db.company.create({ data: { ...companyContext, userId: userId } });
-    console.log('Saving company context for user:', userId, companyContext);
-    // ------------------------
+    const companyContext = publicMetadata.companyContext ?? null;
+    const companyProfileComplete =
+      publicMetadata.companyProfileComplete === true;
 
+    return NextResponse.json(
+      {
+        success: true,
+        companyContext,
+        companyProfileComplete,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("[company-context GET] Failed to load company context:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
 
-    // --- CLERK LOGIC ---
-    // 2. Set the "companyProfileComplete" flag in Clerk's public metadata
+export async function POST(req: NextRequest) {
+  try {
+    const { userId } = auth();
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const companyContext = await req.json();
+
+    // --- YOUR PERSISTENCE LOGIC (optional / later) ---
+    // Here you could save to your own DB instead of / in addition to Clerk:
+    // await db.companyContext.upsert({ where: { userId }, update: companyContext, create: { ...companyContext, userId } });
+    console.log("[company-context POST] Saving company context for user:", userId, companyContext);
+
+    // Save to Clerk publicMetadata so onboarding / guards can read it
     await clerkClient.users.updateUserMetadata(userId, {
       publicMetadata: {
-        companyProfileComplete: true
-      }
+        companyContext,
+        companyProfileComplete: true,
+      },
     });
-    // -------------------
 
-    return NextResponse.json({ success: true, message: 'Context saved.' });
-
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Context saved.",
+        companyContext,
+        companyProfileComplete: true,
+      },
+      { status: 200 }
+    );
   } catch (error) {
-    console.error('Failed to save company context:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    console.error("[company-context POST] Failed to save company context:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
