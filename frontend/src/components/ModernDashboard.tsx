@@ -543,7 +543,7 @@ export default function ModernDashboard({
   if (!analysisData || (!analysisData.kpiCardData && !analysisData.kpiChartData)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4 sm:p-8">
-        <div className="max-w-2xl w-full text-center">
+        <div className="max-w-4xl w-full mx-auto text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-6 shadow-xl">
             <BarChart3 className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
           </div>
