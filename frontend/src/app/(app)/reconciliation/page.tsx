@@ -1,4 +1,4 @@
-// Create: src/app/(app)/reconciliation/page.tsx
+// src/app/(app)/reconciliation/page.tsx
 
 import { auth } from '@clerk/nextjs/server';
 import AutoReconciliation from '@/components/AutoReconciliation';
@@ -8,9 +8,9 @@ export default async function ReconciliationPage() {
   const { userId } = await auth();
 
   if (!userId) {
-    // ✅ FIX 1: Add layout wrapper and light theme to "Not Signed In" state
+    // Return the "Not Signed In" card directly
     return (
-      <main className="ml-64 flex min-h-screen items-center justify-center bg-gray-50 p-8">
+      <div className="flex h-full w-full items-center justify-center">
         <div className="text-center text-gray-900 max-w-md p-8 bg-white border border-gray-200 rounded-lg shadow">
           <div className="mb-6">
             <Lock className="w-16 h-16 mx-auto text-blue-600" />
@@ -24,14 +24,12 @@ export default async function ReconciliationPage() {
             Sign In
           </a>
         </div>
-      </main>
+      </div>
     );
   }
 
-  // ✅ FIX 2: Apply the correct layout wrapper
+  // Return the component directly
   return (
-    <main className="ml-64 min-h-screen bg-gray-50 p-8">
-      <AutoReconciliation userId={userId} />
-    </main>
+    <AutoReconciliation userId={userId} />
   );
 }

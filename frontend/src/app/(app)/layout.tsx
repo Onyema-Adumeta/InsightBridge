@@ -1,40 +1,34 @@
-"use client";
+// src/app/(app)/layout.tsx
+import { auth, clerkClient } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 
-import { useState } from 'react';
-import { usePathname } from 'next/navigation';
-import AppSidebar from '@/components/AppSidebar';
-import { Menu } from 'lucide-react';
+// 1. Import the new ClientLayout we just made
+import ClientLayout from './ClientLayout';
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const pathname = usePathname();
-
-  // Check if current page is an auth page
-  const isAuthPage = pathname?.startsWith('/sign-in') || pathname?.startsWith('/sign-up');
-
-  // If auth page, render without sidebar layout
-  if (isAuthPage) {
-    return <>{children}</>;
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { userId } = auth();
+  if (!userId) {
+    redirect('/sign-in');
   }
 
+  const user = await clerkClient.users.getUser(userId);
+  const profileComplete = user.publicMetadata?.companyProfileComplete === true;
+  const pathname = headers().get('next-url') || '';
+
+  // 2. This is the new user redirect logic
+  if (!profileComplete && !pathname.startsWith('/settings')) {
+    redirect('/settings');
+  }
+  
+  // 3. Render the ClientLayout, which contains the sidebar and main tag
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setSidebarOpen(true)}
-        className="md:hidden fixed top-4 left-4 z-30 p-2 bg-white rounded-lg shadow-lg hover:bg-gray-100 transition"
-        aria-label="Open menu"
-      >
-        <Menu className="w-6 h-6 text-gray-700" />
-      </button>
-
-      {/* Sidebar with open/close control */}
-      <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      {/* Main Content - NO margin on mobile, margin on desktop */}
-      <main className="flex-1 w-full min-h-screen md:ml-64 pt-16 md:pt-0 px-4 sm:px-6 lg:px-10 py-6 lg:py-10">
-        {children}
-      </main>
-    </div>
+    <ClientLayout>
+      {children}
+    </ClientLayout>
   );
 }
