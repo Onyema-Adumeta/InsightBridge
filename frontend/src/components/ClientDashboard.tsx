@@ -4,15 +4,15 @@
 /* ========= DIAGNOSTIC MOUNT LOG ========= */
 if (typeof window !== "undefined") {
   console.log(
-    "%cClientDashboard V6 PRODUCTION mounted",
+    "%cClientDashboard V7 ENHANCED mounted",
     "color:#10B981;font-weight:bold",
     new Date().toISOString()
   );
 }
 
-import React, { useState, useEffect, Component, ReactNode } from "react";
+import React, { useState, useEffect, Component, ReactNode, useCallback, memo } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw, Wifi, WifiOff } from "lucide-react";
 
 // Import the production-ready dashboard
 import ModernDashboard from "./ModernDashboard";
@@ -45,13 +45,14 @@ interface DynamicClientDashboardProps {
 }
 
 /* =============================================================================
-   ERROR BOUNDARY
+   ERROR BOUNDARY - ENHANCED with better error tracking
 ============================================================================= */
 interface DashboardErrorBoundaryState {
   hasError: boolean;
   error: any;
   errorInfo: any;
   errorId: string | null;
+  errorCount: number;
 }
 
 class DashboardErrorBoundary extends Component<
@@ -60,7 +61,13 @@ class DashboardErrorBoundary extends Component<
 > {
   constructor(props: { children: ReactNode }) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null, errorId: null };
+    this.state = { 
+      hasError: false, 
+      error: null, 
+      errorInfo: null, 
+      errorId: null,
+      errorCount: 0
+    };
   }
 
   static getDerivedStateFromError(error: any) {
@@ -71,33 +78,51 @@ class DashboardErrorBoundary extends Component<
     const ts = new Date().toISOString().slice(0, 19).replace(/[-:]/g, "");
     const rnd = Math.random().toString(36).substr(2, 6);
     const errorId = `ERR_${ts}_${rnd}`.toUpperCase();
-    this.setState({ error, errorInfo, errorId });
+    
+    this.setState(prev => ({ 
+      error, 
+      errorInfo, 
+      errorId,
+      errorCount: prev.errorCount + 1 
+    }));
+
     console.error("Dashboard Error:", {
       errorId,
       error: error?.toString?.(),
       componentStack: errorInfo?.componentStack,
       timestamp: new Date().toISOString(),
+      errorCount: this.state.errorCount + 1,
     });
+
+    // Report to error tracking service (if available)
+    if (typeof window !== 'undefined' && (window as any).reportError) {
+      (window as any).reportError(error, errorInfo);
+    }
   }
 
   handleRetry = () => {
+    // Prevent infinite retry loops
+    if (this.state.errorCount > 5) {
+      alert('Multiple errors detected. Please refresh the page or contact support.');
+      return;
+    }
     this.setState({ hasError: false, error: null, errorInfo: null, errorId: null });
   };
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50">
-          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 max-w-md w-full text-center">
-            <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-600" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Dashboard Error</h2>
-            <p className="text-gray-600 mb-6">
+        <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-gray-50">
+          <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sm:p-8 max-w-md w-full text-center">
+            <AlertCircle className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 text-red-600" />
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Dashboard Error</h2>
+            <p className="text-sm sm:text-base text-gray-600 mb-6">
               We&apos;ve encountered an unexpected error. Our team has been notified.
             </p>
             {this.state.errorId && (
-              <div className="bg-gray-50 rounded-lg p-4 mb-6 border border-gray-200">
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-6 border border-gray-200">
                 <p className="text-xs text-gray-500 mb-1">Error Reference:</p>
-                <code className="text-sm font-mono text-gray-900 font-semibold">
+                <code className="text-xs sm:text-sm font-mono text-gray-900 font-semibold break-all">
                   {this.state.errorId}
                 </code>
               </div>
@@ -105,9 +130,10 @@ class DashboardErrorBoundary extends Component<
             <div className="space-y-3">
               <button
                 onClick={this.handleRetry}
-                className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                disabled={this.state.errorCount > 5}
+                className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                Try Again
+                Try Again {this.state.errorCount > 1 && `(${this.state.errorCount})`}
               </button>
               <button
                 onClick={() => window.location.reload()}
@@ -128,28 +154,67 @@ class DashboardErrorBoundary extends Component<
 }
 
 /* =============================================================================
-   LOADER COMPONENT
+   LOADER COMPONENT - ENHANCED with better skeleton
 ============================================================================= */
-const DashboardLoadingSkeleton = () => (
-  <div className="p-8 space-y-8 animate-pulse">
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+const DashboardLoadingSkeleton = memo(() => (
+  <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-pulse">
+    <div className="flex items-center justify-between mb-4">
+      <div className="h-8 bg-gray-200 rounded w-48"></div>
+      <div className="h-10 bg-gray-200 rounded w-32"></div>
+    </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
       {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="bg-white rounded-xl border border-gray-200 p-6">
+        <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
           <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
           <div className="h-8 bg-gray-200 rounded w-32 mb-2"></div>
           <div className="h-3 bg-gray-200 rounded w-20"></div>
         </div>
       ))}
     </div>
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
       <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
-      <div className="h-96 bg-gray-200 rounded"></div>
+      <div className="h-64 sm:h-96 bg-gray-200 rounded"></div>
     </div>
   </div>
-);
+));
+
+DashboardLoadingSkeleton.displayName = 'DashboardLoadingSkeleton';
 
 /* =============================================================================
-   MAIN DASHBOARD CONTENT
+   ONLINE STATUS INDICATOR - NEW
+============================================================================= */
+const OnlineStatusIndicator = memo(() => {
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    setIsOnline(navigator.onLine);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  if (isOnline) return null;
+
+  return (
+    <div className="fixed top-4 right-4 z-50 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in">
+      <WifiOff className="w-4 h-4" />
+      <span className="text-sm font-medium">No Internet Connection</span>
+    </div>
+  );
+});
+
+OnlineStatusIndicator.displayName = 'OnlineStatusIndicator';
+
+/* =============================================================================
+   MAIN DASHBOARD CONTENT - ENHANCED with better performance
 ============================================================================= */
 function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardProps) {
   const { user, isLoaded } = useUser();
@@ -162,14 +227,13 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasInitialFetch, setHasInitialFetch] = useState(false);
-  
+  const [retryCount, setRetryCount] = useState(0);
 
-  /* -------------------- Fetch analysis summary -------------------- */
-  const fetchAnalysisSummary = async () => {
+  /* -------------------- Fetch analysis summary - ENHANCED -------------------- */
+  const fetchAnalysisSummary = useCallback(async () => {
     if (!user?.id) return;
 
     try {
-      // Get the auth token from Clerk
       const token = await getToken();
       if (!token) {
         throw new Error("User is not authenticated.");
@@ -203,6 +267,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
       if (data && (data.kpiCardData || data.kpiChartData)) {
         setAnalysisData(data);
         setError(null);
+        setRetryCount(0); // Reset retry count on success
       } else {
         console.log("[Dashboard] No meaningful data found, showing welcome screen");
         setAnalysisData(null);
@@ -214,11 +279,20 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
       } else {
         setError(err?.message || "Failed to load dashboard data");
       }
+      
+      // Auto-retry logic (up to 3 times)
+      if (retryCount < 3) {
+        console.log(`[Dashboard] Auto-retry ${retryCount + 1}/3 in 3 seconds...`);
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          fetchAnalysisSummary();
+        }, 3000);
+      }
     }
-  };
+  }, [user?.id, userId, getToken, retryCount]);
 
-  /* -------------------- Upload handling -------------------- */
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  /* -------------------- Upload handling - ENHANCED with progress -------------------- */
+  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user?.id) return;
 
@@ -236,7 +310,12 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
         );
       }
 
-      // Get the auth token from Clerk
+      // Check file size (max 10MB)
+      const maxSize = 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        throw new Error("File size exceeds 10MB limit");
+      }
+
       const token = await getToken();
       if (!token) {
         throw new Error("User is not authenticated.");
@@ -285,10 +364,10 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
         event.target.value = "";
       }
     }
-  };
+  }, [user?.id, getToken]);
 
-  /* -------------------- Refresh handler -------------------- */
-  const handleDataRefresh = async () => {
+  /* -------------------- Refresh handler - ENHANCED -------------------- */
+  const handleDataRefresh = useCallback(async () => {
     if (!user?.id) return;
 
     console.log("[Dashboard] 🔄 Refresh initiated - clearing data");
@@ -296,10 +375,10 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     setIsLoading(true);
     setAnalysisData(null);
     setError(null);
+    setRetryCount(0); // Reset retry count
     console.log("[Dashboard] ✓ Frontend state cleared");
 
     try {
-      // Get the auth token from Clerk
       const token = await getToken();
       if (!token) {
         throw new Error("User is not authenticated.");
@@ -330,10 +409,10 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.id, getToken]);
 
-  /* -------------------- Export handler (No API call) -------------------- */
-  const handleExport = () => {
+  /* -------------------- Export handler - ENHANCED -------------------- */
+  const handleExport = useCallback(() => {
     if (!analysisData) {
       setError("No data available to export");
       return;
@@ -354,10 +433,10 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
       console.error("[Dashboard] Export error:", err);
       setError("Failed to export data");
     }
-  };
+  }, [analysisData]);
 
-  /* -------------------- Generate report handler -------------------- */
-  const handleGenerateReport = async () => {
+  /* -------------------- Generate report handler - ENHANCED -------------------- */
+  const handleGenerateReport = useCallback(async () => {
     if (!analysisData) {
       setError("No data available to generate report");
       return;
@@ -365,7 +444,6 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
 
     setIsLoading(true);
     try {
-      // Get the auth token from Clerk
       const token = await getToken();
       if (!token) {
         throw new Error("User is not authenticated.");
@@ -409,9 +487,9 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [analysisData, getToken]);
 
-  /* -------------------- Effects -------------------- */
+  /* -------------------- Effects - OPTIMIZED -------------------- */
   useEffect(() => {
     if (initialData) {
       setAnalysisData(initialData);
@@ -425,7 +503,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
       setHasInitialFetch(true);
       fetchAnalysisSummary();
     }
-  }, [isLoaded, user?.id, hasInitialFetch, analysisData, isLoading]);
+  }, [isLoaded, user?.id, hasInitialFetch, analysisData, isLoading, fetchAnalysisSummary]);
 
   // Listen for external updates
   useEffect(() => {
@@ -436,7 +514,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     window.addEventListener("analysisUpdated", handler as EventListener);
     return () =>
       window.removeEventListener("analysisUpdated", handler as EventListener);
-  }, [user?.id]);
+  }, [fetchAnalysisSummary]);
 
   /* -------------------- Render -------------------- */
   if (!isLoaded) {
@@ -445,16 +523,21 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
 
   if (error && !analysisData && !isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-gray-50">
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-8 max-w-md w-full text-center">
+      <div className="min-h-screen flex items-center justify-center p-4 sm:p-6 bg-gray-50">
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sm:p-8 max-w-md w-full text-center">
           <AlertCircle className="w-12 h-12 mx-auto mb-4 text-red-600" />
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
+          <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">
             Unable to Load Dashboard
           </h3>
-          <p className="text-gray-600 mb-6">{error}</p>
+          <p className="text-sm sm:text-base text-gray-600 mb-6">{error}</p>
+          {retryCount > 0 && (
+            <p className="text-xs text-gray-500 mb-4">
+              Retry attempt {retryCount} of 3...
+            </p>
+          )}
           <button
             onClick={handleDataRefresh}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium inline-flex items-center gap-2"
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium inline-flex items-center gap-2 w-full sm:w-auto justify-center"
           >
             <RefreshCw className="w-4 h-4" />
             Retry
@@ -465,21 +548,24 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <AppSidebar />
-      <div className="flex-1 ml-0 lg:ml-64">
-        <ModernDashboard
-          analysisData={analysisData}
-          onUpload={handleFileUpload}
-          onRefresh={handleDataRefresh}
-          onExport={handleExport}
-          onGenerateReport={handleGenerateReport}
-          isUploading={isUploading}
-          isLoading={isLoading}
-          userId={user?.id}
-        />
+    <>
+      <OnlineStatusIndicator />
+      <div className="flex min-h-screen bg-gray-50">
+        <AppSidebar />
+        <div className="flex-1 ml-0 md:ml-64">
+          <ModernDashboard
+            analysisData={analysisData}
+            onUpload={handleFileUpload}
+            onRefresh={handleDataRefresh}
+            onExport={handleExport}
+            onGenerateReport={handleGenerateReport}
+            isUploading={isUploading}
+            isLoading={isLoading}
+            userId={user?.id}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
