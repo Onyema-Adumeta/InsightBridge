@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useClerk, useUser } from '@clerk/nextjs';
+import { useClerk, useUser, useAuth } from '@clerk/nextjs';
 import {
   LayoutDashboard,
   Upload,
@@ -138,6 +138,7 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
   const router = useRouter();
   const { signOut } = useClerk();
   const { user, isLoaded } = useUser();
+  const { getToken } = useAuth(); // ✅ Added useAuth hook
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Hide sidebar on auth pages
@@ -145,17 +146,37 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
     return null;
   }
 
-  // ✅ IMPROVED: Better sign-out with loading state and forced redirect
+  // ✅ UPDATED: Clear backend data before sign-out
   const handleSignOut = async () => {
     if (isSigningOut) return; // Prevent double-clicks
     
     setIsSigningOut(true);
     
     try {
+      // Get authentication token
+      const token = await getToken();
+      
+      if (token) {
+        // Clear backend storage before signing out
+        console.log('[AppSidebar] Clearing user data before sign-out...');
+        
+        await fetch(`/api/v1/main/clear_storage`, {
+          method: "POST",
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
+        
+        console.log('[AppSidebar] ✓ User data cleared successfully');
+      }
+      
       // Sign out from Clerk
       await signOut();
+      
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('[AppSidebar] Error during sign-out:', error);
+      // Continue with sign-out even if data clearing fails
     } finally {
       // Always redirect to sign-in, even if there's an error
       window.location.href = '/sign-in';
@@ -167,7 +188,7 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
     if (onClose) {
       onClose();
     }
-  }, [pathname]);
+  }, [pathname, onClose]);
 
   return (
     <>
