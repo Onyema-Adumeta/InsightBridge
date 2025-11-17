@@ -62,14 +62,99 @@
   --font-size-xl: 1.375rem;      /* 22px */
 }
 
+/* ===== LAYOUT FIX: Remove black spaces and ensure proper backgrounds ===== */
+html {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  /* Use a light gray for non-dashboard pages, dashboard overrides this */
+  background-color: #f9fafb;
+}
+
 body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
-
+  
   /* Make all base text inherit the larger scale */
   font-size: var(--font-size-base);
   line-height: 1.6;
+  
+  /* LAYOUT FIX: Ensure no unwanted margins/padding */
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* LAYOUT FIX: Ensure Next.js root elements don't add backgrounds */
+#__next,
+[data-radix-portal] {
+  background-color: transparent;
+}
+
+/* ===== DASHBOARD LAYOUT FIXES ===== */
+
+/* Ensure dashboard container fills properly */
+.dashboard-container {
+  min-height: 100vh;
+  background-color: #f9fafb;
+}
+
+/* Sidebar styling - prevents black spaces */
+aside[role="navigation"],
+.sidebar,
+nav.sidebar {
+  background-color: var(--color-background);
+  /* Ensure sidebar content is visible */
+  z-index: 40;
+}
+
+/* Main content area - extends properly without black spaces */
+main {
+  min-height: 100vh;
+  width: 100%;
+  background-color: #f9fafb;
+  flex: 1 1 0%;
+  min-width: 0; /* Prevents flex item overflow */
+}
+
+/* Mobile responsiveness - no black spaces */
+@media (max-width: 1023px) {
+  main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding-top: 4rem; /* Space for mobile menu button */
+  }
+  
+  /* Ensure sidebar overlay works correctly */
+  aside.fixed {
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.3);
+  }
+  
+  /* Mobile menu toggle button spacing */
+  .mobile-menu-toggle {
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 50;
+  }
+}
+
+/* Desktop layout - fixed sidebar with proper content margin */
+@media (min-width: 1024px) {
+  aside.fixed {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100vh;
+    width: 16rem; /* 256px */
+    overflow-y: auto;
+  }
+  
+  /* Content area properly offset by sidebar width */
+  main.lg\:ml-64 {
+    margin-left: 16rem; /* 256px */
+  }
 }
 
 /* ===== Semantic utilities (v4 uses @utility) ===== */
@@ -133,3 +218,274 @@ body {
 @utility section-title { @apply text-xl font-semibold mb-3; } /* was text-lg */
 @utility muted { @apply text-muted-foreground; }
 @utility tooltip { @apply card p-3 text-sm; } /* was text-xs -> text-sm */
+
+/* ===== ADDITIONAL LAYOUT UTILITIES ===== */
+
+/* Responsive grid utilities */
+@utility dashboard-grid {
+  @apply grid gap-4;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+@media (min-width: 640px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Chart container */
+@utility chart-container {
+  @apply w-full;
+  min-height: 300px;
+  height: auto;
+}
+
+@media (min-width: 640px) {
+  .chart-container {
+    min-height: 400px;
+  }
+}
+
+/* ===== ANIMATIONS ===== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@utility animate-fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@utility animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+@utility animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ===== SCROLLBAR STYLING ===== */
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted)) hsl(var(--background));
+}
+
+/* ===== SMOOTH TRANSITIONS ===== */
+
+/* Smooth layout transitions for responsive changes */
+aside,
+main {
+  transition-property: margin, width, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+/* ===== MOBILE OPTIMIZATIONS ===== */
+
+/* Touch-friendly button sizes */
+@media (max-width: 639px) {
+  .btn-base,
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Comfortable padding for mobile */
+  .dashboard-content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* ===== ACCESSIBILITY IMPROVEMENTS ===== */
+
+/* Focus visible for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Skip to main content link */
+.skip-to-main {
+  position: absolute;
+  left: -9999px;
+  z-index: 999;
+  padding: 1rem;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  text-decoration: none;
+}
+
+.skip-to-main:focus {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* ===== PRINT STYLES ===== */
+
+@media print {
+  /* Hide navigation when printing */
+  aside,
+  .mobile-menu-toggle,
+  nav {
+    display: none !important;
+  }
+  
+  /* Full width content for printing */
+  main {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+  
+  /* Ensure good contrast for printing */
+  body {
+    background: white;
+    color: black;
+  }
+}
+
+/* ===== LOADING STATES ===== */
+
+/* Skeleton loading animation */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted)) 0%,
+    hsl(var(--secondary)) 50%,
+    hsl(var(--muted)) 100%
+  );
+  background-size: 200% 100%;
+  animation: loading 1.5s ease-in-out infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* ===== OVERLAY UTILITIES ===== */
+
+/* Backdrop overlay for mobile menu */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 40;
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* ===== STATUS INDICATORS ===== */
+
+/* Online/Offline indicator */
+.status-indicator {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 50;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.status-indicator.offline {
+  background-color: #dc2626;
+  color: white;
+}
+
+.status-indicator.online {
+  background-color: #059669;
+  color: white;
+}
+
+/* ===== RESPONSIVE UTILITIES ===== */
+
+/* Container queries support */
+@container (min-width: 768px) {
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ===== PERFORMANCE OPTIMIZATIONS ===== */
+
+/* GPU acceleration for smooth animations */
+.animated {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* ===== DEBUG HELPERS (remove in production) ===== */
+
+/* Uncomment to see layout boundaries during development */
+/*
+.debug * {
+  outline: 1px solid red;
+}
+
+.debug aside {
+  outline: 2px solid blue;
+}
+
+.debug main {
+  outline: 2px solid green;
+}
+*/

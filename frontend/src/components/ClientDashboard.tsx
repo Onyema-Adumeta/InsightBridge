@@ -4,7 +4,7 @@
 /* ========= DIAGNOSTIC MOUNT LOG ========= */
 if (typeof window !== "undefined") {
   console.log(
-    "%cClientDashboard V7 ENHANCED mounted",
+    "%cClientDashboard V8 LAYOUT-FIX mounted",
     "color:#10B981;font-weight:bold",
     new Date().toISOString()
   );
@@ -12,7 +12,7 @@ if (typeof window !== "undefined") {
 
 import React, { useState, useEffect, Component, ReactNode, useCallback, memo } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
-import { AlertCircle, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { AlertCircle, RefreshCw, Wifi, WifiOff, Menu, X } from "lucide-react";
 
 // Import the production-ready dashboard
 import ModernDashboard from "./ModernDashboard";
@@ -94,14 +94,12 @@ class DashboardErrorBoundary extends Component<
       errorCount: this.state.errorCount + 1,
     });
 
-    // Report to error tracking service (if available)
     if (typeof window !== 'undefined' && (window as any).reportError) {
       (window as any).reportError(error, errorInfo);
     }
   }
 
   handleRetry = () => {
-    // Prevent infinite retry loops
     if (this.state.errorCount > 5) {
       alert('Multiple errors detected. Please refresh the page or contact support.');
       return;
@@ -181,7 +179,7 @@ const DashboardLoadingSkeleton = memo(() => (
 DashboardLoadingSkeleton.displayName = 'DashboardLoadingSkeleton';
 
 /* =============================================================================
-   ONLINE STATUS INDICATOR - NEW
+   ONLINE STATUS INDICATOR
 ============================================================================= */
 const OnlineStatusIndicator = memo(() => {
   const [isOnline, setIsOnline] = useState(true);
@@ -214,7 +212,26 @@ const OnlineStatusIndicator = memo(() => {
 OnlineStatusIndicator.displayName = 'OnlineStatusIndicator';
 
 /* =============================================================================
-   MAIN DASHBOARD CONTENT - ENHANCED with better performance
+   MOBILE SIDEBAR TOGGLE - NEW
+============================================================================= */
+const MobileSidebarToggle = memo(({ isOpen, onToggle }: { isOpen: boolean; onToggle: () => void }) => (
+  <button
+    onClick={onToggle}
+    className="lg:hidden fixed top-4 left-4 z-50 bg-white rounded-lg shadow-lg p-2 hover:bg-gray-50 transition-colors border border-gray-200"
+    aria-label={isOpen ? "Close menu" : "Open menu"}
+  >
+    {isOpen ? (
+      <X className="w-6 h-6 text-gray-700" />
+    ) : (
+      <Menu className="w-6 h-6 text-gray-700" />
+    )}
+  </button>
+));
+
+MobileSidebarToggle.displayName = 'MobileSidebarToggle';
+
+/* =============================================================================
+   MAIN DASHBOARD CONTENT - FIXED LAYOUT
 ============================================================================= */
 function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardProps) {
   const { user, isLoaded } = useUser();
@@ -228,8 +245,9 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
   const [error, setError] = useState<string | null>(null);
   const [hasInitialFetch, setHasInitialFetch] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  /* -------------------- Fetch analysis summary - ENHANCED -------------------- */
+  /* -------------------- Fetch analysis summary -------------------- */
   const fetchAnalysisSummary = useCallback(async () => {
     if (!user?.id) return;
 
@@ -267,7 +285,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
       if (data && (data.kpiCardData || data.kpiChartData)) {
         setAnalysisData(data);
         setError(null);
-        setRetryCount(0); // Reset retry count on success
+        setRetryCount(0);
       } else {
         console.log("[Dashboard] No meaningful data found, showing welcome screen");
         setAnalysisData(null);
@@ -280,7 +298,6 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
         setError(err?.message || "Failed to load dashboard data");
       }
       
-      // Auto-retry logic (up to 3 times)
       if (retryCount < 3) {
         console.log(`[Dashboard] Auto-retry ${retryCount + 1}/3 in 3 seconds...`);
         setTimeout(() => {
@@ -291,7 +308,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     }
   }, [user?.id, userId, getToken, retryCount]);
 
-  /* -------------------- Upload handling - ENHANCED with progress -------------------- */
+  /* -------------------- Upload handling -------------------- */
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user?.id) return;
@@ -310,7 +327,6 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
         );
       }
 
-      // Check file size (max 10MB)
       const maxSize = 10 * 1024 * 1024;
       if (file.size > maxSize) {
         throw new Error("File size exceeds 10MB limit");
@@ -366,7 +382,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     }
   }, [user?.id, getToken]);
 
-  /* -------------------- Refresh handler - ENHANCED -------------------- */
+  /* -------------------- Refresh handler -------------------- */
   const handleDataRefresh = useCallback(async () => {
     if (!user?.id) return;
 
@@ -375,7 +391,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     setIsLoading(true);
     setAnalysisData(null);
     setError(null);
-    setRetryCount(0); // Reset retry count
+    setRetryCount(0);
     console.log("[Dashboard] ✓ Frontend state cleared");
 
     try {
@@ -411,7 +427,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     }
   }, [user?.id, getToken]);
 
-  /* -------------------- Export handler - ENHANCED -------------------- */
+  /* -------------------- Export handler -------------------- */
   const handleExport = useCallback(() => {
     if (!analysisData) {
       setError("No data available to export");
@@ -435,7 +451,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     }
   }, [analysisData]);
 
-  /* -------------------- Generate report handler - ENHANCED -------------------- */
+  /* -------------------- Generate report handler -------------------- */
   const handleGenerateReport = useCallback(async () => {
     if (!analysisData) {
       setError("No data available to generate report");
@@ -489,14 +505,13 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     }
   }, [analysisData, getToken]);
 
-  /* -------------------- Effects - OPTIMIZED -------------------- */
+  /* -------------------- Effects -------------------- */
   useEffect(() => {
     if (initialData) {
       setAnalysisData(initialData);
     }
   }, [initialData]);
 
-  // Only fetch on initial mount if we haven't fetched before
   useEffect(() => {
     if (isLoaded && user?.id && !analysisData && !isLoading && !hasInitialFetch) {
       console.log("[Dashboard] Initial data fetch on mount");
@@ -505,7 +520,6 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     }
   }, [isLoaded, user?.id, hasInitialFetch, analysisData, isLoading, fetchAnalysisSummary]);
 
-  // Listen for external updates
   useEffect(() => {
     const handler = () => {
       console.log("[Dashboard] External update detected, refreshing...");
@@ -515,6 +529,23 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     return () =>
       window.removeEventListener("analysisUpdated", handler as EventListener);
   }, [fetchAnalysisSummary]);
+
+  // Close mobile sidebar when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (isSidebarOpen && window.innerWidth < 1024) {
+        const sidebar = document.getElementById('mobile-sidebar');
+        const toggle = document.getElementById('mobile-toggle');
+        if (sidebar && !sidebar.contains(event.target as Node) && 
+            toggle && !toggle.contains(event.target as Node)) {
+          setIsSidebarOpen(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isSidebarOpen]);
 
   /* -------------------- Render -------------------- */
   if (!isLoaded) {
@@ -550,20 +581,55 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
   return (
     <>
       <OnlineStatusIndicator />
+      
+      {/* FIXED LAYOUT - No black spaces */}
       <div className="flex min-h-screen bg-gray-50">
-        <AppSidebar />
-        <div className="flex-1 ml-0 md:ml-64">
-          <ModernDashboard
-            analysisData={analysisData}
-            onUpload={handleFileUpload}
-            onRefresh={handleDataRefresh}
-            onExport={handleExport}
-            onGenerateReport={handleGenerateReport}
-            isUploading={isUploading}
-            isLoading={isLoading}
-            userId={user?.id}
+        {/* Desktop Sidebar - Hidden on mobile */}
+        <aside className="hidden lg:block fixed left-0 top-0 h-screen w-64 z-40">
+          <AppSidebar />
+        </aside>
+
+        {/* Mobile Sidebar - Overlay */}
+        <aside
+          id="mobile-sidebar"
+          className={`lg:hidden fixed left-0 top-0 h-screen w-64 z-50 transform transition-transform duration-300 ease-in-out ${
+            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          <AppSidebar />
+        </aside>
+
+        {/* Mobile Sidebar Overlay */}
+        {isSidebarOpen && (
+          <div
+            className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
+        {/* Mobile Menu Toggle */}
+        <div id="mobile-toggle">
+          <MobileSidebarToggle 
+            isOpen={isSidebarOpen} 
+            onToggle={() => setIsSidebarOpen(!isSidebarOpen)} 
           />
         </div>
+
+        {/* Main Content - Responsive margins */}
+        <main className="flex-1 lg:ml-64 w-full min-h-screen">
+          <div className="w-full h-full">
+            <ModernDashboard
+              analysisData={analysisData}
+              onUpload={handleFileUpload}
+              onRefresh={handleDataRefresh}
+              onExport={handleExport}
+              onGenerateReport={handleGenerateReport}
+              isUploading={isUploading}
+              isLoading={isLoading}
+              userId={user?.id}
+            />
+          </div>
+        </main>
       </div>
     </>
   );
