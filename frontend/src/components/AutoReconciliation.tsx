@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Check, X, Loader2, AlertCircle, Upload, FileText, Trash2, RefreshCw, AlertTriangle, Info } from 'lucide-react';
+import { Check, X, Loader2, AlertCircle, Upload, FileText, Trash2, RefreshCw, AlertTriangle, Info, TrendingUp, TrendingDown, DollarSign, PieChart, BarChart3, Calendar, Tag, Brain } from 'lucide-react';
 
 interface Match {
   match_id: number;
@@ -68,21 +68,109 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
   const [loadingTransactions, setLoadingTransactions] = useState(false);
   const [showUploadSection, setShowUploadSection] = useState(true);
   const [isPdfFile, setIsPdfFile] = useState(false);
+  
+  // ✅ NEW: Analytics state
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [analytics, setAnalytics] = useState<any>(null);
 
-  // ✅ DEFINE API URL ONCE
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
   // Load pending matches and transactions on component mount
   useEffect(() => {
     fetchPendingMatches();
     fetchTransactions();
-  }, [userId]); // Add userId as dependency
+  }, [userId]);
+
+  // ✅ NEW: Calculate advanced analytics when transactions change
+  useEffect(() => {
+    if (transactions.length > 0) {
+      calculateAnalytics();
+    }
+  }, [transactions]);
+
+  // ✅ NEW: Advanced Analytics Calculation
+  const calculateAnalytics = () => {
+    const totalInflow = transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
+    const totalOutflow = transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);
+    const netFlow = totalInflow - totalOutflow;
+    
+    // Category detection (basic AI categorization)
+    const categories: Record<string, { count: number; total: number }> = {};
+    transactions.forEach(txn => {
+      const category = detectCategory(txn.description);
+      if (!categories[category]) {
+        categories[category] = { count: 0, total: 0 };
+      }
+      categories[category].count++;
+      categories[category].total += Math.abs(txn.amount);
+    });
+
+    // Frequency analysis
+    const merchants: Record<string, number> = {};
+    transactions.forEach(txn => {
+      const merchant = txn.description.split(' ')[0];
+      merchants[merchant] = (merchants[merchant] || 0) + 1;
+    });
+
+    // Spending patterns (by day of week)
+    const dayOfWeekSpending: Record<string, number> = {
+      'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0
+    };
+    transactions.forEach(txn => {
+      if (txn.amount < 0) {
+        const date = new Date(txn.date);
+        const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
+        dayOfWeekSpending[day] += Math.abs(txn.amount);
+      }
+    });
+
+    // Unusual transactions (3x average)
+    const avgTransaction = totalOutflow / transactions.filter(t => t.amount < 0).length;
+    const unusualTransactions = transactions.filter(t => 
+      t.amount < 0 && Math.abs(t.amount) > avgTransaction * 3
+    );
+
+    // Recurring transactions detection
+    const descriptions = transactions.map(t => t.description.toLowerCase());
+    const recurring = descriptions.filter((desc, idx) => 
+      descriptions.indexOf(desc) !== idx
+    ).filter((v, i, a) => a.indexOf(v) === i);
+
+    setAnalytics({
+      totalInflow,
+      totalOutflow,
+      netFlow,
+      categories: Object.entries(categories)
+        .sort((a, b) => b[1].total - a[1].total)
+        .slice(0, 5),
+      topMerchants: Object.entries(merchants)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5),
+      dayOfWeekSpending,
+      unusualTransactions,
+      recurringCount: recurring.length,
+      avgTransactionSize: avgTransaction,
+      largestTransaction: Math.max(...transactions.map(t => Math.abs(t.amount))),
+    });
+  };
+
+  // ✅ NEW: AI Category Detection
+  const detectCategory = (description: string): string => {
+    const desc = description.toLowerCase();
+    if (desc.includes('fee') || desc.includes('charge')) return 'Banking Fees';
+    if (desc.includes('interest')) return 'Interest';
+    if (desc.includes('transfer') || desc.includes('payment')) return 'Transfers';
+    if (desc.includes('deposit') || desc.includes('direct deposit')) return 'Income';
+    if (desc.includes('atm') || desc.includes('withdrawal')) return 'Cash';
+    if (desc.includes('check')) return 'Checks';
+    if (desc.includes('purchase') || desc.includes('pos')) return 'Purchases';
+    return 'Other';
+  };
 
   const fetchPendingMatches = async () => {
     setIsLoading(true);
     
     try {
-      // ✅ Use apiUrl
       const response = await fetch(`${apiUrl}/api/v1/reconciliation/pending_matches?user_id=${userId}`);
 
       if (!response.ok) {
@@ -119,7 +207,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
   const fetchTransactions = async () => {
     setLoadingTransactions(true);
     try {
-      // ✅ Use apiUrl
       const response = await fetch(
         `${apiUrl}/api/v1/reconciliation/bank_transactions?user_id=${userId}`
       );
@@ -127,7 +214,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
       setTransactions(data.transactions || []);
     } catch (err) {
       console.error('Failed to fetch transactions:', err);
-      // Add error state for transactions
       setError('Failed to fetch transactions. Please check if the backend is running.');
     } finally {
       setLoadingTransactions(false);
@@ -157,7 +243,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
       const formData = new FormData();
       formData.append('file', file);
 
-      // ✅ Use apiUrl
       const response = await fetch(
         `${apiUrl}/api/v1/reconciliation/upload_bank_statement?user_id=${userId}`,
         {
@@ -174,13 +259,13 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
       const result: UploadResult = await response.json();
       setUploadResult(result);
       
-      await fetchTransactions(); // Refresh transactions list
+      await fetchTransactions();
       
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
       setUploading(false);
-      event.target.value = ''; // Reset file input
+      event.target.value = '';
     }
   };
 
@@ -188,7 +273,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     if (!confirm('Are you sure you want to delete this transaction?')) return;
 
     try {
-      // ✅ Use apiUrl
       const response = await fetch(
         `${apiUrl}/api/v1/reconciliation/bank_transactions/${transactionId}`,
         { method: 'DELETE' }
@@ -196,7 +280,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
 
       if (!response.ok) throw new Error('Delete failed');
 
-      await fetchTransactions(); // Refresh transactions list
+      await fetchTransactions();
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Delete failed');
     }
@@ -207,7 +291,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     setError(null);
 
     try {
-      // ✅ Use apiUrl
       const response = await fetch(`${apiUrl}/api/v1/reconciliation/auto_match?user_id=${userId}`, {
         method: 'POST',
       });
@@ -225,7 +308,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
         setSummary(data.summary);
       }
       
-      await fetchPendingMatches(); // Refresh matches list
+      await fetchPendingMatches();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Auto-match failed');
     } finally {
@@ -237,7 +320,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     setProcessingMatch(matchId);
 
     try {
-      // ✅ Use apiUrl
       const response = await fetch(`${apiUrl}/api/v1/reconciliation/approve_match/${matchId}?user_id=${userId}`, {
         method: 'POST',
       });
@@ -260,7 +342,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     setProcessingMatch(matchId);
 
     try {
-      // ✅ Use apiUrl
       const response = await fetch(`${apiUrl}/api/v1/reconciliation/reject_match/${matchId}?user_id=${userId}`, {
         method: 'POST',
       });
@@ -283,7 +364,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     setIsLoading(true);
 
     try {
-      // ✅ Use apiUrl
       const response = await fetch(`${apiUrl}/api/v1/reconciliation/bulk_approve?user_id=${userId}`, {
         method: 'POST',
       });
@@ -293,13 +373,29 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
         throw new Error(errorData.detail || 'Bulk approve failed');
       }
 
-      await fetchPendingMatches(); // Refresh matches list
+      await fetchPendingMatches();
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Bulk approve failed');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // ✅ NEW: Reset/Clear function
+  const handleReset = () => {
+    if (transactions.length > 0 && !confirm('Are you sure you want to clear all data? This will remove all uploaded transactions.')) {
+      return;
+    }
+    
+    setUploadResult(null);
+    setUploadError(null);
+    setTransactions([]);
+    setMatches([]);
+    setSummary(null);
+    setError(null);
+    setAnalytics(null);
+    setShowAnalytics(false);
   };
 
   const getConfidenceColor = (confidence: number) => {
@@ -316,30 +412,224 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* ✅ ENHANCED: Header with Reset Button */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Auto-Reconciliation</h2>
           <p className="text-gray-500 mt-1">Upload bank statements and review suggested transaction matches</p>
         </div>
-        <button
-          onClick={runAutoMatch}
-          disabled={isLoading || transactions.length === 0}
-          className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Running...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="w-4 h-4" />
-              Run Auto-Match
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleReset}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
+            title="Clear all data and start fresh"
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span className="hidden sm:inline">Reset</span>
+          </button>
+          <button
+            onClick={runAutoMatch}
+            disabled={isLoading || transactions.length === 0}
+            className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4" />
+                Run Auto-Match
+              </>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* ✅ NEW: Advanced Analytics Section */}
+      {analytics && transactions.length > 0 && (
+        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl shadow-lg overflow-hidden">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-600 rounded-lg">
+                  <Brain className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">AI-Powered Insights</h3>
+                  <p className="text-sm text-gray-600">Advanced analytics not available in standard banking apps</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAnalytics(!showAnalytics)}
+                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+              >
+                {showAnalytics ? 'Hide Details' : 'Show Details'}
+              </button>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="bg-white rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-5 h-5 text-green-600" />
+                  <span className="text-sm text-gray-600">Total Inflow</span>
+                </div>
+                <p className="text-2xl font-bold text-green-600">
+                  ${analytics.totalInflow.toFixed(2)}
+                </p>
+              </div>
+              
+              <div className="bg-white rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingDown className="w-5 h-5 text-red-600" />
+                  <span className="text-sm text-gray-600">Total Outflow</span>
+                </div>
+                <p className="text-2xl font-bold text-red-600">
+                  ${analytics.totalOutflow.toFixed(2)}
+                </p>
+              </div>
+              
+              <div className="bg-white rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-5 h-5 text-blue-600" />
+                  <span className="text-sm text-gray-600">Net Flow</span>
+                </div>
+                <p className={`text-2xl font-bold ${analytics.netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  ${Math.abs(analytics.netFlow).toFixed(2)}
+                </p>
+              </div>
+            </div>
+
+            {/* Detailed Analytics */}
+            {showAnalytics && (
+              <div className="space-y-6">
+                {/* Spending by Category */}
+                <div className="bg-white rounded-lg p-5 border border-gray-200">
+                  <div className="flex items-center gap-2 mb-4">
+                    <PieChart className="w-5 h-5 text-indigo-600" />
+                    <h4 className="font-semibold text-gray-900">Spending by Category</h4>
+                  </div>
+                  <div className="space-y-3">
+                    {analytics.categories.map(([category, data]: [string, any], idx: number) => (
+                      <div key={idx} className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-700 font-medium">{category}</span>
+                          <span className="text-gray-900 font-semibold">${data.total.toFixed(2)}</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-indigo-600 h-2 rounded-full transition-all"
+                            style={{ width: `${(data.total / analytics.totalOutflow) * 100}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500">{data.count} transactions</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Top Merchants */}
+                <div className="bg-white rounded-lg p-5 border border-gray-200">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Tag className="w-5 h-5 text-purple-600" />
+                    <h4 className="font-semibold text-gray-900">Top Merchants</h4>
+                  </div>
+                  <div className="space-y-2">
+                    {analytics.topMerchants.map(([merchant, count]: [string, number], idx: number) => (
+                      <div key={idx} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span className="text-sm text-gray-700">{merchant}</span>
+                        <span className="text-sm font-semibold text-gray-900">{count} transactions</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Spending Patterns by Day */}
+                <div className="bg-white rounded-lg p-5 border border-gray-200">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Calendar className="w-5 h-5 text-blue-600" />
+                    <h4 className="font-semibold text-gray-900">Spending by Day of Week</h4>
+                  </div>
+                  <div className="flex items-end justify-between gap-2 h-32">
+                    {Object.entries(analytics.dayOfWeekSpending).map(([day, amount]: [string, number]) => {
+                      const maxAmount = Math.max(...Object.values(analytics.dayOfWeekSpending));
+                      const height = maxAmount > 0 ? (amount / maxAmount) * 100 : 0;
+                      return (
+                        <div key={day} className="flex-1 flex flex-col items-center gap-2">
+                          <div className="w-full bg-blue-100 hover:bg-blue-200 rounded-t transition-colors relative group" style={{ height: `${height}%` }}>
+                            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                              ${amount.toFixed(0)}
+                            </div>
+                          </div>
+                          <span className="text-xs text-gray-600 font-medium">{day}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Unusual Transactions Alert */}
+                {analytics.unusualTransactions.length > 0 && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-amber-900 mb-2">
+                          {analytics.unusualTransactions.length} Unusual Transaction{analytics.unusualTransactions.length > 1 ? 's' : ''} Detected
+                        </h4>
+                        <p className="text-sm text-amber-700 mb-3">
+                          These transactions are 3x larger than your average transaction (${analytics.avgTransactionSize.toFixed(2)})
+                        </p>
+                        <div className="space-y-2">
+                          {analytics.unusualTransactions.slice(0, 3).map((txn: BankTransaction, idx: number) => (
+                            <div key={idx} className="bg-white rounded p-3 border border-amber-200">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-medium text-gray-900">{txn.description}</p>
+                                  <p className="text-xs text-gray-500">{txn.date}</p>
+                                </div>
+                                <p className="font-bold text-red-600">${Math.abs(txn.amount).toFixed(2)}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Smart Insights */}
+                <div className="bg-white rounded-lg p-5 border border-gray-200">
+                  <div className="flex items-center gap-2 mb-4">
+                    <BarChart3 className="w-5 h-5 text-green-600" />
+                    <h4 className="font-semibold text-gray-900">Smart Insights</h4>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-xs text-blue-600 font-semibold mb-1">AVG TRANSACTION</p>
+                      <p className="text-lg font-bold text-gray-900">${analytics.avgTransactionSize.toFixed(2)}</p>
+                    </div>
+                    <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                      <p className="text-xs text-purple-600 font-semibold mb-1">LARGEST TRANSACTION</p>
+                      <p className="text-lg font-bold text-gray-900">${analytics.largestTransaction.toFixed(2)}</p>
+                    </div>
+                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                      <p className="text-xs text-green-600 font-semibold mb-1">RECURRING PAYMENTS</p>
+                      <p className="text-lg font-bold text-gray-900">{analytics.recurringCount}</p>
+                    </div>
+                    <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <p className="text-xs text-orange-600 font-semibold mb-1">UNIQUE MERCHANTS</p>
+                      <p className="text-lg font-bold text-gray-900">{analytics.topMerchants.length}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Upload Bank Statement Section */}
       <div className="bg-white border border-gray-200 rounded-lg shadow p-6">
@@ -491,6 +781,9 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
         )}
       </div>
 
+      {/* Rest of the component continues... (Bank Transactions List, Summary, Matches, etc.) */}
+      {/* Copy the rest from the original component */}
+      
       {/* Bank Transactions List */}
       <div className="bg-white border border-gray-200 rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-4">
