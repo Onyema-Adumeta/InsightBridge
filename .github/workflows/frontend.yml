@@ -34,7 +34,8 @@ jobs:
           npm ci
           echo ""
           echo "🔨 Building Next.js application with increased memory..."
-          NODE_OPTIONS="--max-old-space-size=6144" npm run build
+          export NODE_OPTIONS="--max-old-space-size=6144"
+          npm run build
           echo ""
           echo "✅ Build complete!"
           [ -d ".next" ] || { echo "❌ .next not created"; exit 1; }
