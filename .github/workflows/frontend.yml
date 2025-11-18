@@ -24,6 +24,16 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       
+      # ✅ FIX: Remove BOM from package.json
+      - name: Remove BOM from package.json
+        working-directory: frontend
+        run: |
+          echo "🧹 Cleaning package.json..."
+          # Remove BOM (EF BB BF) from package.json
+          sed -i '1s/^\xEF\xBB\xBF//' package.json || true
+          # Verify it's valid JSON
+          node -e "JSON.parse(require('fs').readFileSync('package.json', 'utf8'))" && echo "✅ Valid JSON" || echo "❌ Invalid JSON"
+      
       - name: Build Frontend Application
         working-directory: frontend
         env:
