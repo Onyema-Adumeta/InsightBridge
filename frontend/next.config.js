@@ -10,25 +10,17 @@ let nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // ✅ ADDED: Experimental optimizations
+  // Experimental features
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
     },
-    // ✅ Reduce memory usage during build
+    // Reduce memory usage during build
     workerThreads: false,
     cpus: 1,
   },
   
-  // API configuration
-  api: {
-    responseLimit: false,
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
-  
-  // ✅ ADDED: Webpack optimizations for memory
+  // Webpack optimizations for memory
   webpack: (config, { isServer, dev }) => {
     // Only optimize in production builds
     if (!dev && !isServer) {
@@ -39,14 +31,12 @@ let nextConfig = {
           cacheGroups: {
             default: false,
             vendors: false,
-            // Vendor chunk
             vendor: {
               name: 'vendor',
               chunks: 'all',
               test: /node_modules/,
               priority: 20,
             },
-            // Common chunk
             common: {
               name: 'common',
               minChunks: 2,
@@ -63,17 +53,17 @@ let nextConfig = {
     return config;
   },
   
-  // ✅ ADDED: Disable source maps in production to save memory
+  // Disable source maps in production to save memory
   productionBrowserSourceMaps: false,
   
-  // ✅ ADDED: Compiler optimizations
+  // Compiler optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
       exclude: ['error', 'warn']
     } : false,
   },
   
-  // Rewrites for API proxy
+  // API proxy rewrite
   async rewrites() {
     return [
       {
