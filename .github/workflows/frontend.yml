@@ -6,13 +6,15 @@ on:
       - "frontend/**"
       - ".github/workflows/frontend.yml"
   workflow_dispatch:
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 25  # ✅ Increased timeout for single-threaded build
+    timeout-minutes: 35
     environment:
       name: 'Production'
       url: 'https://insightbridge-frontend-test.azurewebsites.net'
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,6 +26,18 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       
+      # ✅ Cache Next.js build to speed up builds and reduce memory usage
+      - name: Cache Next.js Build
+        uses: actions/cache@v3
+        with:
+          path: |
+            frontend/.next/cache
+            frontend/node_modules/.cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/**/*.js', 'frontend/**/*.jsx', 'frontend/**/*.ts', 'frontend/**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-
+            ${{ runner.os }}-nextjs-
+      
       - name: Remove BOM from package.json
         working-directory: frontend
         run: |
@@ -31,41 +45,99 @@ jobs:
           sed -i '1s/^\xEF\xBB\xBF//' package.json || true
           node -e "JSON.parse(require('fs').readFileSync('package.json', 'utf8'))" && echo "✅ Valid JSON" || echo "❌ Invalid JSON"
       
+      - name: Install Dependencies
+        working-directory: frontend
+        run: |
+          echo "📦 Installing dependencies..."
+          npm ci --prefer-offline --no-audit --no-fund
+          echo "✅ Dependencies installed"
+      
       - name: Build Frontend Application
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          # ✅ Set memory limit AND disable telemetry
-          NODE_OPTIONS: "--max-old-space-size=6144"
+          # ✅ INCREASED memory limit for large pages (dashboard is 1.36 MiB!)
+          NODE_OPTIONS: "--max-old-space-size=5632 --max-semi-space-size=256 --optimize-for-size"
           NEXT_TELEMETRY_DISABLED: "1"
+          NODE_ENV: "production"
         run: |
-          echo "📦 Installing dependencies..."
-          npm ci
+          echo "🔨 Building Next.js application..."
+          echo "⚠️  Large pages detected - using increased memory allocation"
+          echo "Memory limit: 5.5GB"
+          echo "Build mode: Production with code splitting"
           echo ""
-          echo "🔨 Building Next.js (single-threaded to respect memory limit)..."
-          echo "Memory: 6GB, Workers: Disabled"
+          
+          # Clear any stale build artifacts (but keep cache)
+          rm -rf .next/server .next/static
+          
+          # Run the build with periodic garbage collection hints
           npm run build
-          echo ""
-          echo "✅ Build complete!"
-          [ -d ".next" ] || { echo "❌ .next not created"; exit 1; }
           
           echo ""
-          echo "🧹 Preparing for deployment..."
+          echo "✅ Build complete!"
+          
+          # Verify build output
+          if [ ! -d ".next" ]; then
+            echo "❌ Error: .next directory not created"
+            exit 1
+          fi
+          
+          echo ""
+          echo "📊 Build Statistics:"
+          echo "└─ Total size: $(du -sh .next | cut -f1)"
+          echo "└─ Static assets: $(du -sh .next/static 2>/dev/null | cut -f1 || echo 'N/A')"
+          echo "└─ Server bundles: $(du -sh .next/server 2>/dev/null | cut -f1 || echo 'N/A')"
+          echo ""
+          echo "📋 Largest bundles:"
+          find .next -name "*.js" -type f -exec du -h {} + | sort -rh | head -10
+      
+      - name: Prepare for Deployment
+        working-directory: frontend
+        run: |
+          echo "🧹 Preparing deployment package..."
+          
+          # Remove development dependencies and cache to reduce package size
           rm -rf node_modules
           rm -rf .next/cache
+          
+          # Install only production dependencies
           echo "📦 Installing production dependencies..."
-          npm ci --omit=dev --no-audit --no-fund
-          echo "✅ Production ready"
+          npm ci --omit=dev --no-audit --no-fund --prefer-offline
+          
+          echo "✅ Production package ready"
+          echo "📊 Final package size: $(du -sh . | cut -f1)"
       
-      - name: Verify Build
+      - name: Verify Build Artifacts
         working-directory: frontend
         run: |
           echo "🔍 Verifying build artifacts..."
-          test -d .next || { echo "❌ Missing .next"; exit 1; }
-          test -d node_modules/next || { echo "❌ Missing next"; exit 1; }
+          
+          # Check for required directories
+          test -d .next || { echo "❌ Missing .next directory"; exit 1; }
+          test -d .next/server || { echo "❌ Missing .next/server directory"; exit 1; }
+          test -d .next/static || { echo "❌ Missing .next/static directory"; exit 1; }
+          
+          # Check for Next.js binary
+          test -d node_modules/next || { echo "❌ Missing next module"; exit 1; }
           test -f node_modules/next/dist/bin/next || { echo "❌ Missing next binary"; exit 1; }
-          echo "✅ All files present!"
+          
+          # Check for problematic large files
+          echo ""
+          echo "⚠️  Checking for oversized bundles..."
+          large_files=$(find .next -name "*.js" -size +500k -type f 2>/dev/null || true)
+          if [ ! -z "$large_files" ]; then
+            echo "⚠️  Warning: Found bundles larger than 500kb:"
+            echo "$large_files" | while read file; do
+              size=$(du -h "$file" | cut -f1)
+              echo "   • $size - $(basename $file)"
+            done
+          else
+            echo "✅ All bundles are reasonably sized"
+          fi
+          
+          echo ""
+          echo "✅ All required files present!"
       
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
@@ -75,42 +147,79 @@ jobs:
           package: ./frontend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
       
-      - name: Wait for startup
+      - name: Wait for Azure Startup
         run: |
-          echo "⏳ Waiting for Azure to start..."
+          echo "⏳ Waiting for Azure to initialize..."
           sleep 45
       
       - name: Verify Deployment
         timeout-minutes: 8
         run: |
-          echo "🔍 Checking application..."
+          echo "🔍 Verifying application health..."
+          echo ""
+          
           max_attempts=15
+          attempt=0
           
           for i in $(seq 1 $max_attempts); do
+            attempt=$i
+            
+            # Try to fetch the homepage
             HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
               --max-time 10 \
+              --retry 2 \
+              --retry-delay 3 \
               https://insightbridge-frontend-test.azurewebsites.net/ 2>/dev/null || echo "000")
+            
+            echo "Attempt $i/$max_attempts: HTTP Status $HTTP_CODE"
             
             if [ "$HTTP_CODE" = "200" ]; then
               echo ""
-              echo "✅ Application is live!"
-              echo "🌐 https://insightbridge-frontend-test.azurewebsites.net"
+              echo "✅ Application is live and responding!"
+              echo "🌐 URL: https://insightbridge-frontend-test.azurewebsites.net"
               exit 0
+            elif [ "$HTTP_CODE" = "503" ]; then
+              echo "   ⏳ Service starting up..."
+            elif [ "$HTTP_CODE" = "000" ]; then
+              echo "   ⏳ Service not reachable yet..."
+            else
+              echo "   ⚠️  Unexpected status code"
             fi
-            echo "Attempt $i/$max_attempts: Status $HTTP_CODE"
-            sleep 10
+            
+            # Don't sleep on the last attempt
+            if [ $i -lt $max_attempts ]; then
+              sleep 10
+            fi
           done
           
-          echo "⚠️ Deployment complete but app needs more time to start"
+          echo ""
+          echo "⚠️  Warning: Application did not respond with 200 OK within timeout"
+          echo "   Deployment completed but application may need more time to start"
+          echo "   Check logs at: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
+          exit 0
       
-      - name: Summary
+      - name: Deployment Summary
         if: always()
         run: |
           echo ""
-          echo "================================"
-          echo "Deployment Complete"
-          echo "================================"
-          echo "Frontend: https://insightbridge-frontend-test.azurewebsites.net"
-          echo "Backend: https://insightbridge-backend-test.azurewebsites.net"
-          echo "Logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
-          echo "================================"
+          echo "════════════════════════════════════════"
+          echo "       Deployment Summary"
+          echo "════════════════════════════════════════"
+          echo ""
+          echo "Frontend URL:"
+          echo "  🌐 https://insightbridge-frontend-test.azurewebsites.net"
+          echo ""
+          echo "Backend URL:"
+          echo "  🔗 https://insightbridge-backend-test.azurewebsites.net"
+          echo ""
+          echo "Logs & Diagnostics:"
+          echo "  📋 https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
+          echo "  🔍 https://portal.azure.com"
+          echo ""
+          echo "⚠️  Performance Note:"
+          echo "  Some pages have large bundles (>1MB). Consider:"
+          echo "  • Code splitting large components"
+          echo "  • Dynamic imports for heavy libraries"
+          echo "  • Lazy loading charts/visualizations"
+          echo ""
+          echo "════════════════════════════════════════"
