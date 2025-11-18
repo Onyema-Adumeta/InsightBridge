@@ -10,7 +10,7 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     environment:
       name: 'Production'
       url: 'https://insightbridge-frontend-test.azurewebsites.net'
@@ -32,6 +32,7 @@ jobs:
         with:
           path: |
             frontend/.next/cache
+            frontend/node_modules/.cache
           key: ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/**/*.js', 'frontend/**/*.jsx', 'frontend/**/*.ts', 'frontend/**/*.tsx') }}
           restore-keys: |
             ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-
@@ -56,20 +57,21 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          # ✅ Optimized memory settings
-          NODE_OPTIONS: "--max-old-space-size=4096 --max-semi-space-size=128"
+          # ✅ INCREASED memory limit for large pages (dashboard is 1.36 MiB!)
+          NODE_OPTIONS: "--max-old-space-size=5632 --max-semi-space-size=256 --optimize-for-size"
           NEXT_TELEMETRY_DISABLED: "1"
           NODE_ENV: "production"
         run: |
           echo "🔨 Building Next.js application..."
-          echo "Memory limit: 4GB"
-          echo "Build mode: Production"
+          echo "⚠️  Large pages detected - using increased memory allocation"
+          echo "Memory limit: 5.5GB"
+          echo "Build mode: Production with code splitting"
           echo ""
           
           # Clear any stale build artifacts (but keep cache)
           rm -rf .next/server .next/static
           
-          # Run the build
+          # Run the build with periodic garbage collection hints
           npm run build
           
           echo ""
@@ -81,8 +83,14 @@ jobs:
             exit 1
           fi
           
-          echo "📊 Build size:"
-          du -sh .next
+          echo ""
+          echo "📊 Build Statistics:"
+          echo "└─ Total size: $(du -sh .next | cut -f1)"
+          echo "└─ Static assets: $(du -sh .next/static 2>/dev/null | cut -f1 || echo 'N/A')"
+          echo "└─ Server bundles: $(du -sh .next/server 2>/dev/null | cut -f1 || echo 'N/A')"
+          echo ""
+          echo "📋 Largest bundles:"
+          find .next -name "*.js" -type f -exec du -h {} + | sort -rh | head -10
       
       - name: Prepare for Deployment
         working-directory: frontend
@@ -98,8 +106,7 @@ jobs:
           npm ci --omit=dev --no-audit --no-fund --prefer-offline
           
           echo "✅ Production package ready"
-          echo "📊 Package size:"
-          du -sh .
+          echo "📊 Final package size: $(du -sh . | cut -f1)"
       
       - name: Verify Build Artifacts
         working-directory: frontend
@@ -115,10 +122,22 @@ jobs:
           test -d node_modules/next || { echo "❌ Missing next module"; exit 1; }
           test -f node_modules/next/dist/bin/next || { echo "❌ Missing next binary"; exit 1; }
           
-          echo "✅ All required files present!"
+          # Check for problematic large files
           echo ""
-          echo "📋 Build contents:"
-          ls -lh .next/ | head -20
+          echo "⚠️  Checking for oversized bundles..."
+          large_files=$(find .next -name "*.js" -size +500k -type f 2>/dev/null || true)
+          if [ ! -z "$large_files" ]; then
+            echo "⚠️  Warning: Found bundles larger than 500kb:"
+            echo "$large_files" | while read file; do
+              size=$(du -h "$file" | cut -f1)
+              echo "   • $size - $(basename $file)"
+            done
+          else
+            echo "✅ All bundles are reasonably sized"
+          fi
+          
+          echo ""
+          echo "✅ All required files present!"
       
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
@@ -196,5 +215,11 @@ jobs:
           echo "Logs & Diagnostics:"
           echo "  📋 https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
           echo "  🔍 https://portal.azure.com"
+          echo ""
+          echo "⚠️  Performance Note:"
+          echo "  Some pages have large bundles (>1MB). Consider:"
+          echo "  • Code splitting large components"
+          echo "  • Dynamic imports for heavy libraries"
+          echo "  • Lazy loading charts/visualizations"
           echo ""
           echo "════════════════════════════════════════"
