@@ -1,5 +1,4 @@
 name: Deploy Frontend to Azure
-
 on:
   push:
     branches: [ main ]
@@ -7,7 +6,6 @@ on:
       - "frontend/**"
       - ".github/workflows/frontend.yml"
   workflow_dispatch:
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -15,31 +13,30 @@ jobs:
     environment:
       name: 'Production'
       url: 'https://insightbridge-frontend-test.azurewebsites.net'
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
-
+      
       - name: Build Frontend Application
         working-directory: frontend
         env:
           NEXT_PUBLIC_API_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          # ✅ FIX: Increase Node.js memory for build
+          NODE_OPTIONS: --max_old_space_size=4096
         run: |
           echo "📦 Installing dependencies..."
           npm ci
-
           echo ""
           echo "🔨 Building Next.js application..."
           npm run build
-
           echo ""
           echo "✅ Build complete!"
           [ -d ".next" ] || { echo "❌ .next not created"; exit 1; }
@@ -48,11 +45,10 @@ jobs:
           echo "🧹 Preparing for deployment..."
           rm -rf node_modules
           rm -rf .next/cache
-
           echo "📦 Installing production dependencies..."
           npm ci --omit=dev --no-audit --no-fund
           echo "✅ Production ready"
-
+      
       - name: Verify Build
         working-directory: frontend
         run: |
@@ -61,7 +57,7 @@ jobs:
           test -d node_modules/next || { echo "❌ Missing next"; exit 1; }
           test -f node_modules/next/dist/bin/next || { echo "❌ Missing next binary"; exit 1; }
           echo "✅ All files present!"
-
+      
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
@@ -69,12 +65,12 @@ jobs:
           slot-name: 'production'
           package: ./frontend
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
-
+      
       - name: Wait for startup
         run: |
           echo "⏳ Waiting for Azure to start..."
           sleep 45
-
+      
       - name: Verify Deployment
         timeout-minutes: 8
         run: |
@@ -97,7 +93,7 @@ jobs:
           done
           
           echo "⚠️ Deployment complete but app needs more time to start"
-
+      
       - name: Summary
         if: always()
         run: |
