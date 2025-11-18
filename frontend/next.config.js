@@ -10,50 +10,17 @@ let nextConfig = {
     ignoreBuildErrors: true,
   },
   
-  // Experimental features
+  // ✅ CRITICAL: Disable worker threads to prevent memory issues
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
     },
-    // Reduce memory usage during build
+    // ✅ This forces single-threaded build which respects NODE_OPTIONS
     workerThreads: false,
     cpus: 1,
   },
   
-  // Webpack optimizations for memory
-  webpack: (config, { isServer, dev }) => {
-    // Only optimize in production builds
-    if (!dev && !isServer) {
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          chunks: 'all',
-          cacheGroups: {
-            default: false,
-            vendors: false,
-            vendor: {
-              name: 'vendor',
-              chunks: 'all',
-              test: /node_modules/,
-              priority: 20,
-            },
-            common: {
-              name: 'common',
-              minChunks: 2,
-              chunks: 'all',
-              priority: 10,
-              reuseExistingChunk: true,
-              enforce: true,
-            },
-          },
-        },
-      };
-    }
-    
-    return config;
-  },
-  
-  // Disable source maps in production to save memory
+  // Disable source maps to save memory
   productionBrowserSourceMaps: false,
   
   // Compiler optimizations
