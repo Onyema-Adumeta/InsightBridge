@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import AppSidebar from "./AppSidebar";
 
@@ -10,7 +11,21 @@ interface MobileLayoutProps {
 
 export default function MobileLayout({ children }: MobileLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
 
+  // ✅ Routes that should NOT get the sidebar / mobile header / padding
+  const isAuthRoute =
+    pathname?.startsWith("/sign-in") ||
+    pathname?.startsWith("/sign-up") ||
+    pathname?.startsWith("/reset-password") ||
+    pathname?.startsWith("/sso-callback");
+
+  // 👉 Let auth pages fully control their own layout (no header/sidebar/padding)
+  if (isAuthRoute) {
+    return <>{children}</>;
+  }
+
+  // 👉 Default layout for the rest of the app (dashboard, etc.)
   return (
     <div className="relative min-h-screen bg-background">
       {/* Mobile Header with Hamburger */}
@@ -28,16 +43,16 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
       </header>
 
       {/* Sidebar */}
-      <AppSidebar 
-        isOpen={sidebarOpen} 
-        onClose={() => setSidebarOpen(false)} 
+      <AppSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       {/* Main Content */}
-      <main 
+      <main
         className="
           pt-16 md:pt-0
-          md:ml-64 
+          md:ml-64
           min-h-screen
           transition-all duration-300
         "

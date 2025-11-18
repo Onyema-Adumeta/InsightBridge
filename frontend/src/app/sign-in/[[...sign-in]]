@@ -2,8 +2,21 @@ import { SignIn } from '@clerk/nextjs';
 
 export default function SignInPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900">
-      <SignIn />
+    <div className="flex min-h-screen w-full items-center justify-center bg-slate-900">
+      <SignIn
+        appearance={{
+          elements: {
+            rootBox: "flex justify-center",
+            card: "rounded-xl shadow-2xl border border-slate-700 bg-slate-800/90 backdrop-blur-md",
+            headerTitle: "text-white",
+            headerSubtitle: "text-slate-300",
+            socialButtonsBlockButton: "bg-white text-black",
+            formFieldLabel: "text-slate-200",
+            formFieldInput: 
+              "bg-slate-700 border-slate-600 text-white placeholder-slate-400",
+          },
+        }}
+      />
     </div>
   );
 }
