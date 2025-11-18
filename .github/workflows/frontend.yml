@@ -29,13 +29,12 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          # ✅ FIX: Increase Node.js memory for build
-          NODE_OPTIONS: --max_old_space_size=4096
         run: |
           echo "📦 Installing dependencies..."
           npm ci
           echo ""
-          echo "🔨 Building Next.js application..."
+          echo "🔨 Building Next.js application with increased memory..."
+          export NODE_OPTIONS="--max-old-space-size=6144"
           npm run build
           echo ""
           echo "✅ Build complete!"
