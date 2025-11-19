@@ -12,11 +12,29 @@ if (typeof window !== "undefined") {
 
 import React, { useState, useEffect, Component, ReactNode, useCallback, memo } from "react";
 import { useUser, useAuth } from "@clerk/nextjs";
+import dynamic from "next/dynamic";
 import { AlertCircle, RefreshCw, Wifi, WifiOff, Menu, X } from "lucide-react";
 
-// Import the production-ready dashboard
-import ModernDashboard from "./ModernDashboard";
-import AppSidebar from "@/components/AppSidebar";
+// ✅ OPTIMIZATION: Lazy load the heavy ModernDashboard component
+// This is the main bundle size culprit - load it only when needed
+const ModernDashboard = dynamic(() => import("./ModernDashboard"), {
+  loading: () => <DashboardLoadingSkeleton />,
+  ssr: false, // Dashboard is user-specific, no need for SSR
+});
+
+// ✅ OPTIMIZATION: Lazy load AppSidebar (likely contains icons and UI)
+const AppSidebar = dynamic(() => import("@/components/AppSidebar"), {
+  loading: () => (
+    <div className="w-64 h-full bg-gray-900 animate-pulse">
+      <div className="p-4 space-y-4">
+        <div className="h-8 bg-gray-800 rounded"></div>
+        <div className="h-8 bg-gray-800 rounded"></div>
+        <div className="h-8 bg-gray-800 rounded"></div>
+      </div>
+    </div>
+  ),
+  ssr: false,
+});
 
 interface AnalysisData {
   latestFileName?: string;
@@ -618,6 +636,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
         {/* Main Content - Responsive margins */}
         <main className="flex-1 lg:ml-64 w-full min-h-screen">
           <div className="w-full h-full">
+            {/* ✅ ModernDashboard now loads dynamically only when needed */}
             <ModernDashboard
               analysisData={analysisData}
               onUpload={handleFileUpload}

@@ -2,9 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
-import DynamicClientDashboard from '@/components/ClientDashboard';
-import LoadingDashboard from '@/components/LoadingDashboard';
+import dynamic from 'next/dynamic';
 import { Lock } from 'lucide-react';
+
+// ✅ CRITICAL: Dynamic import for the heavy ClientDashboard component
+// This reduces initial bundle size from 1.36 MiB significantly
+const DynamicClientDashboard = dynamic(
+  () => import('@/components/ClientDashboard'),
+  {
+    loading: () => <LoadingDashboard />,
+    ssr: false, // Disable SSR for dashboard (it's user-specific anyway)
+  }
+);
+
+// ✅ Keep LoadingDashboard as regular import since it's lightweight
+import LoadingDashboard from '@/components/LoadingDashboard';
 
 export const dynamic = 'force-dynamic';
 
@@ -181,6 +193,7 @@ export default function DashboardPage() {
     ) : null;
 
   // ✅ Main dashboard with proper background
+  // The DynamicClientDashboard component will only load when this point is reached
   return (
     <main className="lg:ml-64 min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {connectionBanner}
