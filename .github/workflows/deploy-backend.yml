@@ -1,84 +1,79 @@
 name: Deploy Backend to Azure
 
 on:
-  # Triggers the workflow on push events to the 'main' branch
+  # Trigger when backend or this workflow changes
   push:
     branches: [ main ]
     paths:
       - "backend/**"
       - ".github/workflows/deploy-backend.yml"
-  # Allows manual running from the GitHub Actions UI
+  # Allow manual runs
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
-    # environment: Production # Optional: Uncomment if you use GitHub Environments
-
     steps:
       - name: ⬇️ Checkout repository code
         uses: actions/checkout@v4
 
-      - name: 🐍 Set up Python 3.12 and Cache Dependencies
+      - name: 🐍 Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          cache: 'pip'
-          cache-dependency-path: 'backend/requirements.txt'
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: "backend/requirements.txt"
 
-      - name: 📦 Install and Bundle Dependencies
+      - name: 📦 Install and Validate (CI only, not deployed)
         run: |
-          echo "Installing dependencies into .python_packages and running syntax check..."
+          echo "Installing dependencies locally for syntax check (not deployed)..."
 
           cd backend
-
-          # Upgrade pip
           python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
-          # Install all deps INTO the app folder so they ship with the ZIP
-          mkdir -p .python_packages/lib/site-packages
-          pip install -r requirements.txt -t .python_packages/lib/site-packages
-
-          echo "✅ Listing a few installed packages:"
-          ls .python_packages/lib/site-packages | head
-
-          # Syntax validation
-          python -m py_compile app.py || { echo "::warning file=app.py::Python Syntax check failed for app.py"; }
+          # Basic syntax check so we fail early if app.py is broken
+          python -m py_compile app.py || { echo "::warning file=app.py::Python syntax check failed for app.py"; }
 
       - name: 🔨 Create Deployment ZIP Package
         id: create_package
         run: |
+          echo "Creating startup.sh and deployment.zip from backend/ ..."
+
           # 1. Create startup script in the backend directory
           cat > backend/startup.sh << 'EOF'
-          #!/bin/bash
-          # Azure will execute this script to start the Gunicorn/Uvicorn server
-          echo "Starting InsightBridge Backend..."
-          gunicorn app:app \
-          --workers 4 \
-          --worker-class uvicorn.workers.UvicornWorker \
-          --bind 0.0.0.0:$PORT \
-          --timeout 300 \
-          --keep-alive 5 \
-          --access-logfile - \
-          --error-logfile - \
-          --log-level info
-          EOF
+echo "Starting InsightBridge Backend..."
+gunicorn app:app \
+  --workers 4 \
+  --worker-class uvicorn.workers.UvicornWorker \
+  --bind 0.0.0.0:$PORT \
+  --timeout 300 \
+  --keep-alive 5 \
+  --access-logfile - \
+  --error-logfile - \
+  --log-level info
+EOF
 
           chmod +x backend/startup.sh
 
-          # 2. Create the ZIP file directly from the 'backend' directory contents
+          # 2. Build the ZIP file directly from the 'backend' directory contents
           cd backend
-          # . means everything in the current directory (backend), -x excludes specific patterns
-          zip -r deployment.zip . -x "*.git*" "*__pycache__*" "*.DS_Store" "deployment"
 
-          # Path to the zip relative to the repo root:
-          echo "ZIP_PATH=backend/deployment.zip" >> $GITHUB_OUTPUT
+          # Clean any local env artefacts so they are NOT deployed
+          rm -rf .venv venv env .python_packages __pycache__
+
+          # . means everything in the current directory (backend),
+          # -x excludes git and __pycache__ artefacts
+          zip -r deployment.zip . -x "*.git*" "*__pycache__*" "*.DS_Store"
+
+          # Path to the zip, relative to repo root
+          echo "ZIP_PATH=backend/deployment.zip" >> "$GITHUB_OUTPUT"
 
       - name: 🚀 Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'insightbridge-backend-test'
+          app-name: "insightbridge-backend-test"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
           package: ${{ steps.create_package.outputs.ZIP_PATH }}
 
@@ -93,18 +88,21 @@ jobs:
           for i in $(seq 1 $MAX_RETRIES); do
             echo "Attempt $i/$MAX_RETRIES..."
 
-            # Check health endpoint
-            response=$(curl -s -o /dev/null -w "%{http_code}" $APP_URL)
+            # Capture both status code and body for debugging
+            response=$(curl -s -o /tmp/health_body -w "%{http_code}" "$APP_URL")
+
+            echo "Status: $response"
+            echo "Body:"
+            cat /tmp/health_body || true
 
             if [ "$response" = "200" ]; then
               echo "✅ Health check passed!"
               exit 0
             else
               echo "⚠️ Health check returned status: $response. Retrying in $WAIT_TIME seconds..."
-              sleep $WAIT_TIME
+              sleep "$WAIT_TIME"
             fi
           done
 
-          # Fail the job if the health check never passes
           echo "❌ ERROR: Health check failed after $MAX_RETRIES attempts."
           exit 1
