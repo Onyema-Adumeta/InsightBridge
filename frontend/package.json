@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "insightbridge-v2",
   "version": "0.1.0",
   "private": true,
@@ -22,7 +22,7 @@
     "react-dropzone": "^14.3.8",
     "react-markdown": "^10.1.0",
     "react-plotly.js": "^2.6.0",
-    "recharts": "^3.2.1"
+    "recharts": "^3.4.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, ArrowRight, Target, BarChart3, Award, AlertTriangle, DollarSign, Activity, Sparkles } from 'lucide-react';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+// ✅ CRITICAL FIX: Force dynamic rendering to prevent build-time errors
+export const dynamic = 'force-dynamic';
 
 interface PeriodData {
   period: string;
@@ -71,6 +72,11 @@ export default function ComparePage() {
 
   const fetchCompanyContext = async () => {
     try {
+      // ✅ FIXED: Use client-side API URL
+      const API_URL = typeof window !== 'undefined' 
+        ? (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000')
+        : 'http://127.0.0.1:8000';
+      
       const userId = 1; // Get from auth
       const response = await fetch(`${API_URL}/api/company-context?user_id=${userId}`);
       if (response.ok) {

@@ -2,23 +2,33 @@
 
 import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
-import dynamic from 'next/dynamic';
 import { Lock } from 'lucide-react';
+import DynamicClientDashboard from '@/components/ClientDashboard';
 
-// ✅ CRITICAL: Dynamic import for the heavy ClientDashboard component
-// This reduces initial bundle size from 1.36 MiB significantly
-const DynamicClientDashboard = dynamic(
-  () => import('@/components/ClientDashboard'),
-  {
-    loading: () => <LoadingDashboard />,
-    ssr: false, // Disable SSR for dashboard (it's user-specific anyway)
-  }
-);
-
-// ✅ Keep LoadingDashboard as regular import since it's lightweight
-import LoadingDashboard from '@/components/LoadingDashboard';
-
+// ✅ Force dynamic rendering
 export const dynamic = 'force-dynamic';
+
+const LoadingDashboard = () => (
+  <div className="p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-pulse">
+    <div className="flex items-center justify-between mb-4">
+      <div className="h-8 bg-gray-200 rounded w-48"></div>
+      <div className="h-10 bg-gray-200 rounded w-32"></div>
+    </div>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+          <div className="h-4 bg-gray-200 rounded w-24 mb-4"></div>
+          <div className="h-8 bg-gray-200 rounded w-32 mb-2"></div>
+          <div className="h-3 bg-gray-200 rounded w-20"></div>
+        </div>
+      ))}
+    </div>
+    <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-6">
+      <div className="h-6 bg-gray-200 rounded w-48 mb-4"></div>
+      <div className="h-64 sm:h-96 bg-gray-200 rounded"></div>
+    </div>
+  </div>
+);
 
 interface AnalysisData {
   company?: string;
@@ -142,13 +152,6 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isLoaded, isSignedIn]);
 
-  const handleRefresh = () => {
-    if (isDevelopment) console.log('🔄 Manual refresh triggered');
-    setRetryCount(0);
-    fetchData();
-  };
-
-  // ✅ FIXED: White/Gray background for loading state
   if (!isLoaded || (loading && !analysisData)) {
     return (
       <main className="lg:ml-64 flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-8">
@@ -157,7 +160,6 @@ export default function DashboardPage() {
     );
   }
 
-  // ✅ FIXED: White/Gray background for auth state
   if (isLoaded && !isSignedIn) {
     return (
       <main className="lg:ml-64 flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-8">
@@ -192,8 +194,6 @@ export default function DashboardPage() {
       </div>
     ) : null;
 
-  // ✅ Main dashboard with proper background
-  // The DynamicClientDashboard component will only load when this point is reached
   return (
     <main className="lg:ml-64 min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {connectionBanner}
