@@ -27,14 +27,22 @@ jobs:
           cache: 'pip'
           cache-dependency-path: 'backend/requirements.txt'
 
-      - name: 📦 Install and Validate Code
+      - name: 📦 Install and Bundle Dependencies
         run: |
-          echo "Installing dependencies and running syntax check..."
+          echo "Installing dependencies into .python_packages and running syntax check..."
 
-          # Change directory and install
           cd backend
+
+          # Upgrade pip
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+
+          # ✅ Install all deps INTO the app folder so they ship with the ZIP
+          mkdir -p .python_packages/lib/site-packages
+          pip install -r requirements.txt -t .python_packages/lib/site-packages
+
+          # Optional: show what's installed
+          echo "Installed packages in .python_packages/lib/site-packages:"
+          ls .python_packages/lib/site-packages | head
 
           # Syntax validation
           python -m py_compile app.py || { echo "::warning file=app.py::Python Syntax check failed for app.py"; }
