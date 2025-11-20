@@ -74,7 +74,6 @@ jobs:
           app-name: 'insightbridge-backend-test'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
           package: ${{ steps.create_package.outputs.ZIP_PATH }}
-          startup-command: './startup.sh'
 
       - name: 🩺 Post-deployment Health Check
         shell: bash
