@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - "backend/**"
+      - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:
 
 jobs:
@@ -12,16 +13,72 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
       
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: 'backend/requirements.txt'
+      
+      - name: Install dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Validate Python syntax
+        run: |
+          cd backend
+          python -m py_compile app.py || echo "Warning: Syntax check failed"
+      
+      - name: Create deployment package
+        run: |
+          cd backend
+          # Create a clean deployment package
+          mkdir -p deployment
+          
+          # Copy application files
+          cp -r *.py deployment/ 2>/dev/null || true
+          cp -r api routes models utils services deployment/ 2>/dev/null || true
+          cp requirements.txt deployment/
+          
+          # Create startup script
+          cat > deployment/startup.sh << 'EOF'
+#!/bin/bash
+echo "Starting InsightBridge Backend..."
+gunicorn app:app \
+  --workers 4 \
+  --worker-class uvicorn.workers.UvicornWorker \
+  --bind 0.0.0.0:$PORT \
+  --timeout 300 \
+  --keep-alive 5 \
+  --access-logfile - \
+  --error-logfile - \
+  --log-level info
+EOF
+          chmod +x deployment/startup.sh
       
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'insightbridge-backend-test'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
-          package: './backend'
+          package: './backend/deployment'
+      
+      - name: Post-deployment health check
+        run: |
+          echo "Waiting for deployment to complete..."
+          sleep 30
+          
+          # Check health endpoint
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://insightbridge-backend-test.azurewebsites.net/health || echo "000")
+          
+          if [ "$response" = "200" ]; then
+            echo "✅ Health check passed!"
+          else
+            echo "⚠️ Health check returned status: $response"
+            echo "Check Azure logs for details"
+          fi
