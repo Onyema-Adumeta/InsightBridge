@@ -12,10 +12,9 @@ on:
 
 jobs:
   deploy:
-    # Use a Linux runner for Python/Gunicorn deployments to Azure Linux App Service
     runs-on: ubuntu-latest
     
-    environment: Production # Optional: Use an environment for protection rules and tracking
+    # environment: Production # Optional: Uncomment if you use GitHub Environments
     
     steps:
       - name: ⬇️ Checkout repository code
@@ -37,7 +36,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           
-          # Syntax validation (runs after installation to ensure environment is complete)
+          # Syntax validation
           python -m py_compile app.py || { echo "::warning file=app.py::Python Syntax check failed for app.py"; }
       
       - name: 🔨 Create Deployment ZIP Package
@@ -61,9 +60,8 @@ EOF
           chmod +x backend/startup.sh
           
           # 2. Create the ZIP file directly from the 'backend' directory contents
-          # -r: recursive, -j: junk path names (to keep the files at the root of the zip), 
-          # -x: exclude files
           cd backend
+          # . means everything in the current directory (backend), -x excludes specific patterns
           zip -r deployment.zip . -x "*.git*" "*__pycache__*" "*.DS_Store" "deployment"
           echo "ZIP_PATH=./backend/deployment.zip" >> $GITHUB_OUTPUT
 
@@ -72,36 +70,34 @@ EOF
         with:
           app-name: 'insightbridge-backend-test'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
-          # Use the ZIP file created in the previous step
           package: ${{ steps.create_package.outputs.ZIP_PATH }}
-          # Recommended: Set the startup command explicitly for Azure Linux App Service
+          # Explicitly tell the Azure Linux App Service what command to run
           startup-command: './startup.sh' 
 
       - name: 🩺 Post-deployment Health Check
-        # Uses the built-in 'shell' step for robust HTTP checks
         shell: bash
         run: |
           APP_URL="https://insightbridge-backend-test.azurewebsites.net/health"
-          MAX_RETRIES=6 # Retry up to 6 times
-          WAIT_TIME=10  # Wait 10 seconds between retries (total wait time is 60s)
+          MAX_RETRIES=6 
+          WAIT_TIME=10 
           
           echo "Waiting for service to start and checking endpoint: $APP_URL"
 
           for i in $(seq 1 $MAX_RETRIES); do
             echo "Attempt $i/$MAX_RETRIES..."
             
-            # Check health endpoint, silent mode, output HTTP status code
+            # Check health endpoint
             response=$(curl -s -o /dev/null -w "%{http_code}" $APP_URL)
             
             if [ "$response" = "200" ]; then
-              echo "✅ Health check passed! Status: $response"
-              exit 0 # Success
+              echo "✅ Health check passed!"
+              exit 0 
             else
               echo "⚠️ Health check returned status: $response. Retrying in $WAIT_TIME seconds..."
               sleep $WAIT_TIME
             fi
           done
 
-          # If the loop finishes without exiting, the health check failed.
+          # Fail the job if the health check never passes
           echo "❌ ERROR: Health check failed after $MAX_RETRIES attempts."
           exit 1
