@@ -1,11 +1,13 @@
-{
+﻿{
   "name": "insightbridge-v2",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "cross-env NODE_OPTIONS='--max-old-space-size=6144' next build",
-    "start": "next start -p ${PORT:-8080}",
+    "start": "node .next/standalone/server.js",
+    "start:dev": "next start -p ${PORT:-8080}",
     "lint": "next lint"
   },
   "dependencies": {
