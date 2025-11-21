@@ -1,4 +1,5 @@
-name: Deploy Backend to Azure (Working Solution)
+name: Deploy Backend to Azure App Service
+
 on:
   push:
     branches: [ main ]
@@ -8,136 +9,133 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout repository
+      - name: 'Checkout code'
         uses: actions/checkout@v4
+
+      - name: 'Set up Python 3.12'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       
-      - name: Prepare backend source for deployment
+      - name: 'Prepare deployment package'
         run: |
           cd backend
           
-          # Clean any local dev artifacts
-          rm -rf .venv venv env .python_packages __pycache__ *.pyc
+          # Clean up
+          rm -rf __pycache__ *.pyc .pytest_cache .venv venv startup.sh
           
-          # Remove startup.sh - we'll use Azure Portal startup command
-          rm -f startup.sh
+          # Validate
+          if [ ! -f requirements.txt ]; then
+            echo "ERROR: requirements.txt not found!"
+            exit 1
+          fi
           
-          # Create clean deployment package
-          zip -r ../app.zip . -x "*.git*" "*__pycache__*" "*.pyc"
+          if [ ! -f app.py ]; then
+            echo "ERROR: app.py not found!"
+            exit 1
+          fi
+          
+          # Create ZIP
+          zip -r ../deploy.zip . \
+            -x "*.git*" \
+            -x "*__pycache__*" \
+            -x "*.pyc" \
+            -x "*.log" \
+            -x ".env*"
           
           cd ..
-          echo "Deployment package created"
-          unzip -l app.zip | grep -E "(app\.py|requirements\.txt)" || echo "WARNING: Key files missing!"
+          echo "Package size: $(du -h deploy.zip | cut -f1)"
+          echo "Package contents (first 30 files):"
+          unzip -l deploy.zip | head -33
       
-      - name: Deploy using Azure Web App Deploy with proper settings
+      # Stop the app before deploying to avoid conflicts
+      - name: 'Login to Azure'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      
+      - name: 'Stop App Service'
+        run: |
+          echo "Stopping app service to avoid deployment conflicts..."
+          az webapp stop \
+            --name insightbridge-backend-test \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} || echo "Could not stop app (may not be running)"
+          
+          sleep 10
+      
+      - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
+        id: deploy
         with:
           app-name: 'insightbridge-backend-test'
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
-          package: 'app.zip'
+          package: deploy.zip
+          # Enable remote build
+          enable-oryx-build: true
+          # Clean deployment - removes old files
+          clean: true
       
-      # Critical: Add delay for Oryx build to complete
-      - name: Wait for Oryx build to complete
+      - name: 'Start App Service'
         run: |
-          echo "================================================"
-          echo "Waiting for Azure Oryx build to complete..."
-          echo "================================================"
-          echo ""
-          echo "Azure should now be:"
-          echo "1. Extracting the deployment package"
-          echo "2. Detecting Python project (requirements.txt)"
-          echo "3. Running: pip install -r requirements.txt"
-          echo "4. Creating virtual environment"
-          echo "5. Starting the application"
-          echo ""
-          echo "This typically takes 60-120 seconds..."
-          echo ""
+          echo "Starting app service..."
+          az webapp start \
+            --name insightbridge-backend-test \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }}
           
-          # Wait for build + startup
+          echo "Waiting for app to start and build..."
           sleep 120
       
-      - name: Application health check
+      - name: 'Health Check'
         run: |
-          APP_URL="https://insightbridge-backend-test.azurewebsites.net/health"
-          MAX_ATTEMPTS=15
-          WAIT_BETWEEN=10
+          echo "=========================================="
+          echo "Application Health Check"
+          echo "=========================================="
           
-          echo "================================================"
-          echo "Health Check Starting"
-          echo "================================================"
-          echo "Endpoint: $APP_URL"
-          echo "Max attempts: $MAX_ATTEMPTS"
-          echo ""
+          URL="https://insightbridge-backend-test.azurewebsites.net/health"
           
-          for i in $(seq 1 $MAX_ATTEMPTS); do
-            echo "[$i/$MAX_ATTEMPTS] Checking..."
+          for attempt in {1..15}; do
+            echo ""
+            echo "Attempt $attempt/15..."
             
-            # Make request
-            HTTP_CODE=$(curl -s -o /tmp/response.txt -w "%{http_code}" "$APP_URL" 2>/dev/null || echo "000")
+            HTTP_CODE=$(curl -s -o /tmp/response -w "%{http_code}" "$URL" 2>/dev/null || echo "000")
             
-            # Check result
+            echo "HTTP Status: $HTTP_CODE"
+            
             if [ "$HTTP_CODE" = "200" ]; then
               echo ""
               echo "✅✅✅ SUCCESS! ✅✅✅"
               echo ""
-              echo "Application is healthy and responding!"
+              echo "Response:"
+              cat /tmp/response
               echo ""
-              echo "Response body:"
-              cat /tmp/response.txt
-              echo ""
-              echo "================================================"
               exit 0
             fi
             
-            # Log failure
-            echo "   Status: $HTTP_CODE (Expected: 200)"
-            
-            # Show error details for debugging
-            if [ "$HTTP_CODE" = "503" ] || [ "$HTTP_CODE" = "500" ]; then
-              echo "   Error detected. Response preview:"
-              head -3 /tmp/response.txt 2>/dev/null | sed 's/^/   /'
+            if [ "$HTTP_CODE" = "503" ]; then
+              echo "Service unavailable - may still be building..."
+            elif [ "$HTTP_CODE" = "504" ]; then
+              echo "Gateway timeout - app may still be starting..."
             fi
             
-            # Wait before retry
-            if [ $i -lt $MAX_ATTEMPTS ]; then
-              echo "   Waiting ${WAIT_BETWEEN}s before retry..."
-              sleep $WAIT_BETWEEN
+            if [ $attempt -lt 15 ]; then
+              sleep 20
             fi
           done
           
-          # All attempts failed
           echo ""
-          echo "================================================"
-          echo "❌ HEALTH CHECK FAILED ❌"
-          echo "================================================"
+          echo "=========================================="
+          echo "❌ Health check failed after 15 attempts"
+          echo "=========================================="
           echo ""
-          echo "Application did not become healthy after $MAX_ATTEMPTS attempts."
+          echo "Last response:"
+          cat /tmp/response 2>/dev/null || echo "No response received"
           echo ""
-          echo "🔍 Troubleshooting Steps:"
+          echo "Check logs:"
+          echo "https://insightbridge-backend-test.scm.azurewebsites.net/api/logs/docker"
           echo ""
-          echo "1. Check application logs:"
-          echo "   https://insightbridge-backend-test.scm.azurewebsites.net/api/logs/docker"
-          echo ""
-          echo "2. Verify build ran successfully in Kudu Console:"
-          echo "   https://insightbridge-backend-test.scm.azurewebsites.net"
-          echo "   Then run:"
-          echo "     cd /home/site/wwwroot"
-          echo "     ls -la oryx-manifest.toml  # Should exist if build ran"
-          echo "     ls -la antenv/             # Virtual environment"
-          echo "     python -m pip list         # Installed packages"
-          echo ""
-          echo "3. Check Configuration in Azure Portal:"
-          echo "   - SCM_DO_BUILD_DURING_DEPLOYMENT = true"
-          echo "   - WEBSITES_PORT = 8000"
-          echo "   - WEBSITE_RUN_FROM_PACKAGE = 0 (or not set)"
-          echo "   - Startup Command = gunicorn app:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000"
-          echo ""
-          echo "4. Latest error response:"
-          cat /tmp/response.txt 2>/dev/null | head -20
-          echo ""
-          echo "================================================"
           
           exit 1
