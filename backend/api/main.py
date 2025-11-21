@@ -25,26 +25,44 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Initialize Azure OpenAI client
+client = None
 
 try:
-
-    http_client = httpx.Client(proxies=None)
-
-    client = AzureOpenAI(
-        api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-        api_version="2024-02-01",
-        azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
-        http_client=http_client,
-    )
-    logger.info("✅ Azure OpenAI client initialized")
+    # Check if credentials are available
+    api_key = os.getenv("AZURE_OPENAI_API_KEY")
+    endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+    
+    if not api_key or not endpoint:
+        logger.warning("⚠️  Azure OpenAI credentials not found in environment variables")
+    else:
+        # Initialize client WITHOUT http_client parameter
+        # The newer openai library doesn't need custom http clients for proxy configuration
+        client = AzureOpenAI(
+            api_key=api_key,
+            api_version=os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01"),
+            azure_endpoint=endpoint,
+        )
+        logger.info("✅ Azure OpenAI client initialized successfully")
+        
 except Exception as e:
-    logger.warning(f"⚠️ Azure OpenAI not available: {e}")
-    client = None  # Set to None so app can still run
+    logger.error(f"❌ Failed to initialize Azure OpenAI client: {e}")
+    client = None
 
-AZURE_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME")
+AZURE_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_DEPLOYMENT_NAME", "gpt-4")
 
 # In-memory storage
 analysis_storage: Dict[str, Dict] = {}
+
+# Helper function to check if OpenAI is available
+def ensure_openai_available():
+    """Raises HTTPException if OpenAI client is not available"""
+    if client is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Azure OpenAI service is not available. Please check configuration."
+        )
+    return client
 
 # ============================================================================
 # HELPER FUNCTIONS FOR FINANCIAL ANALYSIS
