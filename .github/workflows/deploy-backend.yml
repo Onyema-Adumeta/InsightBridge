@@ -20,45 +20,98 @@ jobs:
         with:
           python-version: "3.12"
       
-      - name: Create deployment ZIP package
+      - name: Create deployment package
         id: create_package
         run: |
           echo "Creating deployment package..."
           cd backend
           
-          # Clean local artifacts
+          # Clean any local artifacts
           rm -rf .venv venv env .python_packages __pycache__ *.pyc startup.sh
           
-          # Package source code and requirements only
-          zip -r deployment.zip . -x "*.git*" "*__pycache__*" "*.pyc" "*.DS_Store"
+          # Create ZIP with ONLY source code (no dependencies)
+          zip -r deployment.zip . -x "*.git*" "*__pycache__*" "*.pyc" "*.DS_Store" "*.log" ".env"
           
           echo "ZIP_PATH=$(pwd)/deployment.zip" >> "$GITHUB_OUTPUT"
+          
+          echo "Package contents:"
+          unzip -l deployment.zip | head -30
       
-      - name: Deploy to Azure Web App
+      - name: Deploy to Azure with Oryx Build
         uses: azure/webapps-deploy@v3
         with:
           app-name: "insightbridge-backend-test"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
           package: ${{ steps.create_package.outputs.ZIP_PATH }}
+        env:
+          # These environment variables tell Azure to build on the server
+          SCM_DO_BUILD_DURING_DEPLOYMENT: "true"
+          ENABLE_ORYX_BUILD: "true"
+          
+      - name: Wait for deployment and build
+        run: |
+          echo "Waiting 60 seconds for deployment and build to complete..."
+          sleep 60
       
-      - name: Post-deployment health check
+      - name: Health check with detailed logging
         run: |
           APP_URL="https://insightbridge-backend-test.azurewebsites.net/health"
-          echo "Waiting 45 seconds for deployment and build..."
-          sleep 45
+          KUDU_URL="https://insightbridge-backend-test.scm.azurewebsites.net"
+          
+          echo "========================================"
+          echo "Deployment Health Check"
+          echo "========================================"
+          
+          # Check if build artifacts exist
+          echo ""
+          echo "Checking for build artifacts..."
+          echo "You can manually verify at: ${KUDU_URL}/api/vfs/site/wwwroot/"
+          
+          echo ""
+          echo "Testing health endpoint..."
           
           for i in {1..10}; do
-            echo "Health check attempt $i/10..."
-            response=$(curl -s -o /tmp/response -w "%{http_code}" "$APP_URL" || echo "000")
+            echo ""
+            echo "Attempt $i/10..."
+            
+            response=$(curl -s -o /tmp/health_body -w "%{http_code}" "$APP_URL" 2>/dev/null || echo "000")
+            
+            echo "Status: $response"
             
             if [ "$response" = "200" ]; then
-              echo "✅ Success!"
+              echo ""
+              echo "✅ SUCCESS! Application is healthy."
+              echo "Response body:"
+              cat /tmp/health_body 2>/dev/null || true
               exit 0
+            else
+              echo "❌ Response code: $response"
+              
+              if [ -f /tmp/health_body ]; then
+                echo "Response body:"
+                head -20 /tmp/health_body
+              fi
+              
+              if [ $i -lt 10 ]; then
+                echo "Waiting 15 seconds before retry..."
+                sleep 15
+              fi
             fi
-            
-            echo "Status: $response - Retrying in 15s..."
-            sleep 15
           done
           
-          echo "❌ Health check failed"
+          echo ""
+          echo "========================================"
+          echo "❌ Health check failed after 10 attempts"
+          echo "========================================"
+          echo ""
+          echo "Troubleshooting info:"
+          echo "1. Check logs: ${KUDU_URL}/api/logs/docker"
+          echo "2. Verify build ran: ${KUDU_URL}/api/vfs/site/wwwroot/ (look for oryx-manifest.toml)"
+          echo "3. Check file structure: ${KUDU_URL}"
+          echo ""
+          echo "If dependencies still aren't installed, you may need to:"
+          echo "- Verify SCM_DO_BUILD_DURING_DEPLOYMENT=true in Azure Portal"
+          echo "- Use local Git deployment instead of ZIP deploy"
+          echo "- Or pre-build a Docker container"
+          
           exit 1
