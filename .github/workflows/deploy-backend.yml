@@ -1,4 +1,4 @@
-name: Deploy Backend to Azure
+name: Deploy Backend to Azure App Service
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
     paths:
       - "backend/**"
       - ".github/workflows/deploy-backend.yml"
+      - ".deployment"
   workflow_dispatch:
 
 jobs:
@@ -13,82 +14,104 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       
-      - name: Create deployment package from backend folder ONLY
+      - name: Validate backend structure
+        run: |
+          echo "================================================"
+          echo "Validating backend folder structure..."
+          echo "================================================"
+          echo ""
+          
+          if [ ! -d "backend" ]; then
+            echo "❌ ERROR: backend/ directory not found!"
+            exit 1
+          fi
+          
+          cd backend
+          
+          if [ ! -f "app.py" ]; then
+            echo "❌ ERROR: app.py not found in backend/"
+            exit 1
+          fi
+          
+          if [ ! -f "requirements.txt" ]; then
+            echo "❌ ERROR: requirements.txt not found in backend/"
+            exit 1
+          fi
+          
+          echo "✅ app.py found"
+          echo "✅ requirements.txt found"
+          echo ""
+          echo "Backend folder contents:"
+          ls -la
+          echo ""
+      
+      - name: Create deployment package
         run: |
           echo "================================================"
           echo "Creating deployment package..."
           echo "================================================"
           echo ""
           
-          # CRITICAL: Only package contents of backend/ folder
           cd backend
           
-          echo "Files being packaged:"
-          ls -la
-          echo ""
-          
-          # Clean artifacts
-          rm -rf __pycache__ *.pyc .venv venv env .pytest_cache startup.sh
-          
-          # Verify critical files exist
-          if [ ! -f "app.py" ]; then
-            echo "❌ ERROR: app.py not found in backend folder!"
-            exit 1
-          fi
-          
-          if [ ! -f "requirements.txt" ]; then
-            echo "❌ ERROR: requirements.txt not found in backend folder!"
-            exit 1
-          fi
-          
-          echo "✅ Found app.py and requirements.txt"
-          echo ""
+          # Clean up any local artifacts
+          echo "Cleaning up local artifacts..."
+          rm -rf __pycache__ *.pyc .pytest_cache .venv venv env .python_packages
+          rm -f startup.sh  # Remove if exists, Azure will use the portal command
           
           # Create ZIP with ONLY backend folder contents
-          zip -r ../deploy.zip . -x "*.git*" "*__pycache__*" "*.pyc" "*.log" ".env*"
+          echo "Creating ZIP package..."
+          zip -r ../backend-deploy.zip . \
+            -x "*.git*" \
+            -x "*__pycache__*" \
+            -x "*.pyc" \
+            -x "*.log" \
+            -x ".env*" \
+            -x ".venv/*" \
+            -x "venv/*" \
+            -x "env/*"
           
           cd ..
           
-          echo "Package size: $(du -h deploy.zip | cut -f1)"
           echo ""
-          echo "Package contents (first 40 lines):"
-          unzip -l deploy.zip | head -43
+          echo "✅ Package created successfully"
+          echo "📦 Size: $(du -h backend-deploy.zip | cut -f1)"
+          echo ""
+          echo "Package contents (first 40 files):"
+          unzip -l backend-deploy.zip | head -43
           echo ""
       
-      - name: Deploy to Azure using Kudu API
+      - name: Deploy to Azure App Service
         env:
           PUBLISH_PROFILE: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
         run: |
           echo "================================================"
-          echo "Extracting credentials..."
+          echo "Deploying to Azure App Service..."
           echo "================================================"
+          echo ""
           
-          # Extract credentials
+          # Extract credentials from publish profile
           USERNAME=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userName=")[^"]+' | head -1)
           PASSWORD=$(echo "$PUBLISH_PROFILE" | grep -oP '(?<=userPWD=")[^"]+' | head -1)
           
           if [ -z "$USERNAME" ] || [ -z "$PASSWORD" ]; then
-            echo "❌ Failed to extract credentials"
+            echo "❌ Failed to extract deployment credentials"
             exit 1
           fi
           
-          echo "✅ Credentials extracted successfully"
+          echo "✅ Credentials extracted"
           echo ""
           
-          echo "================================================"
-          echo "Deploying to Azure..."
-          echo "================================================"
-          echo ""
-          
-          # Deploy with retries
+          # Deploy using Kudu ZIP Deploy API with retries
+          DEPLOY_URL="https://insightbridge-backend-test.scm.azurewebsites.net/api/zipdeploy"
           MAX_RETRIES=5
           RETRY_COUNT=0
           SUCCESS=false
@@ -96,82 +119,94 @@ jobs:
           while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = false ]; do
             RETRY_COUNT=$((RETRY_COUNT + 1))
             
-            echo "📤 Deployment attempt $RETRY_COUNT/$MAX_RETRIES..."
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Deployment Attempt $RETRY_COUNT/$MAX_RETRIES"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo ""
             
-            # Use Kudu zipdeploy API
-            HTTP_CODE=$(curl -X POST \
-              "https://insightbridge-backend-test.scm.azurewebsites.net/api/zipdeploy" \
+            # Make deployment request
+            HTTP_CODE=$(curl -X POST "${DEPLOY_URL}" \
               -u "$USERNAME:$PASSWORD" \
               -H "Content-Type: application/zip" \
-              --data-binary @deploy.zip \
+              --data-binary @backend-deploy.zip \
               --max-time 600 \
               -w "%{http_code}" \
-              -o /tmp/deploy_response.txt \
+              -o /tmp/deploy_output.txt \
               -s)
             
             echo "Response Code: $HTTP_CODE"
             
             # Handle different response codes
-            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "202" ]; then
-              echo "✅ Deployment successful!"
-              SUCCESS=true
-              
-            elif [ "$HTTP_CODE" = "409" ]; then
-              echo "⚠️  Conflict (409) - App may be locked"
-              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-                echo "   Waiting 45 seconds before retry..."
-                sleep 45
-              fi
-              
-            elif [ "$HTTP_CODE" = "504" ]; then
-              echo "⚠️  Gateway timeout (504)"
-              echo "   Deployment may still be processing..."
-              echo "   Continuing to health check phase..."
-              SUCCESS=true
-              
-            else
-              echo "❌ Unexpected response: $HTTP_CODE"
-              if [ -f /tmp/deploy_response.txt ]; then
-                echo "   Response:"
-                cat /tmp/deploy_response.txt | head -10
-              fi
-              
-              if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
-                echo "   Waiting 30 seconds before retry..."
-                sleep 30
-              fi
-            fi
+            case $HTTP_CODE in
+              200|202)
+                echo "✅ Deployment successful!"
+                SUCCESS=true
+                ;;
+              409)
+                echo "⚠️  Conflict (409) - App may be locked"
+                if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                  echo "   Waiting 45 seconds before retry..."
+                  sleep 45
+                fi
+                ;;
+              504)
+                echo "⚠️  Gateway timeout (504)"
+                echo "   Deployment may still be processing..."
+                echo "   Continuing to build phase..."
+                SUCCESS=true
+                ;;
+              *)
+                echo "❌ Unexpected response: $HTTP_CODE"
+                if [ -f /tmp/deploy_output.txt ]; then
+                  echo ""
+                  echo "Response body:"
+                  cat /tmp/deploy_output.txt | head -20
+                fi
+                
+                if [ $RETRY_COUNT -lt $MAX_RETRIES ]; then
+                  echo ""
+                  echo "   Waiting 30 seconds before retry..."
+                  sleep 30
+                fi
+                ;;
+            esac
             
             echo ""
           done
           
           if [ "$SUCCESS" = false ]; then
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "❌ Deployment failed after $MAX_RETRIES attempts"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             exit 1
           fi
-          
+      
+      - name: Wait for Oryx build to complete
+        run: |
           echo "================================================"
-          echo "Waiting for Oryx build..."
+          echo "Waiting for Azure Oryx Build..."
           echo "================================================"
           echo ""
           echo "Azure is now:"
-          echo "  • Extracting package"
-          echo "  • Detecting Python app (requirements.txt)"
-          echo "  • Creating virtual environment"
-          echo "  • Installing dependencies: pip install -r requirements.txt"
-          echo "  • Generating oryx-manifest.toml"
-          echo "  • Starting application with Gunicorn + Uvicorn"
+          echo "  1. Extracting the deployment package"
+          echo "  2. Detecting Python project (requirements.txt)"
+          echo "  3. Creating virtual environment (antenv)"
+          echo "  4. Installing dependencies:"
+          echo "     $ pip install -r requirements.txt"
+          echo "  5. Generating oryx-manifest.toml"
+          echo "  6. Compressing virtual environment"
+          echo "  7. Starting Gunicorn with Uvicorn workers"
           echo ""
-          echo "⏳ Estimated time: 2-3 minutes"
+          echo "⏳ This typically takes 2-3 minutes..."
           echo ""
           
-          # Wait for build and startup
+          # Wait for build to complete and app to start
           sleep 180
+          
+          echo "✅ Build wait period complete"
+          echo ""
       
-      - name: Health Check with Extended Timeout
+      - name: Application Health Check
         run: |
           echo "================================================"
           echo "Application Health Check"
@@ -184,58 +219,116 @@ jobs:
           
           echo "Endpoint: $URL"
           echo "Max attempts: $MAX_ATTEMPTS"
-          echo "Total timeout: $((MAX_ATTEMPTS * WAIT_TIME / 60)) minutes"
+          echo "Wait between attempts: ${WAIT_TIME}s"
+          echo "Total timeout: ~$((MAX_ATTEMPTS * WAIT_TIME / 60)) minutes"
           echo ""
           
           for attempt in $(seq 1 $MAX_ATTEMPTS); do
-            printf "[$attempt/$MAX_ATTEMPTS] "
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Health Check Attempt $attempt/$MAX_ATTEMPTS"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             
-            HTTP_CODE=$(curl -s -o /tmp/health.txt -w "%{http_code}" "$URL" --max-time 30 2>/dev/null || echo "000")
+            # Make health check request
+            HTTP_CODE=$(curl -s -o /tmp/health_response.txt -w "%{http_code}" "$URL" --max-time 30 2>/dev/null || echo "000")
             
+            echo "HTTP Status: $HTTP_CODE"
+            
+            # Check if successful
             if [ "$HTTP_CODE" = "200" ]; then
-              echo "✅ SUCCESS!"
               echo ""
-              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-              echo "🎉 Application is healthy and responding!"
-              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "✅✅✅ SUCCESS! Application is Healthy! ✅✅✅"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
               echo ""
               echo "Response:"
-              cat /tmp/health.txt
+              cat /tmp/health_response.txt
               echo ""
               echo ""
-              echo "✅ Deployment completed successfully!"
+              echo "🎉 Deployment completed successfully!"
+              echo ""
+              echo "Application URLs:"
+              echo "  • Health: https://insightbridge-backend-test.azurewebsites.net/health"
+              echo "  • Root: https://insightbridge-backend-test.azurewebsites.net/"
+              echo "  • Docs: https://insightbridge-backend-test.azurewebsites.net/docs"
               echo ""
               exit 0
             fi
             
-            # Show status with context
+            # Provide context for error codes
             case $HTTP_CODE in
-              503) echo "503 Service Unavailable (building...)" ;;
-              504) echo "504 Gateway Timeout (starting...)" ;;
-              502) echo "502 Bad Gateway (crashed?)" ;;
-              000) echo "000 Connection failed" ;;
-              *) echo "$HTTP_CODE" ;;
+              000)
+                echo "Status: Connection failed or timeout"
+                ;;
+              502)
+                echo "Status: Bad Gateway (app may have crashed)"
+                ;;
+              503)
+                echo "Status: Service Unavailable (app still building/starting)"
+                ;;
+              504)
+                echo "Status: Gateway Timeout (app taking long to respond)"
+                ;;
+              *)
+                echo "Status: Unexpected response"
+                if [ -f /tmp/health_response.txt ] && [ -s /tmp/health_response.txt ]; then
+                  echo ""
+                  echo "Response preview:"
+                  head -3 /tmp/health_response.txt | sed 's/^/  /'
+                fi
+                ;;
             esac
             
+            # Wait before retry
             if [ $attempt -lt $MAX_ATTEMPTS ]; then
+              echo ""
+              echo "⏳ Waiting ${WAIT_TIME}s before next attempt..."
+              echo ""
               sleep $WAIT_TIME
             fi
           done
           
+          # All attempts failed
           echo ""
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "❌ Health check failed"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "❌ HEALTH CHECK FAILED"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
-          echo "Troubleshooting:"
-          echo "• Logs: https://insightbridge-backend-test.scm.azurewebsites.net/api/logs/docker"
-          echo "• Kudu: https://insightbridge-backend-test.scm.azurewebsites.net"
+          echo "Application did not become healthy after $MAX_ATTEMPTS attempts."
           echo ""
-          echo "Commands to run in Kudu:"
-          echo "  cd /home/site/wwwroot"
-          echo "  ls -la  # Check files"
-          echo "  cat oryx-manifest.toml  # Check if build ran"
-          echo "  python -m pip list | grep uvicorn  # Check if uvicorn installed"
+          echo "🔍 Troubleshooting Resources:"
+          echo ""
+          echo "1. View Application Logs:"
+          echo "   https://insightbridge-backend-test.scm.azurewebsites.net/api/logs/docker"
+          echo ""
+          echo "2. Kudu Console (SSH):"
+          echo "   https://insightbridge-backend-test.scm.azurewebsites.net/webssh/host"
+          echo ""
+          echo "   Commands to run:"
+          echo "   $ cd /home/site/wwwroot"
+          echo "   $ ls -la oryx-manifest.toml  # Should exist if build ran"
+          echo "   $ cat oryx-manifest.toml     # View build info"
+          echo "   $ ls -la antenv/             # Check virtual environment"
+          echo ""
+          echo "3. Check Azure Portal Configuration:"
+          echo "   Configuration → Application settings"
+          echo "   Required settings:"
+          echo "   • SCM_DO_BUILD_DURING_DEPLOYMENT = true"
+          echo "   • WEBSITES_PORT = 8000"
+          echo "   • WEBSITE_RUN_FROM_PACKAGE = 0 (or not set)"
+          echo "   • ENABLE_ORYX_BUILD = true"
+          echo ""
+          echo "4. Check App Service Plan:"
+          echo "   Ensure you have at least B1 Basic (1.75 GB RAM)"
+          echo "   Free tier (1 GB) may cause out-of-memory errors"
+          echo ""
+          echo "5. Last response received:"
+          if [ -f /tmp/health_response.txt ]; then
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            cat /tmp/health_response.txt | head -50
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          else
+            echo "   (No response received)"
+          fi
           echo ""
           
           exit 1
