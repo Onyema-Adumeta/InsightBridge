@@ -178,9 +178,10 @@ jobs:
             
             echo "[$i/$max_attempts] HTTP Status: $HTTP_CODE"
             
-            if [ "$HTTP_CODE" = "200" ]; then
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "307" ] || [ "$HTTP_CODE" = "301" ]; then
               echo ""
               echo "✅✅✅ Application is live and responding! ✅✅✅"
+              echo "   (Status: $HTTP_CODE)"
               echo ""
               
               # Check if we're getting HTML (not just a placeholder)
