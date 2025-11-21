@@ -4,7 +4,7 @@ on:
     branches: [ main ]
     paths:
       - "frontend/**"
-      - ".github/workflows/frontend.yml"
+      - ".github/workflows/deploy-frontend.yml"
   workflow_dispatch:
 
 jobs:
@@ -26,7 +26,6 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       
-      # ✅ Cache Next.js build to speed up builds and reduce memory usage
       - name: Cache Next.js Build
         uses: actions/cache@v3
         with:
@@ -57,100 +56,109 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: https://insightbridge-backend-test.azurewebsites.net
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
-          # ✅ INCREASED memory limit for large pages (dashboard is 1.36 MiB!)
           NODE_OPTIONS: "--max-old-space-size=5632 --max-semi-space-size=256"
           NEXT_TELEMETRY_DISABLED: "1"
           NODE_ENV: "production"
         run: |
           echo "🔨 Building Next.js application..."
-          echo "⚠️  Large pages detected - using increased memory allocation"
           echo "Memory limit: 5.5GB"
-          echo "Build mode: Production with code splitting"
+          echo "Build mode: Production with standalone output"
           echo ""
           
-          # Clear any stale build artifacts (but keep cache)
-          rm -rf .next/server .next/static
-          
-          # Run the build with periodic garbage collection hints
           npm run build
           
           echo ""
           echo "✅ Build complete!"
           
-          # Verify build output
-          if [ ! -d ".next" ]; then
-            echo "❌ Error: .next directory not created"
+          # Verify standalone build
+          if [ ! -d ".next/standalone" ]; then
+            echo "❌ Error: .next/standalone directory not created"
+            echo "   Make sure next.config.js has: output: 'standalone'"
             exit 1
           fi
           
           echo ""
           echo "📊 Build Statistics:"
-          echo "└─ Total size: $(du -sh .next | cut -f1)"
-          echo "└─ Static assets: $(du -sh .next/static 2>/dev/null | cut -f1 || echo 'N/A')"
-          echo "└─ Server bundles: $(du -sh .next/server 2>/dev/null | cut -f1 || echo 'N/A')"
-          echo ""
-          echo "📋 Largest bundles:"
-          find .next -name "*.js" -type f -exec du -h {} + | sort -rh | head -10
+          echo "└─ Standalone size: $(du -sh .next/standalone | cut -f1)"
+          echo "└─ Static assets: $(du -sh .next/static | cut -f1)"
+          echo "└─ Server bundles: $(du -sh .next/server | cut -f1)"
       
-      - name: Prepare for Deployment
+      - name: Create Standalone Deployment Package
         working-directory: frontend
         run: |
-          echo "🧹 Preparing deployment package..."
-          
-          # Remove development dependencies and cache to reduce package size
-          rm -rf node_modules
-          rm -rf .next/cache
-          
-          # Install only production dependencies
-          echo "📦 Installing production dependencies..."
-          npm ci --omit=dev --no-audit --no-fund --prefer-offline
-          
-          echo "✅ Production package ready"
-          echo "📊 Final package size: $(du -sh . | cut -f1)"
-      
-      - name: Verify Build Artifacts
-        working-directory: frontend
-        run: |
-          echo "🔍 Verifying build artifacts..."
-          
-          # Check for required directories
-          test -d .next || { echo "❌ Missing .next directory"; exit 1; }
-          test -d .next/server || { echo "❌ Missing .next/server directory"; exit 1; }
-          test -d .next/static || { echo "❌ Missing .next/static directory"; exit 1; }
-          
-          # Check for Next.js binary
-          test -d node_modules/next || { echo "❌ Missing next module"; exit 1; }
-          test -f node_modules/next/dist/bin/next || { echo "❌ Missing next binary"; exit 1; }
-          
-          # Check for problematic large files
+          echo "📦 Creating standalone deployment package..."
           echo ""
-          echo "⚠️  Checking for oversized bundles..."
-          large_files=$(find .next -name "*.js" -size +500k -type f 2>/dev/null || true)
-          if [ ! -z "$large_files" ]; then
-            echo "⚠️  Warning: Found bundles larger than 500kb:"
-            echo "$large_files" | while read file; do
-              size=$(du -h "$file" | cut -f1)
-              echo "   • $size - $(basename $file)"
-            done
+          
+          # Create deployment directory
+          mkdir -p deploy
+          
+          # Step 1: Copy standalone server
+          echo "1️⃣  Copying standalone server..."
+          cp -r .next/standalone/. deploy/
+          
+          # Step 2: Copy static files INTO standalone (CRITICAL!)
+          echo "2️⃣  Copying static assets into standalone..."
+          mkdir -p deploy/.next/static
+          cp -r .next/static/. deploy/.next/static/
+          
+          # Step 3: Copy public folder (if exists)
+          if [ -d "public" ]; then
+            echo "3️⃣  Copying public assets..."
+            cp -r public/. deploy/public/
           else
-            echo "✅ All bundles are reasonably sized"
+            echo "3️⃣  No public folder found (skipping)"
+          fi
+          
+          # Step 4: Verify the structure
+          echo ""
+          echo "✅ Deployment package created!"
+          echo ""
+          echo "📂 Package structure:"
+          echo "deploy/"
+          echo "├── server.js          $(test -f deploy/server.js && echo '✅' || echo '❌')"
+          echo "├── .next/"
+          echo "│   ├── static/        $(test -d deploy/.next/static && echo '✅' || echo '❌')"
+          echo "│   └── ..."
+          echo "├── public/            $(test -d deploy/public && echo '✅' || echo '⚠️  (optional)')"
+          echo "└── package.json       $(test -f deploy/package.json && echo '✅' || echo '❌')"
+          echo ""
+          
+          # Verify critical files
+          if [ ! -f "deploy/server.js" ]; then
+            echo "❌ ERROR: server.js not found in deployment package"
+            exit 1
+          fi
+          
+          if [ ! -d "deploy/.next/static" ]; then
+            echo "❌ ERROR: .next/static not found in deployment package"
+            exit 1
+          fi
+          
+          # Check static files count
+          static_count=$(find deploy/.next/static -type f | wc -l)
+          echo "📊 Static files count: $static_count"
+          
+          if [ "$static_count" -lt 10 ]; then
+            echo "⚠️  Warning: Very few static files detected (expected 100+)"
+          else
+            echo "✅ Static files look good"
           fi
           
           echo ""
-          echo "✅ All required files present!"
+          echo "📦 Final package size: $(du -sh deploy | cut -f1)"
       
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'insightbridge-frontend-test'
           slot-name: 'production'
-          package: ./frontend
+          package: ./frontend/deploy  # ← Deploy the standalone package, not the whole frontend folder!
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
       
       - name: Wait for Azure Startup
         run: |
           echo "⏳ Waiting for Azure to initialize..."
-          sleep 45
+          sleep 60
       
       - name: Verify Deployment
         timeout-minutes: 8
@@ -158,45 +166,57 @@ jobs:
           echo "🔍 Verifying application health..."
           echo ""
           
-          max_attempts=15
-          attempt=0
+          max_attempts=20
           
           for i in $(seq 1 $max_attempts); do
-            attempt=$i
-            
             # Try to fetch the homepage
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            HTTP_CODE=$(curl -s -o /tmp/response.html -w "%{http_code}" \
               --max-time 10 \
               --retry 2 \
               --retry-delay 3 \
               https://insightbridge-frontend-test.azurewebsites.net/ 2>/dev/null || echo "000")
             
-            echo "Attempt $i/$max_attempts: HTTP Status $HTTP_CODE"
+            echo "[$i/$max_attempts] HTTP Status: $HTTP_CODE"
             
             if [ "$HTTP_CODE" = "200" ]; then
               echo ""
-              echo "✅ Application is live and responding!"
-              echo "🌐 URL: https://insightbridge-frontend-test.azurewebsites.net"
+              echo "✅✅✅ Application is live and responding! ✅✅✅"
+              echo ""
+              
+              # Check if we're getting HTML (not just a placeholder)
+              if grep -q "InsightBridge" /tmp/response.html 2>/dev/null; then
+                echo "✅ Verified: Page contains expected content"
+              else
+                echo "⚠️  Warning: Response doesn't contain expected content"
+              fi
+              
+              echo ""
+              echo "🌐 Application URL:"
+              echo "   https://insightbridge-frontend-test.azurewebsites.net"
+              echo ""
+              echo "🔍 Check for 404 errors:"
+              echo "   Open DevTools Console (F12) and look for any errors"
+              echo "   All CSS/JS files should load from /_next/static/"
+              echo ""
               exit 0
+              
             elif [ "$HTTP_CODE" = "503" ]; then
               echo "   ⏳ Service starting up..."
             elif [ "$HTTP_CODE" = "000" ]; then
               echo "   ⏳ Service not reachable yet..."
             else
-              echo "   ⚠️  Unexpected status code"
+              echo "   ⚠️  Status: $HTTP_CODE"
             fi
             
-            # Don't sleep on the last attempt
             if [ $i -lt $max_attempts ]; then
-              sleep 10
+              sleep 15
             fi
           done
           
           echo ""
-          echo "⚠️  Warning: Application did not respond with 200 OK within timeout"
-          echo "   Deployment completed but application may need more time to start"
-          echo "   Check logs at: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
-          exit 0
+          echo "⚠️  Warning: Application did not respond with 200 OK"
+          echo "   Check logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
+          exit 1
       
       - name: Deployment Summary
         if: always()
@@ -209,17 +229,19 @@ jobs:
           echo "Frontend URL:"
           echo "  🌐 https://insightbridge-frontend-test.azurewebsites.net"
           echo ""
-          echo "Backend URL:"
+          echo "Backend API:"
           echo "  🔗 https://insightbridge-backend-test.azurewebsites.net"
           echo ""
-          echo "Logs & Diagnostics:"
-          echo "  📋 https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
-          echo "  🔍 https://portal.azure.com"
+          echo "Debugging Tools:"
+          echo "  📋 Logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
+          echo "  🔍 Kudu: https://insightbridge-frontend-test.scm.azurewebsites.net"
+          echo "  🏥 Portal: https://portal.azure.com"
           echo ""
-          echo "⚠️  Performance Note:"
-          echo "  Some pages have large bundles (>1MB). Consider:"
-          echo "  • Code splitting large components"
-          echo "  • Dynamic imports for heavy libraries"
-          echo "  • Lazy loading charts/visualizations"
+          echo "To verify static files are working:"
+          echo "  1. Open the app in browser"
+          echo "  2. Press F12 (DevTools)"
+          echo "  3. Go to Network tab"
+          echo "  4. Refresh page"
+          echo "  5. Check that /_next/static/ files return 200 OK"
           echo ""
           echo "════════════════════════════════════════"
