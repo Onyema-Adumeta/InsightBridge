@@ -1,5 +1,4 @@
 name: Deploy Backend to Azure
-
 on:
   push:
     branches: [ main ]
@@ -11,95 +10,55 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout repository code
         uses: actions/checkout@v4
-
+      
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: "pip"
-          cache-dependency-path: "backend/requirements.txt"
-
-      - name: Install and validate (CI only, not deployed)
-        run: |
-          echo "Installing dependencies locally for syntax check (not deployed)..."
-
-          cd backend
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-          # Basic syntax check so we fail early if app.py is broken
-          python -m py_compile app.py || { echo "::warning file=app.py::Python syntax check failed for app.py"; }
-
+      
       - name: Create deployment ZIP package
         id: create_package
         run: |
-          echo "Creating startup.sh and deployment.zip from backend/ ..."
-
+          echo "Creating deployment package..."
           cd backend
-
-          # Create startup.sh in the backend directory
-          cat << 'EOF' > startup.sh
-          #!/bin/bash
-          echo "Starting InsightBridge Backend..."
-          gunicorn app:app \
-            --workers 4 \
-            --worker-class uvicorn.workers.UvicornWorker \
-            --bind 0.0.0.0:$PORT \
-            --timeout 300 \
-            --keep-alive 5 \
-            --access-logfile - \
-            --error-logfile - \
-            --log-level info
-          EOF
-
-          chmod +x startup.sh
-
-          # Clean any local env artefacts so they are NOT deployed
-          rm -rf .venv venv env .python_packages __pycache__
-
-          # Zip everything in backend (.) excluding git and __pycache__
-          zip -r deployment.zip . -x "*.git*" "*__pycache__*" "*.DS_Store"
-
-          # Expose absolute path to the zip file for the next step
+          
+          # Clean local artifacts
+          rm -rf .venv venv env .python_packages __pycache__ *.pyc startup.sh
+          
+          # Package source code and requirements only
+          zip -r deployment.zip . -x "*.git*" "*__pycache__*" "*.pyc" "*.DS_Store"
+          
           echo "ZIP_PATH=$(pwd)/deployment.zip" >> "$GITHUB_OUTPUT"
-
+      
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
           app-name: "insightbridge-backend-test"
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
           package: ${{ steps.create_package.outputs.ZIP_PATH }}
-
+      
       - name: Post-deployment health check
-        shell: bash
         run: |
           APP_URL="https://insightbridge-backend-test.azurewebsites.net/health"
-          MAX_RETRIES=6
-          WAIT_TIME=10
-
-          echo "Waiting for service to start and checking endpoint: $APP_URL"
-          for i in $(seq 1 $MAX_RETRIES); do
-            echo "Attempt $i/$MAX_RETRIES..."
-
-            # Capture both status code and body for debugging
-            response=$(curl -s -o /tmp/health_body -w "%{http_code}" "$APP_URL")
-
-            echo "Status: $response"
-            echo "Body:"
-            cat /tmp/health_body || true
-
+          echo "Waiting 45 seconds for deployment and build..."
+          sleep 45
+          
+          for i in {1..10}; do
+            echo "Health check attempt $i/10..."
+            response=$(curl -s -o /tmp/response -w "%{http_code}" "$APP_URL" || echo "000")
+            
             if [ "$response" = "200" ]; then
-              echo "Health check passed!"
+              echo "✅ Success!"
               exit 0
-            else
-              echo "Health check returned status: $response. Retrying in $WAIT_TIME seconds..."
-              sleep "$WAIT_TIME"
             fi
+            
+            echo "Status: $response - Retrying in 15s..."
+            sleep 15
           done
-
-          echo "ERROR: Health check failed after $MAX_RETRIES attempts."
+          
+          echo "❌ Health check failed"
           exit 1
