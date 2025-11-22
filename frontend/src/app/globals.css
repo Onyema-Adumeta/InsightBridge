@@ -97,6 +97,8 @@ body {
 /* Ensure dashboard container fills properly */
 .dashboard-container {
   min-height: 100vh;
+  width: 100% !important;
+  max-width: none !important;
   background-color: #f9fafb;
 }
 
@@ -154,7 +156,28 @@ main {
   /* Content area properly offset by sidebar width */
   main.lg\:ml-64 {
     margin-left: 16rem; /* 256px */
+    width: calc(100% - 16rem) !important;
   }
+}
+
+/* ===== NUCLEAR OPTION: FORCE FULL WIDTH ===== */
+/* This overrides any max-width constraints in components */
+
+/* Force all content containers to full width */
+main > div,
+main > div > div,
+.dashboard-content,
+[class*="max-w-"] {
+  max-width: none !important;
+  width: 100% !important;
+}
+
+/* Specific fix for ModernDashboard containers */
+.min-h-screen > .bg-white > div {
+  max-width: none !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 
 /* ===== Semantic utilities (v4 uses @utility) ===== */
