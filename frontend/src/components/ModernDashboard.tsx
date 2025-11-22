@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -498,7 +497,8 @@ export default function ModernDashboard({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <>
+        {/* Header */}
         <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
           <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -519,6 +519,7 @@ export default function ModernDashboard({
           </div>
         </div>
 
+        {/* Loading Content */}
         <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-4">
           <div className="text-center max-w-md">
             <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-6 shadow-xl animate-pulse">
@@ -534,13 +535,13 @@ export default function ModernDashboard({
             </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!analysisData || (!analysisData.kpiCardData && !analysisData.kpiChartData)) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4 sm:p-8 lg:p-12">
+      <div className="min-h-screen flex items-center justify-center p-4 sm:p-8 lg:p-12">
         <div className="max-w-4xl w-full mx-auto text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-6 shadow-xl">
             <BarChart3 className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
@@ -576,8 +577,8 @@ export default function ModernDashboard({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 w-full overflow-x-hidden">
-      {/* ✅ FIXED: Professional Header with max-width constraint */}
+    <>
+      {/* ✅ FIXED: Header - No outer wrapper */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex flex-col gap-3">
@@ -636,7 +637,7 @@ export default function ModernDashboard({
         </div>
       </div>
 
-      {/* ✅ FIXED: Main Content with max-width constraint and proper padding */}
+      {/* ✅ FIXED: Main Content - No outer wrapper, proper padding */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Alert Banner */}
         {analysisData?.health_score?.score < 60 && (
@@ -649,7 +650,7 @@ export default function ModernDashboard({
           </div>
         )}
 
-        {/* ✅ FIXED: KPI Grid - Better responsive breakpoints */}
+        {/* KPI Grid */}
         {kpis.length > 0 && (
           <section id="kpis" className="scroll-mt-20">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -668,7 +669,6 @@ export default function ModernDashboard({
                 <option value="mtd">Month to Date</option>
               </select>
             </div>
-            {/* Grid: 1 col mobile, 2 col tablet, 3 col lg, 4 col xl */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
               {kpis.map((kpi, idx) => (
                 <ProfessionalKpiCard 
@@ -692,7 +692,7 @@ export default function ModernDashboard({
         {/* Industry Benchmark Widget */}
         {analysisData?.kpis?.profitLoss && <IndustryBenchmarkWidget analysisData={analysisData} />}
 
-        {/* ✅ VISUALIZATION SECTION */}
+        {/* VISUALIZATION SECTION */}
         <div className="space-y-4 sm:space-y-6">
           
           {/* Main Trend Chart */}
@@ -802,7 +802,7 @@ export default function ModernDashboard({
           )}
         </div>
 
-        {/* ✅ Main Content Grid - Properly responsive */}
+        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {analysisData?.predictiveAnalysis?.insights && analysisData.predictiveAnalysis.insights.length > 0 && (
@@ -810,9 +810,6 @@ export default function ModernDashboard({
                 <PredictiveInsightsSection insights={analysisData.predictiveAnalysis.insights} />
               </section>
             )}
-
-            {/* AI Analysis Section - Truncated for brevity, rest continues from original... */}
-            {/* Copy the rest of your AI Analysis section here */}
 
             {analysisData?.benchmarkAnalysis && (
               <section id="benchmarks" className="scroll-mt-20">
@@ -934,13 +931,13 @@ export default function ModernDashboard({
                     </div>
                   </div>
                 )}
-                {analysisData?.aiAnalysis?.recommendations && (
+                {analysisData?.predictiveAnalysis?.insights && (
                   <div className="flex items-start gap-2 sm:gap-3">
                     <div className="w-2 h-2 rounded-full bg-purple-500 mt-1.5 flex-shrink-0"></div>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-slate-900">AI Insights Ready</p>
                       <p className="text-xs text-slate-600">
-                        {analysisData.aiAnalysis.recommendations.length} recommendations available
+                        {analysisData.predictiveAnalysis.insights.length} recommendations available
                       </p>
                     </div>
                   </div>
@@ -963,6 +960,6 @@ export default function ModernDashboard({
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
