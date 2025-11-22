@@ -823,7 +823,8 @@ export default function ModernDashboard({
           </div>
 
           {/* Right Sidebar */}
-          <div className="space-y-4 sm:space-y-6">
+          <div className="space-y-4 sm:space-y-6 min-w-0" style={{minHeight: "200px", border: "2px solid red"}}>
+            {/* DEBUG MARKER */}
             {analysisData?.health_score && (
               <section id="health-score" className="scroll-mt-20 bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
                 <h3 className="text-sm sm:text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
