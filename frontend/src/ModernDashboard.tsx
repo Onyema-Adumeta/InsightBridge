@@ -825,6 +825,13 @@ export default function ModernDashboard({
           {/* Right Sidebar */}
           <div className="space-y-4 sm:space-y-6 min-w-0" style={{minHeight: "200px", border: "2px solid red"}}>
             {/* DEBUG MARKER */}
+            
+            {/* ALWAYS VISIBLE - Dashboard Info */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-slate-900 mb-2">?? Dashboard Status</h3>
+              <p className="text-xs text-slate-600">Right sidebar is rendering</p>
+              <p className="text-xs text-slate-500 mt-1">Data loaded: {kpis.length > 0 ? "Yes" : "No"}</p>
+            </div>
             {analysisData?.health_score && (
               <section id="health-score" className="scroll-mt-20 bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
                 <h3 className="text-sm sm:text-base font-semibold text-slate-900 mb-4 flex items-center gap-2">
@@ -846,8 +853,7 @@ export default function ModernDashboard({
             )}
 
             {/* Quick Stats Summary */}
-            {kpis.length > 0 && (
-              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 sm:p-5">
+            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 sm:p-5">
                 <div className="flex items-center gap-2 mb-4">
                   <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
                   <h3 className="text-sm sm:text-base font-semibold text-slate-900">Quick Stats</h3>
