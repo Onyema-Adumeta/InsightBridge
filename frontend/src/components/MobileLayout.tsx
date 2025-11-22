@@ -13,16 +13,22 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
 
+  // ✅ Routes that should NOT get the sidebar / mobile header / padding
   const isAuthRoute =
     pathname?.startsWith("/sign-in") ||
     pathname?.startsWith("/sign-up") ||
     pathname?.startsWith("/reset-password") ||
     pathname?.startsWith("/sso-callback");
 
-  if (isAuthRoute) {
+  // ✅ Dashboard route handles its own layout
+  const isDashboardRoute = pathname === "/dashboard" || pathname?.startsWith("/dashboard");
+
+  // 👉 Let auth pages and dashboard fully control their own layout
+  if (isAuthRoute || isDashboardRoute) {
     return <>{children}</>;
   }
 
+  // 👉 Default layout for other pages in the app
   return (
     <div className="relative min-h-screen bg-background">
       {/* Mobile Header with Hamburger */}
@@ -45,16 +51,8 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
         onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Main Content - REMOVED md:ml-64, added w-full */}
-      <main
-        className="
-          pt-16 md:pt-0
-          md:pl-64
-          w-full
-          min-h-screen
-          transition-all duration-300
-        "
-      >
+      {/* Main Content */}
+      <main className="pt-16 md:pt-0 md:pl-64 w-full min-h-screen transition-all duration-300">
         <div className="p-4 sm:p-6 lg:p-8 w-full">
           {children}
         </div>
