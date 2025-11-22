@@ -20,7 +20,7 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
     pathname?.startsWith("/reset-password") ||
     pathname?.startsWith("/sso-callback");
 
-  // ✅ Dashboard route handles its own layout
+  // ✅ Dashboard route handles its own layout internally
   const isDashboardRoute = pathname === "/dashboard" || pathname?.startsWith("/dashboard");
 
   // 👉 Let auth pages and dashboard fully control their own layout

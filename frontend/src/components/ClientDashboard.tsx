@@ -4,7 +4,7 @@
 /* ========= DIAGNOSTIC MOUNT LOG ========= */
 if (typeof window !== "undefined") {
   console.log(
-    "%cClientDashboard V8 LAYOUT-FIX mounted",
+    "%cClientDashboard V9 LAYOUT-FIXED mounted",
     "color:#10B981;font-weight:bold",
     new Date().toISOString()
   );
@@ -600,17 +600,17 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     <>
       <OnlineStatusIndicator />
       
-      {/* FIXED LAYOUT - No black spaces */}
-      <div className="flex min-h-screen bg-gray-50">
+      {/* FIXED LAYOUT - Proper full-width content */}
+      <div className="min-h-screen bg-gray-50">
         {/* Desktop Sidebar - Hidden on mobile */}
-        <aside className="hidden lg:block fixed left-0 top-0 h-screen w-64 z-40">
+        <aside className="hidden lg:block fixed left-0 top-0 h-screen w-64 z-40 bg-gray-900">
           <AppSidebar />
         </aside>
 
         {/* Mobile Sidebar - Overlay */}
         <aside
           id="mobile-sidebar"
-          className={`lg:hidden fixed left-0 top-0 h-screen w-64 z-50 transform transition-transform duration-300 ease-in-out ${
+          className={`lg:hidden fixed left-0 top-0 h-screen w-64 z-50 transform transition-transform duration-300 ease-in-out bg-gray-900 ${
             isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
@@ -626,28 +626,26 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
         )}
 
         {/* Mobile Menu Toggle */}
-        <div id="mobile-toggle">
+        <div id="mobile-toggle" className="lg:hidden">
           <MobileSidebarToggle 
             isOpen={isSidebarOpen} 
             onToggle={() => setIsSidebarOpen(!isSidebarOpen)} 
           />
         </div>
 
-        {/* Main Content - Responsive margins */}
-        <main className="flex-1 lg:ml-64 w-full min-h-screen">
-          <div className="w-full h-full">
-            {/* ✅ ModernDashboard now loads dynamically only when needed */}
-            <ModernDashboard
-              analysisData={analysisData}
-              onUpload={handleFileUpload}
-              onRefresh={handleDataRefresh}
-              onExport={handleExport}
-              onGenerateReport={handleGenerateReport}
-              isUploading={isUploading}
-              isLoading={isLoading}
-              userId={user?.id}
-            />
-          </div>
+        {/* Main Content - Full width with proper sidebar offset */}
+        <main className="lg:pl-64 min-h-screen">
+          {/* ✅ ModernDashboard now loads dynamically only when needed */}
+          <ModernDashboard
+            analysisData={analysisData}
+            onUpload={handleFileUpload}
+            onRefresh={handleDataRefresh}
+            onExport={handleExport}
+            onGenerateReport={handleGenerateReport}
+            isUploading={isUploading}
+            isLoading={isLoading}
+            userId={user?.id}
+          />
         </main>
       </div>
     </>
