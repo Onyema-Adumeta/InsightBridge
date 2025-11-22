@@ -802,8 +802,8 @@ export default function ModernDashboard({
         </div>
 
         {/* ✅ Main Content Grid - Properly responsive */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6 min-w-0">
             {analysisData?.predictiveAnalysis?.insights && analysisData.predictiveAnalysis.insights.length > 0 && (
               <section id="predictive-insights" className="scroll-mt-20">
                 <PredictiveInsightsSection insights={analysisData.predictiveAnalysis.insights} />
