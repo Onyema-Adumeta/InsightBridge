@@ -13,19 +13,16 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
 
-  // ✅ Routes that should NOT get the sidebar / mobile header / padding
   const isAuthRoute =
     pathname?.startsWith("/sign-in") ||
     pathname?.startsWith("/sign-up") ||
     pathname?.startsWith("/reset-password") ||
     pathname?.startsWith("/sso-callback");
 
-  // 👉 Let auth pages fully control their own layout (no header/sidebar/padding)
   if (isAuthRoute) {
     return <>{children}</>;
   }
 
-  // 👉 Default layout for the rest of the app (dashboard, etc.)
   return (
     <div className="relative min-h-screen bg-background">
       {/* Mobile Header with Hamburger */}
@@ -48,16 +45,17 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
         onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Main Content */}
+      {/* Main Content - REMOVED md:ml-64, added w-full */}
       <main
         className="
           pt-16 md:pt-0
-          md:ml-64
+          md:pl-64
+          w-full
           min-h-screen
           transition-all duration-300
         "
       >
-        <div className="p-4 sm:p-6 lg:p-8">
+        <div className="p-4 sm:p-6 lg:p-8 w-full">
           {children}
         </div>
       </main>
