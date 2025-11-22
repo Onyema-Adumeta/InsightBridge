@@ -1,3 +1,7 @@
+# At the top of ModernDashboard.tsx, change the comment
+# From: ClientDashboard V8 LAYOUT-FIX
+# To:   ClientDashboard V9 FULL-WIDTH-DEPLOYED
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
