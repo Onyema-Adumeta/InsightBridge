@@ -4,7 +4,7 @@
 /* ========= DIAGNOSTIC MOUNT LOG ========= */
 if (typeof window !== "undefined") {
   console.log(
-    "%cClientDashboard V9 LAYOUT-FIXED mounted",
+    "%cClientDashboard V10 FINAL-FIX mounted",
     "color:#10B981;font-weight:bold",
     new Date().toISOString()
   );
@@ -600,9 +600,9 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     <>
       <OnlineStatusIndicator />
       
-      {/* FIXED LAYOUT - Proper full-width content */}
+      {/* FIXED LAYOUT - Proper sidebar and content arrangement */}
       <div className="min-h-screen bg-gray-50">
-        {/* Desktop Sidebar - Hidden on mobile */}
+        {/* Desktop Sidebar - Fixed position */}
         <aside className="hidden lg:block fixed left-0 top-0 h-screen w-64 z-40 bg-gray-900">
           <AppSidebar />
         </aside>
@@ -633,8 +633,8 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
           />
         </div>
 
-        {/* Main Content - Full width with proper sidebar offset */}
-        <main className="lg:pl-64 min-h-screen">
+        {/* Main Content - Proper margin for sidebar on desktop, full width on mobile */}
+        <main className="w-full lg:ml-64 min-h-screen">
           {/* ✅ ModernDashboard now loads dynamically only when needed */}
           <ModernDashboard
             analysisData={analysisData}
