@@ -575,7 +575,7 @@ export default function ModernDashboard({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 w-full overflow-x-hidden">
+    <>
       {/* ✅ FIXED: Professional Header with max-width constraint */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 py-3 sm:py-4">
@@ -962,6 +962,6 @@ export default function ModernDashboard({
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
