@@ -499,7 +499,7 @@ export default function ModernDashboard({
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
         <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-          <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-slate-900">Financial Analytics Dashboard</h1>
