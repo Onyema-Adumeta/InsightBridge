@@ -154,7 +154,6 @@ export default function DashboardPage() {
 
   if (!isLoaded || (loading && !analysisData)) {
     return (
-      {/* ✅ FIXED: Added overflow-x-hidden and proper width constraint */}
       <main className="lg:ml-64 min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-50 to-slate-100">
         <div className="w-full max-w-[calc(100vw-16rem)] lg:max-w-full p-8">
           <LoadingDashboard />
@@ -165,7 +164,6 @@ export default function DashboardPage() {
 
   if (isLoaded && !isSignedIn) {
     return (
-      {/* ✅ FIXED: Added overflow-x-hidden */}
       <main className="lg:ml-64 flex min-h-screen items-center justify-center overflow-x-hidden bg-gradient-to-br from-slate-50 to-slate-100 p-8">
         <div className="max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-lg">
           <div className="mb-6">
@@ -199,7 +197,6 @@ export default function DashboardPage() {
     ) : null;
 
   return (
-    {/* ✅ FIXED: Added overflow-x-hidden and min-w-0 to prevent overflow */}
     <main className="lg:ml-64 min-h-screen min-w-0 overflow-x-hidden bg-gradient-to-br from-slate-50 to-slate-100">
       {connectionBanner}
       <DynamicClientDashboard initialData={analysisData} />
