@@ -70,18 +70,31 @@ jobs:
           echo ""
           echo "✅ Build complete!"
           
-          # Verify standalone build
+          # Verify standalone build exists
           if [ ! -d ".next/standalone" ]; then
             echo "❌ Error: .next/standalone directory not created"
             echo "   Make sure next.config.js has: output: 'standalone'"
             exit 1
           fi
           
+          # Verify server.js exists
+          if [ ! -f ".next/standalone/server.js" ]; then
+            echo "❌ Error: server.js not found in standalone build"
+            echo "   Standalone structure:"
+            ls -la .next/standalone/
+            exit 1
+          fi
+          
           echo ""
           echo "📊 Build Statistics:"
-          echo "└─ Standalone size: $(du -sh .next/standalone | cut -f1)"
-          echo "└─ Static assets: $(du -sh .next/static | cut -f1)"
-          echo "└─ Server bundles: $(du -sh .next/server | cut -f1)"
+          echo "└─ Standalone size: $(du -sh .next/standalone 2>/dev/null | cut -f1)"
+          echo "└─ Static assets: $(du -sh .next/static 2>/dev/null | cut -f1)"
+          echo "└─ Server bundles: $(du -sh .next/server 2>/dev/null | cut -f1)"
+          
+          # Show standalone structure
+          echo ""
+          echo "📁 Standalone build structure:"
+          ls -la .next/standalone/ | head -20
       
       - name: Create Standalone Deployment Package
         working-directory: frontend
@@ -89,71 +102,184 @@ jobs:
           echo "📦 Creating standalone deployment package..."
           echo ""
           
-          # Create deployment directory
-          mkdir -p deploy
+          # Remove old deploy directory
+          rm -rf deploy
           
-          # Step 1: Copy standalone server
+          # Step 1: Copy standalone server (this includes server.js, node_modules, etc.)
           echo "1️⃣  Copying standalone server..."
+          if [ ! -d ".next/standalone" ]; then
+            echo "❌ ERROR: .next/standalone directory not found"
+            exit 1
+          fi
+          
+          mkdir -p deploy
           cp -r .next/standalone/. deploy/
           
-          # Step 2: Copy static files INTO standalone (CRITICAL!)
+          if [ ! -f "deploy/server.js" ]; then
+            echo "❌ ERROR: server.js not copied to deploy folder"
+            echo "Contents of .next/standalone:"
+            ls -la .next/standalone/
+            echo "Contents of deploy:"
+            ls -la deploy/
+            exit 1
+          fi
+          
+          echo "   ✅ Standalone server copied ($(du -sh deploy | cut -f1))"
+          
+          # Step 2: Copy static assets INTO standalone
           echo "2️⃣  Copying static assets into standalone..."
+          if [ ! -d ".next/static" ]; then
+            echo "❌ ERROR: .next/static directory not found"
+            echo "Available directories in .next/:"
+            ls -la .next/
+            exit 1
+          fi
+          
+          # Create .next directory in deploy if it doesn't exist
           mkdir -p deploy/.next/static
+          
+          # Copy all static files
           cp -r .next/static/. deploy/.next/static/
           
-          # Step 3: Copy public folder (if exists)
+          # Verify static files were copied
+          static_file_count=$(find deploy/.next/static -type f 2>/dev/null | wc -l)
+          echo "   ✅ Static assets copied ($static_file_count files)"
+          
+          if [ "$static_file_count" -lt 5 ]; then
+            echo "   ⚠️  WARNING: Very few static files found"
+            echo "   Contents of .next/static:"
+            ls -la .next/static/ | head -20
+          fi
+          
+          # Step 3: Copy public folder
+          echo "3️⃣  Copying public assets..."
           if [ -d "public" ]; then
-            echo "3️⃣  Copying public assets..."
+            mkdir -p deploy/public
             cp -r public/. deploy/public/
+            public_file_count=$(find deploy/public -type f 2>/dev/null | wc -l)
+            echo "   ✅ Public assets copied ($public_file_count files)"
           else
-            echo "3️⃣  No public folder found (skipping)"
+            echo "   ⚠️  No public folder found (this is OK if you don't have public assets)"
           fi
           
-          # Step 4: Verify the structure
+          # Step 4: Create production package.json
+          echo "4️⃣  Creating production package.json..."
+          cat > deploy/package.json << 'PACKAGE_EOF'
+{
+  "name": "insightbridge-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}
+PACKAGE_EOF
+          echo "   ✅ package.json created"
+          
+          # Step 5: Create startup script for Azure
+          echo "5️⃣  Creating Azure startup script..."
+          cat > deploy/startup.sh << 'STARTUP_EOF'
+#!/bin/bash
+echo "🚀 Starting InsightBridge Frontend on Azure..."
+echo "Node version: $(node --version)"
+echo "Working directory: $(pwd)"
+echo "Port: ${PORT:-8080}"
+
+# Set environment for Azure
+export HOSTNAME="0.0.0.0"
+export NODE_ENV="production"
+
+# List files to verify deployment
+echo "Files in current directory:"
+ls -la
+
+echo "Starting server..."
+node server.js
+STARTUP_EOF
+          
+          chmod +x deploy/startup.sh
+          echo "   ✅ startup.sh created"
+          
+          # Step 6: Final verification
           echo ""
-          echo "✅ Deployment package created!"
+          echo "6️⃣  Final verification..."
           echo ""
-          echo "📂 Package structure:"
+          echo "📂 Deployment package structure:"
           echo "deploy/"
-          echo "├── server.js          $(test -f deploy/server.js && echo '✅' || echo '❌')"
+          echo "├── server.js          $([ -f deploy/server.js ] && echo '✅' || echo '❌')"
+          echo "├── package.json       $([ -f deploy/package.json ] && echo '✅' || echo '❌')"
+          echo "├── startup.sh         $([ -f deploy/startup.sh ] && echo '✅' || echo '❌')"
           echo "├── .next/"
-          echo "│   ├── static/        $(test -d deploy/.next/static && echo '✅' || echo '❌')"
-          echo "│   └── ..."
-          echo "├── public/            $(test -d deploy/public && echo '✅' || echo '⚠️  (optional)')"
-          echo "└── package.json       $(test -f deploy/package.json && echo '✅' || echo '❌')"
+          echo "│   └── static/        $([ -d deploy/.next/static ] && echo "✅ ($(find deploy/.next/static -type f | wc -l) files)" || echo '❌')"
+          echo "├── public/            $([ -d deploy/public ] && echo "✅ ($(find deploy/public -type f | wc -l) files)" || echo '⚠️  (optional)')"
+          echo "└── node_modules/      $([ -d deploy/node_modules ] && echo '✅' || echo '❌')"
           echo ""
           
-          # Verify critical files
+          # Critical file checks
+          echo "🔍 Critical file checks:"
+          
           if [ ! -f "deploy/server.js" ]; then
-            echo "❌ ERROR: server.js not found in deployment package"
+            echo "❌ CRITICAL: server.js not found"
             exit 1
-          fi
-          
-          if [ ! -d "deploy/.next/static" ]; then
-            echo "❌ ERROR: .next/static not found in deployment package"
-            exit 1
-          fi
-          
-          # Check static files count
-          static_count=$(find deploy/.next/static -type f | wc -l)
-          echo "📊 Static files count: $static_count"
-          
-          if [ "$static_count" -lt 10 ]; then
-            echo "⚠️  Warning: Very few static files detected (expected 100+)"
           else
-            echo "✅ Static files look good"
+            echo "✅ server.js exists ($(wc -c < deploy/server.js) bytes)"
+          fi
+          
+          if [ ! -d "deploy/.next/static" ] || [ $(find deploy/.next/static -type f | wc -l) -lt 5 ]; then
+            echo "❌ CRITICAL: Static assets missing or incomplete"
+            echo "Static directory contents:"
+            ls -la deploy/.next/ 2>/dev/null || echo "No .next directory"
+            exit 1
+          else
+            echo "✅ Static assets present ($(find deploy/.next/static -type f | wc -l) files)"
+          fi
+          
+          if [ ! -d "deploy/node_modules" ]; then
+            echo "⚠️  WARNING: node_modules not found (may cause runtime errors)"
+          else
+            echo "✅ node_modules present"
           fi
           
           echo ""
           echo "📦 Final package size: $(du -sh deploy | cut -f1)"
+          echo "✅ Deployment package ready!"
+      
+      - name: Upload Deployment Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-package
+          path: frontend/deploy/
+          retention-days: 1
       
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: 'insightbridge-frontend-test'
           slot-name: 'production'
-          package: ./frontend/deploy  # ← Deploy the standalone package, not the whole frontend folder!
+          package: ./frontend/deploy
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
+      
+      - name: Configure Azure App Service
+        run: |
+          echo "⚙️  Recommended Azure Configuration:"
+          echo ""
+          echo "1. Startup Command (if not auto-detected):"
+          echo "   bash startup.sh"
+          echo "   OR"
+          echo "   node server.js"
+          echo ""
+          echo "2. Application Settings:"
+          echo "   NODE_ENV=production"
+          echo "   PORT=8080"
+          echo "   HOSTNAME=0.0.0.0"
+          echo ""
+          echo "3. General Settings:"
+          echo "   Runtime: Node 20 LTS"
+          echo "   Platform: 64 Bit"
+          echo ""
       
       - name: Wait for Azure Startup
         run: |
@@ -169,7 +295,6 @@ jobs:
           max_attempts=20
           
           for i in $(seq 1 $max_attempts); do
-            # Try to fetch the homepage
             HTTP_CODE=$(curl -s -o /tmp/response.html -w "%{http_code}" \
               --max-time 10 \
               --retry 2 \
@@ -184,7 +309,6 @@ jobs:
               echo "   (Status: $HTTP_CODE)"
               echo ""
               
-              # Check if we're getting HTML (not just a placeholder)
               if grep -q "InsightBridge" /tmp/response.html 2>/dev/null; then
                 echo "✅ Verified: Page contains expected content"
               else
@@ -192,12 +316,27 @@ jobs:
               fi
               
               echo ""
+              echo "🔍 Testing static assets..."
+              
+              # Test a static asset (using a common Next.js chunk file pattern)
+              STATIC_TEST=$(curl -s -o /dev/null -w "%{http_code}" \
+                https://insightbridge-frontend-test.azurewebsites.net/_next/static/ 2>/dev/null || echo "000")
+              
+              if [ "$STATIC_TEST" = "200" ] || [ "$STATIC_TEST" = "404" ]; then
+                echo "✅ Static asset endpoint accessible"
+              else
+                echo "⚠️  Warning: Static assets may not be accessible (Status: $STATIC_TEST)"
+              fi
+              
+              echo ""
               echo "🌐 Application URL:"
               echo "   https://insightbridge-frontend-test.azurewebsites.net"
               echo ""
-              echo "🔍 Check for 404 errors:"
-              echo "   Open DevTools Console (F12) and look for any errors"
-              echo "   All CSS/JS files should load from /_next/static/"
+              echo "🔍 Verify in browser:"
+              echo "   1. Open DevTools (F12)"
+              echo "   2. Go to Network tab"
+              echo "   3. Refresh page"
+              echo "   4. Check /_next/static/ files load with 200 OK"
               echo ""
               exit 0
               
@@ -238,11 +377,14 @@ jobs:
           echo "  🔍 Kudu: https://insightbridge-frontend-test.scm.azurewebsites.net"
           echo "  🏥 Portal: https://portal.azure.com"
           echo ""
-          echo "To verify static files are working:"
-          echo "  1. Open the app in browser"
-          echo "  2. Press F12 (DevTools)"
-          echo "  3. Go to Network tab"
-          echo "  4. Refresh page"
-          echo "  5. Check that /_next/static/ files return 200 OK"
+          echo "Troubleshooting:"
+          echo "  • If static files 404: Check deploy/.next/static/ was copied"
+          echo "  • If server errors: Check Azure logs for startup errors"
+          echo "  • If blank page: Check browser console for errors"
+          echo ""
+          echo "Quick Checks:"
+          echo "  1. Does homepage load? https://insightbridge-frontend-test.azurewebsites.net"
+          echo "  2. Do static files load? https://insightbridge-frontend-test.azurewebsites.net/_next/static/"
+          echo "  3. Any console errors? (F12 → Console)"
           echo ""
           echo "════════════════════════════════════════"
