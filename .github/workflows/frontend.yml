@@ -164,41 +164,41 @@ jobs:
           
           # Step 4: Create production package.json
           echo "4️⃣  Creating production package.json..."
-          cat > deploy/package.json << 'PACKAGE_EOF'
-{
-  "name": "insightbridge-frontend",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "start": "node server.js"
-  },
-  "engines": {
-    "node": ">=18.17.0"
-  }
-}
-PACKAGE_EOF
+          cat > deploy/package.json << 'EOF'
+          {
+            "name": "insightbridge-frontend",
+            "version": "1.0.0",
+            "private": true,
+            "scripts": {
+              "start": "node server.js"
+            },
+            "engines": {
+              "node": ">=18.17.0"
+            }
+          }
+          EOF
           echo "   ✅ package.json created"
           
           # Step 5: Create startup script for Azure
           echo "5️⃣  Creating Azure startup script..."
-          cat > deploy/startup.sh << 'STARTUP_EOF'
-#!/bin/bash
-echo "🚀 Starting InsightBridge Frontend on Azure..."
-echo "Node version: $(node --version)"
-echo "Working directory: $(pwd)"
-echo "Port: ${PORT:-8080}"
+          cat > deploy/startup.sh << 'EOF'
+          #!/bin/bash
+          echo "🚀 Starting InsightBridge Frontend on Azure..."
+          echo "Node version: $(node --version)"
+          echo "Working directory: $(pwd)"
+          echo "Port: ${PORT:-8080}"
 
-# Set environment for Azure
-export HOSTNAME="0.0.0.0"
-export NODE_ENV="production"
+          # Set environment for Azure
+          export HOSTNAME="0.0.0.0"
+          export NODE_ENV="production"
 
-# List files to verify deployment
-echo "Files in current directory:"
-ls -la
+          # List files to verify deployment
+          echo "Files in current directory:"
+          ls -la
 
-echo "Starting server..."
-node server.js
-STARTUP_EOF
+          echo "Starting server..."
+          node server.js
+          EOF
           
           chmod +x deploy/startup.sh
           echo "   ✅ startup.sh created"
