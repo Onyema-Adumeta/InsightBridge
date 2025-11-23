@@ -600,7 +600,7 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
     <>
       <OnlineStatusIndicator />
       
-      {/* FIXED LAYOUT - Proper sidebar and content arrangement */}
+      {/* ✅ FIXED LAYOUT - Proper sidebar and content arrangement */}
       <div className="min-h-screen bg-gray-50">
         {/* Desktop Sidebar - Fixed position */}
         <aside className="hidden lg:block fixed left-0 top-0 h-screen w-64 z-40 bg-gray-900">
@@ -633,9 +633,8 @@ function DynamicClientDashboardContent({ initialData }: DynamicClientDashboardPr
           />
         </div>
 
-        {/* Main Content - Proper margin for sidebar on desktop, full width on mobile */}
-        <main className="w-full lg:ml-64 min-h-screen">
-          {/* ✅ ModernDashboard now loads dynamically only when needed */}
+        {/* ✅ FIXED: Main Content - Removed w-full, added min-w-0 and overflow-x-hidden */}
+        <main className="lg:ml-64 min-h-screen min-w-0 overflow-x-hidden">
           <ModernDashboard
             analysisData={analysisData}
             onUpload={handleFileUpload}
