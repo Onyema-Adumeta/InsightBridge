@@ -251,13 +251,6 @@ jobs:
           echo "📦 Final package size: $(du -sh deploy | cut -f1)"
           echo "✅ Deployment package ready!"
       
-      - name: Upload Deployment Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-package
-          path: frontend/deploy/
-          retention-days: 1
-      
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
