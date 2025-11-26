@@ -770,9 +770,9 @@ export default function FinancialDashboard({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Header - FIXED: Removed max-width container */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-screen-2xl mx-auto px-6 py-4">
+        <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Financial Dashboard</h1>
@@ -823,8 +823,8 @@ export default function FinancialDashboard({
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-screen-2xl mx-auto px-6 py-8">
+      {/* Main Content - FIXED: Removed max-width container and reduced padding */}
+      <div className="py-8">
         <div className="space-y-8">
           {/* KPI Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
