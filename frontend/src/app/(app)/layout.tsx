@@ -31,8 +31,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar with open/close control */}
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main content area */}
-      <main className="flex-1 w-full min-h-screen md:ml-64 pt-16 md:pt-0 px-4 sm:px-6 lg:px-10 py-6 lg:py-10">
+      {/* Main content area - FIXED VERSION */}
+      <main className="flex-1 min-h-screen md:ml-64 pt-16 md:pt-8 px-6 lg:px-10 py-6 lg:py-10">
         {children}
       </main>
     </div>
