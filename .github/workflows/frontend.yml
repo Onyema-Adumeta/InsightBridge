@@ -1,4 +1,102 @@
-- name: Create Standalone Deployment Package
+name: Deploy Frontend to Azure
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    environment:
+      name: 'Production'
+      url: 'https://insightbridge-frontend-test.azurewebsites.net'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Cache Next.js Build
+        uses: actions/cache@v3
+        with:
+          path: |
+            frontend/.next/cache
+            frontend/node_modules/.cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-${{ hashFiles('frontend/**/*.js', 'frontend/**/*.jsx', 'frontend/**/*.ts', 'frontend/**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('frontend/package-lock.json') }}-
+            ${{ runner.os }}-nextjs-
+      
+      - name: Remove BOM from package.json
+        working-directory: frontend
+        run: |
+          echo "🧹 Cleaning package.json..."
+          sed -i '1s/^\xEF\xBB\xBF//' package.json || true
+          node -e "JSON.parse(require('fs').readFileSync('package.json', 'utf8'))" && echo "✅ Valid JSON" || echo "❌ Invalid JSON"
+      
+      - name: Install Dependencies
+        working-directory: frontend
+        run: |
+          echo "📦 Installing dependencies..."
+          npm ci --prefer-offline --no-audit --no-fund
+          echo "✅ Dependencies installed"
+      
+      - name: Build Frontend Application
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: https://insightbridge-backend-test.azurewebsites.net
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+          NODE_OPTIONS: "--max-old-space-size=5632 --max-semi-space-size=256"
+          NEXT_TELEMETRY_DISABLED: "1"
+          NODE_ENV: "production"
+        run: |
+          echo "🔨 Building Next.js application..."
+          echo "Memory limit: 5.5GB"
+          echo "Build mode: Production with standalone output"
+          echo ""
+          
+          npm run build
+          
+          echo ""
+          echo "✅ Build complete!"
+          
+          # Verify standalone build exists
+          if [ ! -d ".next/standalone" ]; then
+            echo "❌ Error: .next/standalone directory not created"
+            echo "   Make sure next.config.js has: output: 'standalone'"
+            exit 1
+          fi
+          
+          # Verify server.js exists
+          if [ ! -f ".next/standalone/server.js" ]; then
+            echo "❌ Error: server.js not found in standalone build"
+            echo "   Standalone structure:"
+            ls -la .next/standalone/
+            exit 1
+          fi
+          
+          echo ""
+          echo "📊 Build Statistics:"
+          echo "└─ Standalone size: $(du -sh .next/standalone 2>/dev/null | cut -f1)"
+          echo "└─ Static assets: $(du -sh .next/static 2>/dev/null | cut -f1)"
+          echo "└─ Server bundles: $(du -sh .next/server 2>/dev/null | cut -f1)"
+          
+          # Show standalone structure
+          echo ""
+          echo "📁 Standalone build structure:"
+          ls -la .next/standalone/ | head -20
+      
+      - name: Create Standalone Deployment Package
         working-directory: frontend
         run: |
           echo "📦 Creating standalone deployment package..."
@@ -83,12 +181,12 @@
           
           # Step 5: Create startup script for Azure
           echo "5️⃣  Creating Azure startup script..."
-          cat > deploy/startup.sh << EOF
+          cat > deploy/startup.sh << 'SCRIPT_EOF'
           #!/bin/bash
           echo "🚀 Starting InsightBridge Frontend on Azure..."
-          echo "Node version: \$(node --version)"
-          echo "Working directory: \$(pwd)"
-          echo "Port: \${PORT:-8080}"
+          echo "Node version: $(node --version)"
+          echo "Working directory: $(pwd)"
+          echo "Port: ${PORT:-8080}"
 
           # Set environment for Azure
           export HOSTNAME="0.0.0.0"
@@ -100,7 +198,7 @@
 
           echo "Starting server..."
           node server.js
-          EOF
+          SCRIPT_EOF
           
           chmod +x deploy/startup.sh
           echo "   ✅ startup.sh created"
@@ -148,3 +246,145 @@
           echo ""
           echo "📦 Final package size: $(du -sh deploy | cut -f1)"
           echo "✅ Deployment package ready!"
+      
+      - name: Upload Deployment Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-package
+          path: frontend/deploy/
+          retention-days: 1
+      
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: 'insightbridge-frontend-test'
+          slot-name: 'production'
+          package: ./frontend/deploy
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE_FRONTEND }}
+      
+      - name: Configure Azure App Service
+        run: |
+          echo "⚙️  Recommended Azure Configuration:"
+          echo ""
+          echo "1. Startup Command (if not auto-detected):"
+          echo "   bash startup.sh"
+          echo "   OR"
+          echo "   node server.js"
+          echo ""
+          echo "2. Application Settings:"
+          echo "   NODE_ENV=production"
+          echo "   PORT=8080"
+          echo "   HOSTNAME=0.0.0.0"
+          echo ""
+          echo "3. General Settings:"
+          echo "   Runtime: Node 20 LTS"
+          echo "   Platform: 64 Bit"
+          echo ""
+      
+      - name: Wait for Azure Startup
+        run: |
+          echo "⏳ Waiting for Azure to initialize..."
+          sleep 60
+      
+      - name: Verify Deployment
+        timeout-minutes: 8
+        run: |
+          echo "🔍 Verifying application health..."
+          echo ""
+          
+          max_attempts=20
+          
+          for i in $(seq 1 $max_attempts); do
+            HTTP_CODE=$(curl -s -o /tmp/response.html -w "%{http_code}" \
+              --max-time 10 \
+              --retry 2 \
+              --retry-delay 3 \
+              https://insightbridge-frontend-test.azurewebsites.net/ 2>/dev/null || echo "000")
+            
+            echo "[$i/$max_attempts] HTTP Status: $HTTP_CODE"
+            
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "307" ] || [ "$HTTP_CODE" = "301" ]; then
+              echo ""
+              echo "✅✅✅ Application is live and responding! ✅✅✅"
+              echo "   (Status: $HTTP_CODE)"
+              echo ""
+              
+              if grep -q "InsightBridge" /tmp/response.html 2>/dev/null; then
+                echo "✅ Verified: Page contains expected content"
+              else
+                echo "⚠️  Warning: Response doesn't contain expected content"
+              fi
+              
+              echo ""
+              echo "🔍 Testing static assets..."
+              
+              # Test a static asset (using a common Next.js chunk file pattern)
+              STATIC_TEST=$(curl -s -o /dev/null -w "%{http_code}" \
+                https://insightbridge-frontend-test.azurewebsites.net/_next/static/ 2>/dev/null || echo "000")
+              
+              if [ "$STATIC_TEST" = "200" ] || [ "$STATIC_TEST" = "404" ]; then
+                echo "✅ Static asset endpoint accessible"
+              else
+                echo "⚠️  Warning: Static assets may not be accessible (Status: $STATIC_TEST)"
+              fi
+              
+              echo ""
+              echo "🌐 Application URL:"
+              echo "   https://insightbridge-frontend-test.azurewebsites.net"
+              echo ""
+              echo "🔍 Verify in browser:"
+              echo "   1. Open DevTools (F12)"
+              echo "   2. Go to Network tab"
+              echo "   3. Refresh page"
+              echo "   4. Check /_next/static/ files load with 200 OK"
+              echo ""
+              exit 0
+              
+            elif [ "$HTTP_CODE" = "503" ]; then
+              echo "   ⏳ Service starting up..."
+            elif [ "$HTTP_CODE" = "000" ]; then
+              echo "   ⏳ Service not reachable yet..."
+            else
+              echo "   ⚠️  Status: $HTTP_CODE"
+            fi
+            
+            if [ $i -lt $max_attempts ]; then
+              sleep 15
+            fi
+          done
+          
+          echo ""
+          echo "⚠️  Warning: Application did not respond with 200 OK"
+          echo "   Check logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
+          exit 1
+      
+      - name: Deployment Summary
+        if: always()
+        run: |
+          echo ""
+          echo "════════════════════════════════════════"
+          echo "       Deployment Summary"
+          echo "════════════════════════════════════════"
+          echo ""
+          echo "Frontend URL:"
+          echo "  🌐 https://insightbridge-frontend-test.azurewebsites.net"
+          echo ""
+          echo "Backend API:"
+          echo "  🔗 https://insightbridge-backend-test.azurewebsites.net"
+          echo ""
+          echo "Debugging Tools:"
+          echo "  📋 Logs: https://insightbridge-frontend-test.scm.azurewebsites.net/api/logstream"
+          echo "  🔍 Kudu: https://insightbridge-frontend-test.scm.azurewebsites.net"
+          echo "  🏥 Portal: https://portal.azure.com"
+          echo ""
+          echo "Troubleshooting:"
+          echo "  • If static files 404: Check deploy/.next/static/ was copied"
+          echo "  • If server errors: Check Azure logs for startup errors"
+          echo "  • If blank page: Check browser console for errors"
+          echo ""
+          echo "Quick Checks:"
+          echo "  1. Does homepage load? https://insightbridge-frontend-test.azurewebsites.net"
+          echo "  2. Do static files load? https://insightbridge-frontend-test.azurewebsites.net/_next/static/"
+          echo "  3. Any console errors? (F12 → Console)"
+          echo ""
+          echo "════════════════════════════════════════"
