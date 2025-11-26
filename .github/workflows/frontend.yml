@@ -77,14 +77,6 @@ jobs:
             exit 1
           fi
           
-          # Verify server.js exists
-          if [ ! -f ".next/standalone/server.js" ]; then
-            echo "❌ Error: server.js not found in standalone build"
-            echo "   Standalone structure:"
-            ls -la .next/standalone/
-            exit 1
-          fi
-          
           echo ""
           echo "📊 Build Statistics:"
           echo "└─ Standalone size: $(du -sh .next/standalone 2>/dev/null | cut -f1)"
@@ -105,20 +97,32 @@ jobs:
           # Remove old deploy directory
           rm -rf deploy
           
-          # Step 1: Copy standalone server (this includes server.js, node_modules, etc.)
-          echo "1️⃣  Copying standalone server..."
-          if [ ! -d ".next/standalone" ]; then
-            echo "❌ ERROR: .next/standalone directory not found"
+          # Step 1: Detect standalone structure
+          echo "1️⃣  Detecting standalone structure..."
+          if [ -f ".next/standalone/server.js" ]; then
+            STANDALONE_PATH=".next/standalone"
+            echo "   ✅ Found server.js at root of standalone"
+          elif [ -f ".next/standalone/frontend/server.js" ]; then
+            STANDALONE_PATH=".next/standalone/frontend"
+            echo "   ✅ Found server.js in frontend subdirectory"
+          else
+            echo "❌ ERROR: server.js not found in standalone build"
+            echo "   Standalone structure:"
+            ls -la .next/standalone/
+            if [ -d ".next/standalone/frontend" ]; then
+              echo "   Frontend subdirectory:"
+              ls -la .next/standalone/frontend/
+            fi
             exit 1
           fi
           
+          # Step 2: Copy standalone server
+          echo "2️⃣  Copying standalone server from $STANDALONE_PATH..."
           mkdir -p deploy
-          cp -r .next/standalone/. deploy/
+          cp -r $STANDALONE_PATH/. deploy/
           
           if [ ! -f "deploy/server.js" ]; then
             echo "❌ ERROR: server.js not copied to deploy folder"
-            echo "Contents of .next/standalone:"
-            ls -la .next/standalone/
             echo "Contents of deploy:"
             ls -la deploy/
             exit 1
@@ -126,8 +130,8 @@ jobs:
           
           echo "   ✅ Standalone server copied ($(du -sh deploy | cut -f1))"
           
-          # Step 2: Copy static assets INTO standalone
-          echo "2️⃣  Copying static assets into standalone..."
+          # Step 3: Copy static assets INTO standalone
+          echo "3️⃣  Copying static assets into standalone..."
           if [ ! -d ".next/static" ]; then
             echo "❌ ERROR: .next/static directory not found"
             echo "Available directories in .next/:"
@@ -151,8 +155,8 @@ jobs:
             ls -la .next/static/ | head -20
           fi
           
-          # Step 3: Copy public folder
-          echo "3️⃣  Copying public assets..."
+          # Step 4: Copy public folder
+          echo "4️⃣  Copying public assets..."
           if [ -d "public" ]; then
             mkdir -p deploy/public
             cp -r public/. deploy/public/
@@ -162,9 +166,9 @@ jobs:
             echo "   ⚠️  No public folder found (this is OK if you don't have public assets)"
           fi
           
-          # Step 4: Create production package.json
-          echo "4️⃣  Creating production package.json..."
-          cat > deploy/package.json << 'EOF'
+          # Step 5: Create production package.json
+          echo "5️⃣  Creating production package.json..."
+          cat > deploy/package.json << EOF
           {
             "name": "insightbridge-frontend",
             "version": "1.0.0",
@@ -179,9 +183,9 @@ jobs:
           EOF
           echo "   ✅ package.json created"
           
-          # Step 5: Create startup script for Azure
-          echo "5️⃣  Creating Azure startup script..."
-          cat > deploy/startup.sh << 'EOF'
+          # Step 6: Create startup script for Azure
+          echo "6️⃣  Creating Azure startup script..."
+          cat > deploy/startup.sh << 'SCRIPT_EOF'
           #!/bin/bash
           echo "🚀 Starting InsightBridge Frontend on Azure..."
           echo "Node version: $(node --version)"
@@ -198,14 +202,14 @@ jobs:
 
           echo "Starting server..."
           node server.js
-          EOF
+          SCRIPT_EOF
           
           chmod +x deploy/startup.sh
           echo "   ✅ startup.sh created"
           
-          # Step 6: Final verification
+          # Step 7: Final verification
           echo ""
-          echo "6️⃣  Final verification..."
+          echo "7️⃣  Final verification..."
           echo ""
           echo "📂 Deployment package structure:"
           echo "deploy/"
@@ -246,13 +250,6 @@ jobs:
           echo ""
           echo "📦 Final package size: $(du -sh deploy | cut -f1)"
           echo "✅ Deployment package ready!"
-      
-      - name: Upload Deployment Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-package
-          path: frontend/deploy/
-          retention-days: 1
       
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
