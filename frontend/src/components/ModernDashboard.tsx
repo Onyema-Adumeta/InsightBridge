@@ -580,7 +580,7 @@ export default function ModernDashboard({
     <div className="min-h-screen bg-slate-50">
       {/* ✅ FIXED: Header with proper max-width constraint */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
           <div className="flex flex-col gap-3">
             {/* Top row */}
             <div className="flex items-center justify-between gap-2">
@@ -638,7 +638,7 @@ export default function ModernDashboard({
       </div>
 
       {/* ✅ FIXED: Main Content with max-width and proper centering */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+      <div className="w-full max-w-[2000px] px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Alert Banner */}
         {analysisData?.health_score?.score < 60 && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4 flex items-start gap-2 sm:gap-3">
