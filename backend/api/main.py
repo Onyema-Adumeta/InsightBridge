@@ -2816,6 +2816,106 @@ def build_multi_period_chart_data(df: pd.DataFrame, period_columns: List[str],
     return chart_data
 
 
+def build_related_explainers(kpis: Dict[str, Any], doc_type: str) -> List[Dict[str, Any]]:
+    """
+    Build a list of related microlearning explainers based on detected KPIs / doc type.
+    This is deliberately simple & deterministic so frontend can just render it.
+    """
+    explainers: List[Dict[str, Any]] = []
+
+    # Normalize a bit
+    doc_type_lower = (doc_type or "").lower()
+    has_pl = "profitLoss" in kpis
+    has_bs = "balanceSheet" in kpis
+    has_cf = "cashFlow" in kpis
+
+    # --- Profit & Loss / Income Statement explainers ---
+    if has_pl or "profit & loss" in doc_type_lower or "income statement" in doc_type_lower:
+        explainers.append({
+            "id": "gross-margin-basics",
+            "title": "Understanding Gross Margin",
+            "slug": "gross-margin-basics",
+            "category": "Profit & Loss",
+            "kpi_key": "grossMargin",
+            "summary": "What gross margin means, how it’s calculated, and why it matters for pricing and COGS control."
+        })
+        explainers.append({
+            "id": "net-margin-vs-gross-margin",
+            "title": "Net Margin vs Gross Margin",
+            "slug": "net-margin-vs-gross-margin",
+            "category": "Profit & Loss",
+            "kpi_key": "netMargin",
+            "summary": "How net margin differs from gross margin and what each one tells you about business health."
+        })
+        explainers.append({
+            "id": "operating-margin-playbook",
+            "title": "Operating Margin & Cost Structure",
+            "slug": "operating-margin-playbook",
+            "category": "Profit & Loss",
+            "kpi_key": "operatingMargin",
+            "summary": "How operating expenses flow through your P&L and how to improve operating margin over time."
+        })
+
+    # --- Balance Sheet explainers ---
+    if has_bs or "balance sheet" in doc_type_lower:
+        explainers.append({
+            "id": "current-ratio-101",
+            "title": "Current Ratio & Liquidity",
+            "slug": "current-ratio-101",
+            "category": "Balance Sheet",
+            "kpi_key": "currentRatio",
+            "summary": "A simple guide to current ratio, what’s a healthy range, and how to improve short-term liquidity."
+        })
+        explainers.append({
+            "id": "debt-to-equity-101",
+            "title": "Debt-to-Equity Explained",
+            "slug": "debt-to-equity-101",
+            "category": "Balance Sheet",
+            "kpi_key": "debtToEquity",
+            "summary": "What debt-to-equity measures, why high leverage is risky, and how to manage it."
+        })
+        explainers.append({
+            "id": "working-capital-basics",
+            "title": "Working Capital Basics",
+            "slug": "working-capital-basics",
+            "category": "Balance Sheet",
+            "kpi_key": "workingCapital",
+            "summary": "How working capital is calculated and how it affects your ability to pay bills on time."
+        })
+
+    # --- Cash Flow explainers ---
+    if has_cf or "cash flow" in doc_type_lower:
+        explainers.append({
+            "id": "operating-cash-flow-101",
+            "title": "Operating Cash Flow",
+            "slug": "operating-cash-flow-101",
+            "category": "Cash Flow",
+            "kpi_key": "operatingCashFlow",
+            "summary": "Why cash from operations matters more than accounting profit for day-to-day survival."
+        })
+        explainers.append({
+            "id": "free-cash-flow-101",
+            "title": "Free Cash Flow",
+            "slug": "free-cash-flow-101",
+            "category": "Cash Flow",
+            "kpi_key": "freeCashFlow",
+            "summary": "How free cash flow is calculated and how it powers growth, debt paydown, or dividends."
+        })
+
+    # Fallback: if somehow nothing matched, give a generic starter explainer
+    if not explainers:
+        explainers.append({
+            "id": "financial-statements-overview",
+            "title": "3 Core Financial Statements",
+            "slug": "financial-statements-overview",
+            "category": "Foundations",
+            "kpi_key": None,
+            "summary": "Quick overview of the Income Statement, Balance Sheet, and Cash Flow Statement and how they connect."
+        })
+
+    return explainers
+
+
 # ============================================================================
 # MAIN ENDPOINT - Replace your existing @router.post("/upload_and_analyze")
 # ============================================================================
@@ -3000,6 +3100,43 @@ async def upload_and_analyze(
         for point in kpi_chart_data:
             chart_type = point.get('chartType', 'unknown')
             logger.info(f"  📈 {point['type']}: {point['period']} ({chart_type} chart)")
+        
+
+         # -------------------------------------------------------------------
+        # Build related_explainers list for the frontend MicroLearningSection
+        # -------------------------------------------------------------------
+        # 1) Prefer whatever the AI pipeline already returned
+        related_explainers = parsed_data.get("related_explainers")
+
+        # 2) Fallback: infer from KPI keys if not present
+        if not related_explainers:
+            related_explainers = []
+            try:
+                kpi_keys = set()
+                if isinstance(kpis, dict):
+                    for key in kpis.keys():
+                        if isinstance(key, str):
+                            kpi_keys.add(key.lower())
+
+                # Simple keyword-based mapping
+                if any("gross" in k for k in kpi_keys):
+                    related_explainers.append("gross_margin")
+                if any("current_ratio" in k or "current ratio" in k for k in kpi_keys):
+                    related_explainers.append("current_ratio")
+                if any("free cash" in k for k in kpi_keys):
+                    related_explainers.append("free_cash_flow")
+                if any("ebitda" in k for k in kpi_keys):
+                    related_explainers.append("ebitda")
+                if any("operating_margin" in k or "operating margin" in k for k in kpi_keys):
+                    related_explainers.append("operating_margin")
+                if any("debt" in k and "equity" in k for k in kpi_keys):
+                    related_explainers.append("debt_to_equity")
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to infer related_explainers: {e}")
+                related_explainers = []
+
+        # Deduplicate while preserving order
+        related_explainers = list(dict.fromkeys(related_explainers))
 
         # Build complete analysis response
         full_analysis = {
@@ -3022,7 +3159,8 @@ async def upload_and_analyze(
             "predictiveAnalysis": {"insights": insights},
             "aiAnalysis": ai_analysis,
             "kpiChartData": kpi_chart_data,
-            "extractionMetadata": parsed_data['metadata']
+            "extractionMetadata": parsed_data['metadata'],
+            "related_explainers": related_explainers, 
         }
 
         # Store in memory
