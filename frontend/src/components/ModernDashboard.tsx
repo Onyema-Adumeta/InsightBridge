@@ -11,7 +11,7 @@ import { HealthScoreGauge } from "@/components/HealthScoreGauge";
 import BenchmarkSection from "@/components/BenchmarkSection";
 import EnhancedTrendAnalysisChart from "@/components/EnhancedTrendAnalysisChart";
 import { 
-  ForecastChart, CommentsSection, MicroLearningSection, PredictiveInsightsSection 
+  ForecastChart, CommentsSection, MicroLearningSection
 } from "@/components/DashboardEnhancements";
 import BalanceSheetPieChart from "./BalanceSheetpieChart";
 import CashFlowBarChart from "./CashFlowBarChart";
@@ -21,6 +21,7 @@ import MiniTrendCard from "./MiniTrends";
 import AlertCenter from "./AlertCenter";
 import ActivityFeed from "./ActivityFeed";
 import KeyRatiosCard from "./KeyRatiosCard";
+import ComprehensiveAIInsights from '@/components/ComprehensiveAIInsights';
 
 interface ModernDashboardProps {
   analysisData: any;
@@ -713,7 +714,53 @@ export default function ModernDashboard({
     );
   }
 
+  // Get microlearning explainers from backend (if available)
   const microLearningExplainers = analysisData?.related_explainers;
+
+  // ✅ Compatibility function: Builds AI insights data from current backend structure
+  const prepareAIInsightsData = (data: any) => {
+    if (!data) return null;
+
+    // If we already have the full structure, use it
+    if (data?.predictiveAnalysis?.overview) {
+      return {
+        overview: data.predictiveAnalysis.overview,
+        keyFindings: data.predictiveAnalysis.insights || [],
+        quantitative: data.predictiveAnalysis.quantitative || [],
+        qualitative: data.predictiveAnalysis.qualitative || [],
+        recommendations: data.predictiveAnalysis.recommendations || [],
+        risks: data.predictiveAnalysis.risks || [],
+        nextSteps: data.predictiveAnalysis.nextSteps || []
+      };
+    }
+
+    // Build from current data structure
+    const insights = data?.predictiveAnalysis?.insights || [];
+    const overview = insights.length > 0
+      ? `Financial Analysis Summary:\n\n${insights.map((i: any) => `• ${i.title}: ${i.summary}`).join('\n\n')}`
+      : '';
+
+    const keyFindings = insights.map((insight: any) => ({
+      title: insight.title || 'Insight',
+      summary: insight.summary || '',
+      severity: insight.severity || 'info',
+      recommendation: insight.recommendation || '',
+      metric_focus: insight.metric_focus || '',
+      kpi_refs: insight.kpi_refs || []
+    }));
+
+    return {
+      overview,
+      keyFindings,
+      quantitative: [],
+      qualitative: [],
+      recommendations: [],
+      risks: [],
+      nextSteps: []
+    };
+  };
+
+  const aiInsightsData = prepareAIInsightsData(analysisData);
 
   return (
     <>
@@ -793,7 +840,7 @@ export default function ModernDashboard({
         </div>
       </div>
 
-      {/* Main Content - no extra wrapper around sidebar layout */}
+      {/* Main Content */}
       <div className="min-h-screen bg-slate-50 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {analysisData?.health_score?.score < 60 && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4 flex items-start gap-2 sm:gap-3">
@@ -1049,22 +1096,17 @@ export default function ModernDashboard({
           )}
         </div>
 
-        {/* Main content grid (left: insights, microlearning, comments / right: sidebar) */}
+        {/* Main content grid: left column (AI insights, microlearning, benchmarks, comments) + right sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-            {analysisData?.predictiveAnalysis?.insights &&
-              analysisData.predictiveAnalysis.insights.length > 0 && (
-                <section
-                  id="predictive-insights"
-                  className="scroll-mt-20"
-                >
-                  <PredictiveInsightsSection
-                    insights={analysisData.predictiveAnalysis.insights}
-                  />
-                </section>
-              )}
+            {/* ✅ UPDATED: Comprehensive AI Insights with compatibility layer */}
+            {aiInsightsData && (
+              <section id="predictive-insights" className="scroll-mt-20">
+                <ComprehensiveAIInsights analysisData={aiInsightsData} />
+              </section>
+            )}
 
-            {/* ✅ Microlearning now wired to backend explainers, with fallback */}
+            {/* ✅ Microlearning with backend explainers */}
             <section id="microlearning" className="scroll-mt-20">
               <MicroLearningSection explainers={microLearningExplainers} />
             </section>
@@ -1117,7 +1159,7 @@ export default function ModernDashboard({
             {kpis.length > 0 && (
               <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 sm:p-5">
                 <div className="flex items-center gap-2 mb-4">
-                  <Activity className="w-4 h-4 sm:w-5 h-5 text-indigo-600" />
+                  <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
                   <h3 className="text-sm sm:text-base font-semibold text-slate-900">
                     Quick Stats
                   </h3>
