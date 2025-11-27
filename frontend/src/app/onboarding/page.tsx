@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
@@ -19,7 +18,7 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (!isLoaded) return;
     if (!isSignedIn) {
-      router.replace("/sign-in"); // adjust to your auth route
+      router.replace("/sign-in");
       return;
     }
     const existing = (user?.publicMetadata?.industry as string) || "";
@@ -50,13 +49,13 @@ export default function OnboardingPage() {
 
   if (!isLoaded) return null;
 
+  // FIXED: Removed <main> wrapper - layout.tsx already provides it
   return (
-    <main className="mx-auto max-w-xl p-6">
+    <div className="mx-auto max-w-xl p-6">
       <h1 className="text-2xl font-semibold mb-4">Quick setup</h1>
       <p className="text-sm text-gray-500 mb-6">
         Choose your industry to tailor insights and recommendations. You can change this later in Settings.
       </p>
-
       <label className="block text-sm font-medium mb-2">Industry</label>
       <select
         className="w-full rounded-lg border p-2 mb-4"
@@ -67,7 +66,6 @@ export default function OnboardingPage() {
           <option key={opt} value={opt}>{opt}</option>
         ))}
       </select>
-
       <button
         onClick={handleSave}
         disabled={saving}
@@ -75,8 +73,7 @@ export default function OnboardingPage() {
       >
         {saving ? "Saving..." : "Continue"}
       </button>
-
       {error && <p className="text-red-600 mt-3 text-sm">{error}</p>}
-    </main>
+    </div>
   );
 }

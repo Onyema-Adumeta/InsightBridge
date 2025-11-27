@@ -20,11 +20,15 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
     pathname?.startsWith("/reset-password") ||
     pathname?.startsWith("/sso-callback");
 
-  // ✅ Dashboard route handles its own layout internally
-  const isDashboardRoute = pathname === "/dashboard" || pathname?.startsWith("/dashboard");
+  // ✅ Routes that use (app) group layout - they handle their own layout
+  const usesAppLayout = 
+    pathname === "/dashboard" || 
+    pathname?.startsWith("/dashboard") ||
+    pathname === "/reconciliation" ||
+    pathname?.startsWith("/reconciliation");
 
-  // 👉 Let auth pages and dashboard fully control their own layout
-  if (isAuthRoute || isDashboardRoute) {
+  // 👉 Let auth pages and app-layout pages fully control their own layout
+  if (isAuthRoute || usesAppLayout) {
     return <>{children}</>;
   }
 
@@ -51,8 +55,8 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
         onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Main Content */}
-      <main className="pt-16 md:pt-0 md:pl-64 w-full min-h-screen transition-all duration-300">
+      {/* Main Content - FIXED: Changed pl-64 to ml-64 */}
+      <main className="pt-16 md:pt-0 md:ml-64 w-full min-h-screen transition-all duration-300">
         <div className="p-4 sm:p-6 lg:p-8 w-full">
           {children}
         </div>
