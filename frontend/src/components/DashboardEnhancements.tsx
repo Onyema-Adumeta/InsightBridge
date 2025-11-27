@@ -87,17 +87,19 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
           )}
         </div>
         <div className="space-y-2">
-          {payload.filter((p: any) => p.dataKey !== 'confidenceUpper' && p.dataKey !== 'confidenceLower').map((p: any, i: number) => (
-            <div key={i} className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }} />
-                <span className="text-sm text-slate-600">{p.name}</span>
+          {payload
+            .filter((p: any) => p.dataKey !== 'confidenceUpper' && p.dataKey !== 'confidenceLower')
+            .map((p: any, i: number) => (
+              <div key={i} className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.color }} />
+                  <span className="text-sm text-slate-600">{p.name}</span>
+                </div>
+                <span className="text-sm font-semibold text-slate-900">
+                  ${(p.value / 1000000).toFixed(2)}M
+                </span>
               </div>
-              <span className="text-sm font-semibold text-slate-900">
-                ${(p.value / 1000000).toFixed(2)}M
-              </span>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
     );
@@ -116,9 +118,12 @@ export const ForecastChart: React.FC<ForecastChartProps> = ({
           return (
             <div key={`legend-${index}`} className="flex items-center gap-2">
               {isDashed ? (
-                <div className="w-8 h-0.5" style={{
-                  backgroundImage: `repeating-linear-gradient(90deg, ${entry.color} 0, ${entry.color} 8px, transparent 8px, transparent 12px)`,
-                }} />
+                <div
+                  className="w-8 h-0.5"
+                  style={{
+                    backgroundImage: `repeating-linear-gradient(90deg, ${entry.color} 0, ${entry.color} 8px, transparent 8px, transparent 12px)`,
+                  }}
+                />
               ) : (
                 <div className="w-8 h-0.5 rounded-full" style={{ backgroundColor: entry.color }} />
               )}
@@ -396,7 +401,10 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           </div>
         ) : (
           comments.map((comment) => (
-            <div key={comment.id} className="bg-slate-50 rounded-lg p-4 border border-slate-200 hover:border-slate-300 transition-colors">
+            <div
+              key={comment.id}
+              className="bg-slate-50 rounded-lg p-4 border border-slate-200 hover:border-slate-300 transition-colors"
+            >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
@@ -434,13 +442,20 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 };
 
 // ============================================================================
-// MICRO-LEARNING SECTION - PROFESSIONAL VERSION
+// MICRO-LEARNING SECTION - PROFESSIONAL VERSION (REFactored for explainers prop)
 // ============================================================================
-const MicroLearningCard: React.FC<{
+
+export interface MicroLearningExplainer {
   term: string;
   definition: string;
-  example: string;
-}> = ({ term, definition, example }) => {
+  example?: string;
+}
+
+const MicroLearningCard: React.FC<MicroLearningExplainer> = ({
+  term,
+  definition,
+  example,
+}) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -477,39 +492,59 @@ const MicroLearningCard: React.FC<{
   );
 };
 
-export const MicroLearningSection: React.FC = () => {
-  const explainers = [
+interface MicroLearningSectionProps {
+  explainers?: MicroLearningExplainer[];
+}
+
+export const MicroLearningSection: React.FC<MicroLearningSectionProps> = ({
+  explainers,
+}) => {
+  const defaultExplainers: MicroLearningExplainer[] = [
     {
       term: "Gross Margin",
-      definition: "The percentage of revenue remaining after subtracting cost of goods sold (COGS). Higher gross margins indicate better pricing power and operational efficiency.",
-      example: "If you have $100k revenue and $30k COGS, your gross margin is 70%. This means you keep $0.70 of every dollar in revenue after covering direct costs."
+      definition:
+        "The percentage of revenue remaining after subtracting cost of goods sold (COGS). Higher gross margins indicate better pricing power and operational efficiency.",
+      example:
+        "If you have $100k revenue and $30k COGS, your gross margin is 70%. This means you keep $0.70 of every dollar in revenue after covering direct costs.",
     },
     {
       term: "Current Ratio",
-      definition: "Measures a company's ability to pay short-term obligations. Calculated as current assets divided by current liabilities. A ratio above 2.0 is generally considered healthy.",
-      example: "A ratio of 2.5 means you have $2.50 in liquid assets for every $1.00 in short-term debt, indicating strong liquidity."
+      definition:
+        "Measures a company's ability to pay short-term obligations. Calculated as current assets divided by current liabilities. A ratio above 2.0 is generally considered healthy.",
+      example:
+        "A ratio of 2.5 means you have $2.50 in liquid assets for every $1.00 in short-term debt, indicating strong liquidity.",
     },
     {
       term: "Free Cash Flow (FCF)",
-      definition: "Cash generated after capital expenditures. Shows how much cash is available for growth, dividends, or debt reduction. Positive FCF indicates financial health.",
-      example: "Operating cash flow of $500k minus $200k in capital expenditures = $300k free cash flow available for strategic initiatives."
+      definition:
+        "Cash generated after capital expenditures. Shows how much cash is available for growth, dividends, or debt reduction. Positive FCF indicates financial health.",
+      example:
+        "Operating cash flow of $500k minus $200k in capital expenditures = $300k free cash flow available for strategic initiatives.",
     },
     {
       term: "EBITDA",
-      definition: "Earnings Before Interest, Taxes, Depreciation, and Amortization. Measures operational performance by excluding non-operational expenses. Used for comparing companies.",
-      example: "If net income is $100k, add back $20k interest, $30k taxes, and $50k depreciation to get $200k EBITDA."
+      definition:
+        "Earnings Before Interest, Taxes, Depreciation, and Amortization. Measures operational performance by excluding non-operational expenses. Used for comparing companies.",
+      example:
+        "If net income is $100k, add back $20k interest, $30k taxes, and $50k depreciation to get $200k EBITDA.",
     },
     {
       term: "Operating Margin",
-      definition: "Operating income as a percentage of revenue. Shows profitability from core business operations before interest and taxes. Higher is better.",
-      example: "With $1M revenue and $200k operating income, your operating margin is 20%, meaning core operations generate $0.20 profit per dollar of sales."
+      definition:
+        "Operating income as a percentage of revenue. Shows profitability from core business operations before interest and taxes. Higher is better.",
+      example:
+        "With $1M revenue and $200k operating income, your operating margin is 20%, meaning core operations generate $0.20 profit per dollar of sales.",
     },
     {
       term: "Debt-to-Equity Ratio",
-      definition: "Compares total debt to shareholder equity. Measures financial leverage. Lower ratios indicate less risk. Ideal varies by industry.",
-      example: "A ratio of 0.5 means you have $0.50 of debt for every $1.00 of equity, indicating conservative leverage and lower financial risk."
-    }
+      definition:
+        "Compares total debt to shareholder equity. Measures financial leverage. Lower ratios indicate less risk. Ideal varies by industry.",
+      example:
+        "A ratio of 0.5 means you have $0.50 of debt for every $1.00 of equity, indicating conservative leverage and lower financial risk.",
+    },
   ];
+
+  const itemsToRender = explainers && explainers.length > 0 ? explainers : defaultExplainers;
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-6">
@@ -518,13 +553,17 @@ export const MicroLearningSection: React.FC = () => {
           <Award className="w-5 h-5 text-indigo-600" />
         </div>
         <div>
-          <h3 className="text-base font-semibold text-slate-900">Financial Literacy Corner</h3>
-          <p className="text-sm text-slate-600">Quick reference for key financial terms</p>
+          <h3 className="text-base font-semibold text-slate-900">
+            Financial Literacy Corner
+          </h3>
+          <p className="text-sm text-slate-600">
+            Quick reference for key financial terms
+          </p>
         </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {explainers.map((item, idx) => (
+        {itemsToRender.map((item, idx) => (
           <MicroLearningCard key={idx} {...item} />
         ))}
       </div>
@@ -552,13 +591,29 @@ export const PredictiveInsightsSection: React.FC<PredictiveInsightsSectionProps>
   const getIconAndColor = (type?: string) => {
     switch (type) {
       case 'success':
-        return { Icon: CheckCircle2, colorClass: 'bg-emerald-50 border-emerald-200 text-emerald-700', iconColor: 'text-emerald-600' };
+        return {
+          Icon: CheckCircle2,
+          colorClass: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+          iconColor: 'text-emerald-600',
+        };
       case 'warning':
-        return { Icon: AlertTriangle, colorClass: 'bg-amber-50 border-amber-200 text-amber-700', iconColor: 'text-amber-600' };
+        return {
+          Icon: AlertTriangle,
+          colorClass: 'bg-amber-50 border-amber-200 text-amber-700',
+          iconColor: 'text-amber-600',
+        };
       case 'danger':
-        return { Icon: XCircle, colorClass: 'bg-red-50 border-red-200 text-red-700', iconColor: 'text-red-600' };
+        return {
+          Icon: XCircle,
+          colorClass: 'bg-red-50 border-red-200 text-red-700',
+          iconColor: 'text-red-600',
+        };
       default:
-        return { Icon: Lightbulb, colorClass: 'bg-blue-50 border-blue-200 text-blue-700', iconColor: 'text-blue-600' };
+        return {
+          Icon: Lightbulb,
+          colorClass: 'bg-blue-50 border-blue-200 text-blue-700',
+          iconColor: 'text-blue-600',
+        };
     }
   };
 
@@ -595,7 +650,10 @@ export const PredictiveInsightsSection: React.FC<PredictiveInsightsSectionProps>
                   {insight.suggestion && (
                     <p className="text-sm text-slate-600 mt-2 flex items-start gap-1">
                       <Lightbulb className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
-                      <span><strong className="font-semibold">Recommendation:</strong> {insight.suggestion}</span>
+                      <span>
+                        <strong className="font-semibold">Recommendation:</strong>{' '}
+                        {insight.suggestion}
+                      </span>
                     </p>
                   )}
                 </div>
