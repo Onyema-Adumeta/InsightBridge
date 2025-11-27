@@ -1416,7 +1416,7 @@ def calculate_health_score(kpis: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def generate_insights(kpis: Dict[str, Any], doc_type: str) -> List[Dict[str, Any]]:
-    """Generate actionable insights"""
+    """Generate actionable insights with proper field names for frontend"""
     insights = []
     
     # Profit & Loss Insights
@@ -1428,14 +1428,20 @@ def generate_insights(kpis: Dict[str, Any], doc_type: str) -> List[Dict[str, Any
         if revenue > 1000000:
             insights.append({
                 "title": "Significant Revenue Scale",
-                "text": f"Revenue of ${revenue:,.0f} shows strong market presence",
-                "type": "success"
+                "summary": f"Revenue of ${revenue:,.0f} shows strong market presence and demonstrates solid business fundamentals.",
+                "severity": "info",
+                "recommendation": "Maintain current growth trajectory while optimizing operational efficiency.",
+                "metric_focus": "revenue",
+                "kpi_refs": ["revenue"]
             })
         elif revenue > 0:
             insights.append({
                 "title": "Revenue Generated",
-                "text": f"Current revenue at ${revenue:,.0f}",
-                "type": "info"
+                "summary": f"Current revenue at ${revenue:,.0f} indicates active business operations.",
+                "severity": "info",
+                "recommendation": "Focus on sustainable revenue growth strategies.",
+                "metric_focus": "revenue",
+                "kpi_refs": ["revenue"]
             })
         
         # Profitability insights
@@ -1443,23 +1449,29 @@ def generate_insights(kpis: Dict[str, Any], doc_type: str) -> List[Dict[str, Any
         if net_margin > 15:
             insights.append({
                 "title": "Strong Profitability",
-                "text": f"Net margin of {net_margin:.1f}% indicates excellent profit efficiency",
-                "type": "success",
-                "suggestion": "Maintain pricing discipline and continue cost optimization"
+                "summary": f"Net margin of {net_margin:.1f}% indicates excellent profit efficiency and strong business model.",
+                "severity": "info",
+                "recommendation": "Maintain pricing discipline and continue cost optimization to sustain these strong margins.",
+                "metric_focus": "net_margin",
+                "kpi_refs": ["net_margin", "operating_margin"]
             })
         elif net_margin > 5:
             insights.append({
                 "title": "Moderate Profitability",
-                "text": f"Net margin of {net_margin:.1f}% is acceptable but has room for improvement",
-                "type": "info",
-                "suggestion": "Review operating expenses and explore pricing optimization"
+                "summary": f"Net margin of {net_margin:.1f}% is acceptable but has room for improvement through operational optimization.",
+                "severity": "info",
+                "recommendation": "Review operating expenses and explore pricing optimization opportunities to improve profitability.",
+                "metric_focus": "net_margin",
+                "kpi_refs": ["net_margin", "operating_expenses"]
             })
         elif net_margin < 0:
             insights.append({
                 "title": "Profitability Challenge",
-                "text": f"Negative net margin of {net_margin:.1f}% requires immediate attention",
-                "type": "danger",
-                "suggestion": "Focus on revenue growth and cost reduction initiatives"
+                "summary": f"Negative net margin of {net_margin:.1f}% requires immediate attention to prevent sustained losses.",
+                "severity": "critical",
+                "recommendation": "Focus on revenue growth and aggressive cost reduction initiatives. Consider strategic pricing adjustments.",
+                "metric_focus": "net_margin",
+                "kpi_refs": ["net_margin", "revenue", "operating_expenses"]
             })
         
         # Gross margin insights
@@ -1467,15 +1479,20 @@ def generate_insights(kpis: Dict[str, Any], doc_type: str) -> List[Dict[str, Any
         if gross_margin > 60:
             insights.append({
                 "title": "Excellent Gross Margin",
-                "text": f"Gross margin of {gross_margin:.1f}% shows strong pricing power",
-                "type": "success"
+                "summary": f"Gross margin of {gross_margin:.1f}% shows strong pricing power and efficient cost management.",
+                "severity": "info",
+                "recommendation": "Maintain current pricing strategy and continue to optimize supplier relationships.",
+                "metric_focus": "gross_margin",
+                "kpi_refs": ["gross_margin", "cogs"]
             })
         elif gross_margin < 30:
             insights.append({
                 "title": "Low Gross Margin",
-                "text": f"Gross margin of {gross_margin:.1f}% may limit profitability",
-                "type": "warning",
-                "suggestion": "Review pricing strategy and supplier costs"
+                "summary": f"Gross margin of {gross_margin:.1f}% may limit profitability and financial flexibility.",
+                "severity": "warning",
+                "recommendation": "Review pricing strategy and negotiate better supplier costs. Consider product mix optimization.",
+                "metric_focus": "gross_margin",
+                "kpi_refs": ["gross_margin", "cogs", "revenue"]
             })
         
         # Operating efficiency
@@ -1483,15 +1500,20 @@ def generate_insights(kpis: Dict[str, Any], doc_type: str) -> List[Dict[str, Any
         if operating_margin > 20:
             insights.append({
                 "title": "Efficient Operations",
-                "text": f"Operating margin of {operating_margin:.1f}% demonstrates operational excellence",
-                "type": "success"
+                "summary": f"Operating margin of {operating_margin:.1f}% demonstrates operational excellence and strong cost control.",
+                "severity": "info",
+                "recommendation": "Continue current operational practices and look for opportunities to scale efficiency gains.",
+                "metric_focus": "operating_margin",
+                "kpi_refs": ["operating_margin", "operating_expenses"]
             })
         elif operating_margin < 10 and operating_margin > 0:
             insights.append({
                 "title": "Operating Efficiency Opportunity",
-                "text": f"Operating margin of {operating_margin:.1f}% suggests room for improvement",
-                "type": "info",
-                "suggestion": "Analyze and optimize operating expenses"
+                "summary": f"Operating margin of {operating_margin:.1f}% suggests significant room for operational improvement.",
+                "severity": "info",
+                "recommendation": "Analyze and optimize operating expenses. Implement cost control measures and improve process efficiency.",
+                "metric_focus": "operating_margin",
+                "kpi_refs": ["operating_margin", "operating_expenses", "revenue"]
             })
     
     # Balance Sheet Insights
@@ -1503,21 +1525,29 @@ def generate_insights(kpis: Dict[str, Any], doc_type: str) -> List[Dict[str, Any
         if current_ratio < 1.0:
             insights.append({
                 "title": "Liquidity Concern",
-                "text": f"Current ratio of {current_ratio:.2f} suggests potential cash flow issues",
-                "type": "danger",
-                "suggestion": "Focus on accelerating collections and managing payables"
+                "summary": f"Current ratio of {current_ratio:.2f} suggests potential cash flow issues and difficulty meeting short-term obligations.",
+                "severity": "critical",
+                "recommendation": "Focus on accelerating collections, managing payables strategically, and securing additional working capital if needed.",
+                "metric_focus": "current_ratio",
+                "kpi_refs": ["current_ratio", "current_assets", "current_liabilities"]
             })
         elif current_ratio > 2.0:
             insights.append({
                 "title": "Strong Liquidity Position",
-                "text": f"Current ratio of {current_ratio:.2f} - current assets comfortably cover obligations",
-                "type": "success"
+                "summary": f"Current ratio of {current_ratio:.2f} indicates current assets comfortably cover short-term obligations.",
+                "severity": "info",
+                "recommendation": "Consider deploying excess liquidity into growth initiatives or debt reduction to optimize capital efficiency.",
+                "metric_focus": "current_ratio",
+                "kpi_refs": ["current_ratio", "current_assets", "cash"]
             })
         elif current_ratio >= 1.5:
             insights.append({
                 "title": "Healthy Liquidity",
-                "text": f"Current ratio of {current_ratio:.2f} indicates good short-term financial health",
-                "type": "success"
+                "summary": f"Current ratio of {current_ratio:.2f} indicates good short-term financial health and operational flexibility.",
+                "severity": "info",
+                "recommendation": "Maintain current working capital management practices.",
+                "metric_focus": "current_ratio",
+                "kpi_refs": ["current_ratio"]
             })
         
         # Debt insights
@@ -1525,15 +1555,20 @@ def generate_insights(kpis: Dict[str, Any], doc_type: str) -> List[Dict[str, Any
         if debt_to_equity > 2.0:
             insights.append({
                 "title": "High Leverage",
-                "text": f"Debt-to-equity ratio of {debt_to_equity:.2f} indicates significant leverage",
-                "type": "warning",
-                "suggestion": "Consider debt reduction strategies to lower financial risk"
+                "summary": f"Debt-to-equity ratio of {debt_to_equity:.2f} indicates significant financial leverage and elevated risk.",
+                "severity": "warning",
+                "recommendation": "Consider debt reduction strategies to lower financial risk. Prioritize cash flow towards debt paydown.",
+                "metric_focus": "debt_to_equity",
+                "kpi_refs": ["debt_to_equity", "total_liabilities", "total_equity"]
             })
         elif debt_to_equity < 0.5:
             insights.append({
                 "title": "Conservative Capital Structure",
-                "text": f"Low debt-to-equity ratio of {debt_to_equity:.2f} shows financial stability",
-                "type": "success"
+                "summary": f"Low debt-to-equity ratio of {debt_to_equity:.2f} shows financial stability and minimal leverage risk.",
+                "severity": "info",
+                "recommendation": "Consider strategic use of leverage for growth if returns exceed cost of capital.",
+                "metric_focus": "debt_to_equity",
+                "kpi_refs": ["debt_to_equity"]
             })
         
         # Working capital
@@ -1541,9 +1576,11 @@ def generate_insights(kpis: Dict[str, Any], doc_type: str) -> List[Dict[str, Any
         if working_capital < 0:
             insights.append({
                 "title": "Negative Working Capital",
-                "text": "Current liabilities exceed current assets",
-                "type": "danger",
-                "suggestion": "Improve cash collection and reduce short-term obligations"
+                "summary": "Current liabilities exceed current assets, indicating potential liquidity constraints.",
+                "severity": "critical",
+                "recommendation": "Improve cash collection processes and reduce short-term obligations. Consider working capital financing options.",
+                "metric_focus": "working_capital",
+                "kpi_refs": ["working_capital", "current_assets", "current_liabilities"]
             })
     
     # Cash Flow Insights
@@ -1555,15 +1592,20 @@ def generate_insights(kpis: Dict[str, Any], doc_type: str) -> List[Dict[str, Any
         if operating_cf > 0:
             insights.append({
                 "title": "Positive Operating Cash Flow",
-                "text": f"Generating ${abs(operating_cf):,.0f} from operations",
-                "type": "success"
+                "summary": f"Generating ${abs(operating_cf):,.0f} from core business operations demonstrates strong cash generation capability.",
+                "severity": "info",
+                "recommendation": "Continue monitoring cash conversion cycle and maintain operational efficiency.",
+                "metric_focus": "operating_cash_flow",
+                "kpi_refs": ["operating_cash_flow"]
             })
         else:
             insights.append({
                 "title": "Negative Operating Cash Flow",
-                "text": "Operations are consuming cash",
-                "type": "danger",
-                "suggestion": "Focus on improving cash conversion cycle"
+                "summary": f"Operations are consuming ${abs(operating_cf):,.0f} in cash, indicating cash generation challenges.",
+                "severity": "warning",
+                "recommendation": "Focus on improving cash conversion cycle through faster collections and optimized inventory management.",
+                "metric_focus": "operating_cash_flow",
+                "kpi_refs": ["operating_cash_flow", "revenue"]
             })
         
         # Free cash flow
@@ -1571,25 +1613,31 @@ def generate_insights(kpis: Dict[str, Any], doc_type: str) -> List[Dict[str, Any
         if free_cf < 0:
             insights.append({
                 "title": "Negative Free Cash Flow",
-                "text": "Company is spending more than it generates",
-                "type": "warning",
-                "suggestion": "Review capital expenditures and improve cash conversion cycle"
+                "summary": f"Company is spending ${abs(free_cf):,.0f} more than it generates, potentially due to growth investments.",
+                "severity": "warning",
+                "recommendation": "Review capital expenditures for ROI and improve cash conversion cycle. Ensure spending aligns with strategic priorities.",
+                "metric_focus": "free_cash_flow",
+                "kpi_refs": ["free_cash_flow", "operating_cash_flow", "capex"]
             })
         elif free_cf > 0:
             insights.append({
                 "title": "Positive Free Cash Flow",
-                "text": f"Generating ${free_cf:,.0f} in free cash flow",
-                "type": "success",
-                "suggestion": "Consider reinvestment opportunities or debt reduction"
+                "summary": f"Generating ${free_cf:,.0f} in free cash flow provides financial flexibility for strategic initiatives.",
+                "severity": "info",
+                "recommendation": "Consider reinvestment opportunities for growth, debt reduction, or shareholder returns based on strategic priorities.",
+                "metric_focus": "free_cash_flow",
+                "kpi_refs": ["free_cash_flow"]
             })
     
     # If no insights generated, add a default one
     if len(insights) == 0:
         insights.append({
             "title": "Analysis Complete",
-            "text": "Financial data processed successfully",
-            "type": "info",
-            "suggestion": "Upload more financial statements for comprehensive analysis"
+            "summary": "Financial data processed successfully. Upload additional financial statements for more comprehensive insights.",
+            "severity": "info",
+            "recommendation": "Upload profit & loss, balance sheet, and cash flow statements for detailed analysis.",
+            "metric_focus": "general",
+            "kpi_refs": []
         })
     
     logger.info(f"✓ Generated {len(insights)} insights")
@@ -2360,13 +2408,12 @@ def prepare_analysis_context_for_ai(kpis: Dict[str, Any], doc_type: str, df: pd.
 
 
 def create_financial_analysis_prompt(context: Dict[str, Any]) -> str:
-    """Create comprehensive prompt for AI analysis"""
-    
-    prompt = f"""Analyze this {context['document_type']} and provide a comprehensive financial analysis.
+    """Create comprehensive prompt for AI analysis with enhanced detail requirements"""
+
+    prompt = f"""You are an expert financial analyst and CFO advisor. Analyze this {context['document_type']} and provide a COMPREHENSIVE, DETAILED financial analysis with specific numbers, percentages, and actionable insights.
 
 FINANCIAL DATA:
 """
-    
     if 'financials' in context:
         f = context['financials']
         prompt += f"""
@@ -2381,7 +2428,7 @@ PROFIT & LOSS METRICS:
 - COGS: ${f['cogs']:,.2f}
 - Operating Expenses: ${f['operating_expenses']:,.2f}
 """
-    
+
     if 'balance_sheet' in context:
         bs = context['balance_sheet']
         prompt += f"""
@@ -2396,7 +2443,7 @@ BALANCE SHEET METRICS:
 - Debt-to-Equity: {bs['debt_to_equity']:.2f}
 - Working Capital: ${bs['working_capital']:,.2f}
 """
-    
+
     if 'cash_flow' in context:
         cf = context['cash_flow']
         prompt += f"""
@@ -2407,73 +2454,331 @@ CASH FLOW METRICS:
 - Free Cash Flow: ${cf['free_cash_flow']:,.2f}
 - CapEx: ${cf['capex']:,.2f}
 """
-    
+
     prompt += """
+
+CRITICAL REQUIREMENTS FOR YOUR ANALYSIS:
+1. Be SPECIFIC with numbers - reference actual dollar amounts and percentages from the data
+2. Provide DETAILED explanations (3-5 sentences minimum per insight)
+3. Connect the dots between different metrics to tell a coherent financial story
+4. Compare to industry standards and best practices
+5. Identify both immediate concerns and long-term strategic opportunities
+6. Provide ACTIONABLE recommendations with clear implementation steps
+7. Use business language that executives can act on
 
 Please provide a detailed analysis in the following JSON format:
 
 {
-  "executive_summary": "A comprehensive 3-4 paragraph summary analyzing the company's financial position, trends, and strategic outlook. Include specific numbers and percentages.",
-  
+  "executive_summary": "Write a comprehensive 4-6 paragraph executive summary that:
+    - Opens with the company's overall financial health and key performance highlights
+    - Analyzes profitability trends with specific margin comparisons
+    - Discusses liquidity position and working capital management
+    - Examines leverage and capital structure
+    - Identifies 2-3 critical areas requiring immediate attention
+    - Concludes with strategic outlook and key priorities
+    Include specific dollar amounts and percentages throughout.",
+
+  "key_findings": [
+    {
+      "title": "Revenue Generation Excellence" (example - make these specific and compelling),
+      "summary": "Provide 3-4 detailed sentences analyzing this finding. Include:
+        - Specific numbers (e.g., 'Revenue of $102,254 represents...')
+        - Comparison to benchmarks (e.g., 'This exceeds the industry average of...')
+        - Trend analysis (e.g., 'Compared to typical Q2 performance...')
+        - Business implications (e.g., 'This indicates strong market positioning because...')",
+      "metric_focus": "revenue, gross_margin",
+      "severity": "info",
+      "recommendation": "Provide a detailed, multi-step recommendation:
+        - WHY this action is needed
+        - WHAT specific steps to take
+        - WHEN to implement
+        - EXPECTED outcome with quantified impact",
+      "kpi_refs": ["revenue", "gross_margin"]
+    },
+    {
+      "title": "Strong Profitability Performance",
+      "summary": "Detailed analysis of profit margins with specific calculations and comparisons...",
+      "metric_focus": "net_margin, operating_margin",
+      "severity": "info",
+      "recommendation": "Detailed recommendation...",
+      "kpi_refs": ["net_margin", "operating_margin", "gross_margin"]
+    },
+    {
+      "title": "Excellent Gross Margin",
+      "summary": "Deep dive into gross margin performance...",
+      "metric_focus": "gross_margin",
+      "severity": "info",
+      "recommendation": "Specific actions to maintain or improve...",
+      "kpi_refs": ["gross_margin", "cogs"]
+    },
+    {
+      "title": "Efficient Operations",
+      "summary": "Analysis of operational efficiency...",
+      "metric_focus": "operating_margin",
+      "severity": "info",
+      "recommendation": "Ways to further optimize operations...",
+      "kpi_refs": ["operating_margin", "operating_expenses"]
+    },
+    {
+      "title": "Strong Liquidity Position",
+      "summary": "Detailed liquidity analysis...",
+      "metric_focus": "current_ratio",
+      "severity": "info",
+      "recommendation": "Working capital optimization strategies...",
+      "kpi_refs": ["current_ratio", "working_capital", "cash"]
+    },
+    {
+      "title": "High Leverage" (if debt_to_equity > 3),
+      "summary": "Comprehensive leverage analysis with risk assessment...",
+      "metric_focus": "debt_to_equity",
+      "severity": "warning",
+      "recommendation": "Detailed debt management strategy with timeline...",
+      "kpi_refs": ["debt_to_equity", "total_liabilities", "total_equity"]
+    }
+  ],
+
   "quantitative_insights": [
     {
-      "metric": "Metric name",
-      "value": "Current value",
-      "interpretation": "What this metric tells us about the business",
-      "benchmark": "Industry standard or healthy range",
+      "metric": "Net Profit Margin",
+      "value": "71.5%",
+      "interpretation": "Provide 4-5 sentences explaining:
+        - What this exceptional margin indicates about business model
+        - How it compares to SaaS industry average (typically 15-25%)
+        - What cost structure enables this performance
+        - Sustainability analysis
+        - Strategic advantages this creates",
+      "benchmark": "Industry average: 15-25% for SaaS companies. Top performers: 25-35%. Your company significantly exceeds even top performer benchmarks.",
+      "trend": "positive",
+      "context": "This margin suggests either premium pricing power, highly efficient operations, or a digital-first business model with minimal COGS. The 71.5% margin is exceptional even for software companies."
+    },
+    {
+      "metric": "Gross Margin",
+      "value": "62.5%",
+      "interpretation": "Detailed analysis...",
+      "benchmark": "Detailed benchmark comparison...",
       "trend": "positive/neutral/negative"
+    },
+    {
+      "metric": "Operating Margin",
+      "value": "24.0%",
+      "interpretation": "Detailed analysis...",
+      "benchmark": "Detailed benchmark comparison...",
+      "trend": "positive/neutral/negative"
+    },
+    {
+      "metric": "Current Ratio",
+      "value": "5.71",
+      "interpretation": "Comprehensive liquidity analysis...",
+      "benchmark": "Detailed benchmark with context...",
+      "trend": "positive/neutral/negative"
+    },
+    {
+      "metric": "Debt-to-Equity Ratio",
+      "value": "8.86",
+      "interpretation": "Detailed leverage analysis with implications...",
+      "benchmark": "Detailed risk assessment...",
+      "trend": "neutral/negative if high"
     }
   ],
-  
+
   "qualitative_insights": [
     {
-      "category": "Category name (e.g., Business Model, Competitive Position)",
-      "insight": "Deep insight about this aspect of the business",
-      "implication": "What this means for the company's future",
-      "supporting_data": "Reference to specific metrics that support this insight"
+      "category": "Business Model Strength",
+      "insight": "Write 5-6 sentences providing deep analysis of:
+        - What the financial metrics reveal about the business model
+        - Competitive advantages evident in the numbers
+        - Scalability indicators
+        - Market positioning insights
+        - Revenue quality assessment
+        Include specific references to multiple metrics that support this insight.",
+      "implication": "Explain in 3-4 sentences:
+        - How this positions the company for future growth
+        - Strategic opportunities this creates
+        - Potential risks or limitations
+        - What management should prioritize based on this insight",
+      "supporting_data": "Reference specific metrics: 'Net margin of 71.5%, gross margin of 62.5%, and operating margin of 24.0% collectively indicate...'"
+    },
+    {
+      "category": "Operational Excellence",
+      "insight": "Detailed analysis of operational efficiency with specific examples...",
+      "implication": "Strategic implications with actionable insights...",
+      "supporting_data": "Specific metric references..."
+    },
+    {
+      "category": "Financial Stability",
+      "insight": "Comprehensive analysis of financial health and resilience...",
+      "implication": "Risk assessment and strategic considerations...",
+      "supporting_data": "Multi-metric analysis..."
+    },
+    {
+      "category": "Capital Structure & Leverage",
+      "insight": "Detailed analysis of how the company is financed and implications...",
+      "implication": "Strategic financing recommendations...",
+      "supporting_data": "Balance sheet metric analysis..."
+    },
+    {
+      "category": "Cash Flow & Liquidity",
+      "insight": "Deep dive into cash management and working capital efficiency...",
+      "implication": "Operational and strategic recommendations...",
+      "supporting_data": "Cash flow and liquidity metric analysis..."
     }
   ],
-  
+
   "strategic_recommendations": [
     {
-      "priority": "critical/high/medium/low",
-      "category": "Category (Revenue Growth, Cost Optimization, etc.)",
-      "title": "Recommendation title",
-      "description": "Detailed explanation",
-      "actions": ["Action 1", "Action 2", "Action 3"],
-      "expected_impact": "Quantified expected outcome",
-      "timeline": "Suggested implementation timeline"
+      "priority": "critical",
+      "category": "Debt Management",
+      "title": "Implement Comprehensive Debt Reduction Strategy",
+      "description": "Write 5-6 sentences providing:
+        - Current situation analysis with specific numbers
+        - Why this is critical (with risk quantification)
+        - Detailed strategic approach
+        - Multiple tactical options
+        - Success criteria and milestones
+        Example: 'With a debt-to-equity ratio of 8.86, significantly above the industry healthy range of 1.5-2.5, the company faces elevated financial risk...'",
+      "actions": [
+        "Specific Action 1: [Detailed description with timeline and resources needed]",
+        "Specific Action 2: [Who owns this, when it should be done]",
+        "Specific Action 3: [Measurable outcome and success criteria]",
+        "Specific Action 4: [Implementation steps]"
+      ],
+      "expected_impact": "Quantify the expected outcome: 'Reduce debt-to-equity from 8.86 to 4.5 within 18 months, improving credit rating and reducing interest expense by approximately $X annually'",
+      "timeline": "Detailed phased timeline: 'Phase 1 (Months 1-3): Complete analysis and secure refinancing options. Phase 2 (Months 4-12): Execute reduction plan. Phase 3 (Months 13-18): Monitor and optimize'",
+      "resources_required": "Specific resource needs: team members, budget, external advisors",
+      "risks": "Implementation risks and mitigation strategies"
+    },
+    {
+      "priority": "high",
+      "category": "Revenue Growth",
+      "title": "Leverage Strong Margins to Fund Growth Initiatives",
+      "description": "Detailed strategic recommendation...",
+      "actions": ["Detailed action steps..."],
+      "expected_impact": "Quantified outcomes...",
+      "timeline": "Phased implementation plan...",
+      "resources_required": "Specific needs...",
+      "risks": "Risk analysis..."
+    },
+    {
+      "priority": "high",
+      "category": "Working Capital Optimization",
+      "title": "Optimize Excess Liquidity for Strategic Investments",
+      "description": "Detailed analysis and recommendation...",
+      "actions": ["Specific steps..."],
+      "expected_impact": "Expected returns...",
+      "timeline": "Implementation schedule...",
+      "resources_required": "Required resources...",
+      "risks": "Potential risks..."
+    },
+    {
+      "priority": "medium",
+      "category": "Cost Optimization",
+      "title": "Maintain Operational Efficiency While Scaling",
+      "description": "Strategic efficiency recommendations...",
+      "actions": ["Detailed actions..."],
+      "expected_impact": "Efficiency gains...",
+      "timeline": "Rollout plan...",
+      "resources_required": "Team and tools needed...",
+      "risks": "Execution risks..."
     }
   ],
-  
+
   "risk_assessment": [
     {
-      "level": "critical/high/medium/low",
-      "category": "Risk category",
-      "description": "Detailed risk description",
-      "probability": "likely/possible/unlikely",
-      "impact": "high/medium/low",
-      "mitigation": "Specific mitigation strategies",
-      "indicators": "Early warning signs to monitor"
+      "level": "high",
+      "category": "Financial Leverage Risk",
+      "description": "Write 5-6 sentences providing:
+        - Detailed risk description with specific numbers
+        - How this risk could manifest
+        - Potential financial impact
+        - Triggering conditions
+        - Interconnected risks
+        Example: 'The debt-to-equity ratio of 8.86 represents significant financial leverage. In a downturn, even a 15% revenue decline could strain debt servicing...'",
+      "probability": "likely/possible/unlikely - with reasoning",
+      "impact": "high - with quantified potential losses",
+      "mitigation": "Provide 4-5 specific mitigation strategies:
+        - Strategy 1 with implementation steps
+        - Strategy 2 with timeline
+        - Strategy 3 with resource requirements
+        - Contingency planning details",
+      "indicators": "Specific, measurable early warning signs:
+        - 'Current ratio falling below 4.0'
+        - 'Operating cash flow declining more than 10% quarter-over-quarter'
+        - 'Debt service coverage ratio approaching 2.0'
+        - 'Interest expense exceeding 15% of operating income'",
+      "monitoring_frequency": "Weekly/Monthly/Quarterly with specific dashboards",
+      "responsible_party": "CFO, with Board oversight"
+    },
+    {
+      "level": "medium",
+      "category": "Market Concentration Risk",
+      "description": "Detailed risk analysis...",
+      "probability": "Assessment with reasoning...",
+      "impact": "Quantified impact...",
+      "mitigation": "Multiple mitigation strategies...",
+      "indicators": "Measurable warning signs...",
+      "monitoring_frequency": "Recommended frequency...",
+      "responsible_party": "Owner..."
+    },
+    {
+      "level": "medium",
+      "category": "Operational Scaling Risk",
+      "description": "Comprehensive risk assessment...",
+      "probability": "Probability analysis...",
+      "impact": "Potential consequences...",
+      "mitigation": "Detailed mitigation plan...",
+      "indicators": "KPIs to monitor...",
+      "monitoring_frequency": "Tracking schedule...",
+      "responsible_party": "Responsible executive..."
     }
   ],
-  
+
   "next_steps": [
-    "Specific, actionable next step 1",
-    "Specific, actionable next step 2",
-    "Specific, actionable next step 3"
+    "IMMEDIATE (Next 30 days): [Specific action with clear deliverable and owner] - e.g., 'CFO to prepare comprehensive debt analysis including refinancing options, presenting 3 scenarios to Board by [date]'",
+    "IMMEDIATE (Next 30 days): [Second critical action] - e.g., 'Finance team to implement enhanced cash flow forecasting with weekly monitoring to track debt service capacity'",
+    "SHORT-TERM (30-90 days): [Strategic initiative with milestones] - e.g., 'Launch working capital optimization initiative targeting 10% improvement in cash conversion cycle'",
+    "SHORT-TERM (60-90 days): [Another key initiative] - e.g., 'Complete competitive margin analysis and identify 3 opportunities for margin expansion'",
+    "MEDIUM-TERM (90-180 days): [Strategic objective] - e.g., 'Develop and begin executing 18-month debt reduction roadmap with quarterly milestones'",
+    "MEDIUM-TERM (90-180 days): [Additional objective] - e.g., 'Establish financial dashboard with leading indicators for early risk detection'",
+    "LONG-TERM (6-12 months): [Strategic goal] - e.g., 'Achieve debt-to-equity ratio below 5.0 while maintaining current profitability levels'",
+    "LONG-TERM (6-12 months): [Vision/goal] - e.g., 'Position company for potential strategic financing or growth capital raise with improved balance sheet metrics'"
+  ],
+
+  "scenario_analysis": [
+    {
+      "scenario": "Base Case",
+      "assumptions": "Detailed assumptions about revenue growth, margin maintenance, etc.",
+      "financial_impact": "Projected outcomes with specific numbers",
+      "probability": "Most likely - 60%",
+      "key_drivers": "What makes this the base case"
+    },
+    {
+      "scenario": "Optimistic Case",
+      "assumptions": "Growth scenario assumptions",
+      "financial_impact": "Upside potential with numbers",
+      "probability": "20-25%",
+      "key_drivers": "What would drive this outcome"
+    },
+    {
+      "scenario": "Conservative Case",
+      "assumptions": "Downside scenario assumptions",
+      "financial_impact": "Risk mitigation importance",
+      "probability": "15-20%",
+      "key_drivers": "Risk factors"
+    }
   ]
 }
 
-Focus on:
-1. Being specific with numbers and percentages
-2. Comparing metrics to industry standards
-3. Identifying trends and patterns
-4. Providing actionable recommendations
-5. Highlighting both opportunities and risks
-6. Connecting different metrics to tell a story
+REMEMBER: 
+- Every insight should be 4-6 sentences minimum with specific numbers
+- Every recommendation should have clear action steps and quantified expected outcomes
+- Every risk should include specific indicators and mitigation strategies
+- Connect insights across different financial areas to tell a complete story
+- Use executive-level business language that drives decision-making
+- Be specific, actionable, and comprehensive - this analysis will guide strategic decisions
+
+Your analysis should be thorough enough that an executive could make strategic decisions based solely on your insights.
 """
-    
+
     return prompt
 
 
@@ -2494,7 +2799,8 @@ def parse_ai_response(ai_response: str, kpis: Dict[str, Any], context: Dict[str,
                 "qualitative": parsed.get('qualitative_insights', []),
                 "recommendations": parsed.get('strategic_recommendations', []),
                 "risks": parsed.get('risk_assessment', []),
-                "nextSteps": parsed.get('next_steps', [])
+                "nextSteps": parsed.get('next_steps', []),
+                "keyFindings": parsed.get('key_findings', []) or parsed.get('keyFindings', []),
             }
         else:
             # Fallback: structure the text response
@@ -2991,6 +3297,43 @@ async def upload_and_analyze(
         except Exception as ai_error:
             logger.warning(f"⚠️ AI analysis failed, using fallback: {ai_error}")
             ai_analysis = generate_ai_financial_analysis(kpis, doc_type, df)
+
+                # --------------------------------------------------------
+        # 🔗 Merge engine insights + AI key findings into one list
+        # --------------------------------------------------------
+        raw_key_findings = (
+            ai_analysis.get("keyFindings")
+            or ai_analysis.get("key_findings")
+            or []
+        )
+
+        ai_insight_items = []
+        for item in raw_key_findings:
+            if isinstance(item, str):
+                ai_insight_items.append({
+                    "title": "AI Key Finding",
+                    "summary": item,
+                    "source": "ai",
+                    "severity": "info",
+                })
+            elif isinstance(item, dict):
+                ai_insight_items.append({
+                    "title": item.get("title") or "AI Key Finding",
+                    "summary": (
+                        item.get("summary")
+                        or item.get("description")
+                        or ""
+                    ),
+                    "metric": item.get("metric_focus")
+                              or ", ".join(item.get("kpi_refs", [])) if item.get("kpi_refs") else "",
+                    "severity": item.get("severity") or "info",
+                    "recommendation": item.get("recommendation") or "",
+                    "source": "ai",
+                })
+
+        # Combine original rule-based insights + AI findings
+        combined_insights = insights + ai_insight_items
+
 
         # Build KPI card data dynamically
         kpi_card_data = {}
