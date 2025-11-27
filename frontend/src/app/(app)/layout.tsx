@@ -32,7 +32,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AppSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main content area - FIXED VERSION */}
-      <main className="flex-1 min-h-screen md:ml-64 pt-16 md:pt-8 px-6 lg:px-10 py-6 lg:py-10">
+      <main className="flex-1 min-h-screen md:ml-64 max-w-full overflow-x-hidden">
         {children}
       </main>
     </div>

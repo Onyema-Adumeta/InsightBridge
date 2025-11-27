@@ -47,13 +47,12 @@ const formatAsNumber = (value: number) => new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2 
 }).format(value);
 
-// Helper function to clean text from markdown formatting
 const cleanMarkdownText = (text: string) => {
   if (!text) return '';
   return text
-    .replace(/\*\*/g, '') // Remove bold
-    .replace(/\*/g, '')   // Remove italic
-    .replace(/#{1,6}\s/g, '') // Remove headers
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '')
+    .replace(/#{1,6}\s/g, '')
     .trim();
 };
 
@@ -268,7 +267,6 @@ export default function ModernDashboard({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPeriod, setSelectedPeriod] = useState('all');
   
-  // Handle browser refresh - clear all state
   useEffect(() => {
     const handleBeforeUnload = () => {
       sessionStorage.clear();
@@ -285,7 +283,6 @@ export default function ModernDashboard({
     };
   }, []);
 
-  // Clear search when data changes or is cleared
   useEffect(() => {
     if (!analysisData || (!analysisData.kpiCardData && !analysisData.kpiChartData)) {
       setSearchQuery('');
@@ -293,7 +290,6 @@ export default function ModernDashboard({
     }
   }, [analysisData]);
   
-  // Helper function to get KPIs - ONLY show KPIs that exist in the data
   const getKpis = () => {
     const parseValue = (str: string) => {
       if (!str) return 0;
@@ -311,7 +307,6 @@ export default function ModernDashboard({
 
     let allKpis: any[] = [];
 
-    // ONLY add P&L KPIs if P&L data exists
     if (analysisData?.kpiCardData?.profitLoss) {
       const pl = analysisData.kpiCardData.profitLoss;
       allKpis.push(
@@ -350,7 +345,6 @@ export default function ModernDashboard({
       );
     }
 
-    // ONLY add Balance Sheet KPIs if Balance Sheet data exists AND has meaningful values
     if (analysisData?.kpiCardData?.balanceSheet) {
       const bs = analysisData.kpiCardData.balanceSheet;
       const totalAssets = parseValue(bs.total_assets?.value);
@@ -395,7 +389,6 @@ export default function ModernDashboard({
       }
     }
 
-    // ONLY add Cash Flow KPIs if Cash Flow data exists
     if (analysisData?.kpiCardData?.cashFlow) {
       const cf = analysisData.kpiCardData.cashFlow;
       allKpis.push(
@@ -498,9 +491,8 @@ export default function ModernDashboard({
   if (isLoading) {
     return (
       <>
-        {/* Header */}
         <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-            <div className="w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-slate-900">Financial Analytics Dashboard</h1>
@@ -519,7 +511,6 @@ export default function ModernDashboard({
           </div>
         </div>
 
-        {/* Loading Content */}
         <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-4">
           <div className="text-center max-w-md">
             <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-6 shadow-xl animate-pulse">
@@ -577,12 +568,10 @@ export default function ModernDashboard({
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* ✅ FIXED: Header with proper max-width constraint */}
+    <>
       <div className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-        <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex flex-col gap-3">
-            {/* Top row */}
             <div className="flex items-center justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <h1 className="text-lg sm:text-xl font-bold text-slate-900 truncate">Financial Analytics Dashboard</h1>
@@ -591,7 +580,6 @@ export default function ModernDashboard({
                 </p>
               </div>
               
-              {/* Upload & Refresh */}
               <div className="flex items-center gap-2 flex-shrink-0">
                 <input id="file-upload" type="file" accept=".xlsx,.xls,.csv,.json,.pdf" className="hidden" onChange={onUpload} />
                 <button 
@@ -616,9 +604,7 @@ export default function ModernDashboard({
               </div>
             </div>
 
-            {/* Second row: Search and Quick Actions */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              {/* Search */}
               <div className="relative hidden md:block flex-1 max-w-sm">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input 
@@ -630,16 +616,13 @@ export default function ModernDashboard({
                 />
               </div>
               
-              {/* Quick Actions */}
               <QuickActions onAction={handleQuickAction} isLoading={isLoading} />
             </div>
           </div>
         </div>
       </div>
 
-      {/* ✅ FIXED: Main Content with max-width and proper centering */}
-      <div className="w-full max-w-[2000px] px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
-        {/* Alert Banner */}
+      <div className="min-h-screen bg-slate-50 w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {analysisData?.health_score?.score < 60 && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 sm:p-4 flex items-start gap-2 sm:gap-3">
             <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -650,7 +633,6 @@ export default function ModernDashboard({
           </div>
         )}
 
-        {/* KPI Grid */}
         {kpis.length > 0 && (
           <section id="kpis" className="scroll-mt-20">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -689,13 +671,10 @@ export default function ModernDashboard({
           </section>
         )}
 
-        {/* Industry Benchmark Widget */}
         {analysisData?.kpis?.profitLoss && <IndustryBenchmarkWidget analysisData={analysisData} />}
 
-        {/* VISUALIZATION SECTION */}
         <div className="space-y-4 sm:space-y-6">
           
-          {/* Main Trend Chart */}
           {analysisData?.kpiChartData && analysisData.kpiChartData.length > 0 && (
             <section id="trend-analysis" className="scroll-mt-20 bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
               <AdaptiveFinancialChart 
@@ -706,10 +685,8 @@ export default function ModernDashboard({
             </section>
           )}
 
-          {/* Balance Sheet & Cash Flow */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
             
-            {/* Balance Sheet Pie Chart */}
             {analysisData?.kpis?.balanceSheet && 
              analysisData.kpis.balanceSheet.totalAssets > 0 && (
               <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
@@ -727,7 +704,6 @@ export default function ModernDashboard({
               </section>
             )}
 
-            {/* Cash Flow Bar Chart */}
             {analysisData?.kpis?.cashFlow && (
               <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
                 <div className="mb-4">
@@ -739,7 +715,6 @@ export default function ModernDashboard({
             )}
           </div>
 
-          {/* Cash Flow Sankey */}
           {analysisData?.kpis?.cashFlow && (
             <section className="bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
               <div className="mb-4">
@@ -750,7 +725,6 @@ export default function ModernDashboard({
             </section>
           )}
 
-          {/* Forecast Chart */}
           {forecastData && forecastData.length > 0 && analysisData?.kpiChartData && analysisData.kpiChartData.length > 0 && (
             <section id="forecast" className="scroll-mt-20 bg-white rounded-xl border border-slate-200 p-4 sm:p-6">
               <div className="mb-4">
@@ -761,7 +735,6 @@ export default function ModernDashboard({
             </section>
           )}
 
-          {/* Mini Trend Cards */}
           {analysisData?.kpis?.profitLoss && (
             <section id="trending-metrics" className="scroll-mt-20">
               <div className="mb-4">
@@ -802,7 +775,6 @@ export default function ModernDashboard({
           )}
         </div>
 
-        {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {analysisData?.predictiveAnalysis?.insights && analysisData.predictiveAnalysis.insights.length > 0 && (
@@ -820,7 +792,6 @@ export default function ModernDashboard({
             <CommentsSection analysisData={analysisData} userId={userId} />
           </div>
 
-          {/* Right Sidebar */}
           <div className="space-y-4 sm:space-y-6">
             {analysisData?.health_score && (
               <section id="health-score" className="scroll-mt-20 bg-white rounded-xl border border-slate-200 p-4 sm:p-5">
@@ -842,7 +813,6 @@ export default function ModernDashboard({
               </section>
             )}
 
-            {/* Quick Stats Summary */}
             {kpis.length > 0 && (
               <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4 sm:p-5">
                 <div className="flex items-center gap-2 mb-4">
@@ -863,18 +833,14 @@ export default function ModernDashboard({
               </div>
             )}
 
-            {/* Alert Center */}
             <AlertCenter />
 
-            {/* Activity Feed */}
             <ActivityFeed latestFileName={analysisData?.latestFileName} />
 
-            {/* Key Ratios Card */}
             {analysisData?.kpis?.balanceSheet && (
               <KeyRatiosCard balanceSheetData={analysisData.kpis.balanceSheet} />
             )}
 
-            {/* Performance Summary Card */}
             {analysisData?.kpis?.profitLoss && (
               <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5">
                 <div className="flex items-center gap-2 mb-4">
@@ -904,7 +870,6 @@ export default function ModernDashboard({
               </div>
             )}
 
-            {/* Recent Activity / Updates */}
             <div className="bg-white border border-slate-200 rounded-xl p-4 sm:p-5">
               <div className="flex items-center gap-2 mb-4">
                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600" />
@@ -945,7 +910,6 @@ export default function ModernDashboard({
               </div>
             </div>
 
-            {/* Info Card */}
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-5">
               <div className="flex items-start gap-2 sm:gap-3">
                 <Info className="w-4 h-4 sm:w-5 sm:h-5 text-slate-600 mt-0.5 flex-shrink-0" />
@@ -960,6 +924,6 @@ export default function ModernDashboard({
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

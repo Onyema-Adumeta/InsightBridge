@@ -1,3 +1,33 @@
+/* FORCE FIX - Add at line 1 */
+.min-h-screen {
+  max-width: 100vw !important;
+  width: 100% !important;
+  overflow-x: hidden !important;
+}
+
+main .min-h-screen {
+  max-width: 100% !important;
+}
+
+
+
+/* EMERGENCY FIX - Add at the very top of globals.css */
+* {
+  max-width: 100vw !important;
+}
+
+body,
+html,
+#__next,
+main,
+main > div,
+main > div > div {
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+}
+
+
+
 /* Tailwind v4 entrypoint */
 @import "tailwindcss";
 
@@ -84,6 +114,7 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 /* LAYOUT FIX: Ensure Next.js root elements don't add backgrounds */
@@ -109,13 +140,23 @@ nav.sidebar {
   z-index: 40;
 }
 
-/* Main content area - extends properly without black spaces */
+/* ===== CRITICAL FIX: Main content area ===== */
 main {
   min-height: 100vh;
   width: 100%;
   background-color: #f9fafb;
   flex: 1 1 0%;
-  min-width: 0; /* Prevents flex item overflow */
+  min-width: 0;
+  max-width: 100vw !important; /* Prevent horizontal overflow */
+  overflow-x: hidden !important; /* Hide any overflow */
+  padding: 0 !important; /* Remove any default padding */
+  margin: 0 !important; /* Remove any default margin */
+}
+
+/* ===== CRITICAL FIX: Force all children to respect width ===== */
+main > * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* Mobile responsiveness - no black spaces */
@@ -123,7 +164,7 @@ main {
   main {
     margin-left: 0 !important;
     width: 100% !important;
-    padding-top: 4rem; /* Space for mobile menu button */
+    padding-top: 4rem !important; /* Space for mobile menu button */
   }
   
   /* Ensure sidebar overlay works correctly */
@@ -153,7 +194,16 @@ main {
   
   /* Content area properly offset by sidebar width */
   main.lg\:ml-64 {
-    margin-left: 16rem; /* 256px */
+    margin-left: 16rem !important; /* 256px */
+    max-width: calc(100vw - 16rem) !important; /* Viewport width minus sidebar */
+  }
+}
+
+/* ===== ADDITIONAL DESKTOP FIX FOR MD BREAKPOINT ===== */
+@media (min-width: 768px) {
+  main {
+    margin-left: 16rem !important; /* 256px sidebar width */
+    max-width: calc(100vw - 16rem) !important;
   }
 }
 

@@ -1,5 +1,4 @@
 ﻿'use client';
-
 import { useEffect, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { Lock } from 'lucide-react';
@@ -45,12 +44,24 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'error'>('connecting');
   const [retryCount, setRetryCount] = useState(0);
-
   const isDevelopment = process.env.NODE_ENV === 'development';
+
+  const connectionBanner = connectionStatus === 'error' ? (
+    <div className="bg-red-50 border-b border-red-200 p-4">
+      <p className="text-sm text-red-800 text-center">
+        Unable to connect to the server. Please check your connection and try again.
+      </p>
+    </div>
+  ) : connectionStatus === 'connecting' ? (
+    <div className="bg-blue-50 border-b border-blue-200 p-4">
+      <p className="text-sm text-blue-800 text-center">
+        Connecting to server...
+      </p>
+    </div>
+  ) : null;
 
   const fetchData = async (isRetry = false) => {
     if (!isLoaded) {
-      if (isDevelopment) console.log('⏳ Clerk not loaded yet...');
       return;
     }
 
@@ -63,9 +74,8 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       setConnectionStatus('connecting');
-
+      
       const url = `/api/v1/main/analysis_summary?user_id=${user.id}`;
-
       if (isDevelopment) {
         console.log('🔍 Fetching from:', url);
         console.log('🔑 User ID:', user.id);
@@ -80,21 +90,16 @@ export default function DashboardPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        cache: 'no-store',
       });
 
       clearTimeout(timeoutId);
 
-      if (isDevelopment) console.log('📡 Response status:', response.status);
-
       if (!response.ok) {
-        const errorText = await response.text();
-        if (isDevelopment) console.error(`❌ API Error: ${response.status}`, errorText);
         throw new Error(`API returned ${response.status}`);
       }
 
       const data = await response.json();
-
+      
       if (isDevelopment) {
         console.log('✅ Analysis data received:', data);
       }
@@ -106,22 +111,17 @@ export default function DashboardPage() {
       if (isDevelopment) {
         console.error('💥 Error:', err.message);
       }
-
+      
       setConnectionStatus('error');
 
       if (!isRetry && retryCount < 3) {
-        if (isDevelopment)
-          console.log(`🔄 Auto-retry ${retryCount + 1}/3 in 3 seconds...`);
-        setRetryCount((prev) => prev + 1);
-
-        setTimeout(() => {
-          fetchData(true);
-        }, 3000);
+        if (isDevelopment) console.log(`🔄 Retrying... (${retryCount + 1}/3)`);
+        setRetryCount(retryCount + 1);
+        setTimeout(() => fetchData(true), 2000 * (retryCount + 1));
         return;
       }
 
       if (isDevelopment) console.warn('⚠️ All retries exhausted, showing welcome screen');
-
       setAnalysisData(null);
     } finally {
       setLoading(false);
@@ -136,10 +136,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const handleAnalysisUpdate = (event: any) => {
       if (isDevelopment) console.log('🔄 Analysis updated event received:', event.detail);
-
       setTimeout(() => {
-        if (isDevelopment) console.log('🔄 Refetching analysis data...');
-        setRetryCount(0);
         fetchData();
       }, 500);
     };
@@ -152,19 +149,19 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, isLoaded, isSignedIn]);
 
+  // LOADING STATE - NO <main> wrapper!
   if (!isLoaded || (loading && !analysisData)) {
     return (
-      <main className="lg:ml-64 min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="w-full max-w-[calc(100vw-16rem)] lg:max-w-full p-8">
-          <LoadingDashboard />
-        </div>
-      </main>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 w-full p-8">
+        <LoadingDashboard />
+      </div>
     );
   }
 
+  // NOT SIGNED IN STATE - NO <main> wrapper!
   if (isLoaded && !isSignedIn) {
     return (
-      <main className="lg:ml-64 flex min-h-screen items-center justify-center overflow-x-hidden bg-gradient-to-br from-slate-50 to-slate-100 p-8">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-8">
         <div className="max-w-md rounded-xl border border-slate-200 bg-white p-8 text-center shadow-lg">
           <div className="mb-6">
             <Lock className="mx-auto h-16 w-16 text-indigo-600" />
@@ -182,24 +179,15 @@ export default function DashboardPage() {
             Sign In
           </a>
         </div>
-      </main>
+      </div>
     );
   }
 
-  const connectionBanner =
-    connectionStatus === 'connecting' && retryCount > 0 ? (
-      <div className="mb-4 border-l-4 border-blue-500 bg-blue-50 p-3 rounded-lg">
-        <div className="flex items-center">
-          <div className="mr-3 h-4 w-4 animate-spin rounded-full border-b-2 border-blue-600"></div>
-          <p className="text-sm text-blue-700">Connecting to server...</p>
-        </div>
-      </div>
-    ) : null;
-
+  // MAIN CONTENT - NO <main> wrapper! The layout.tsx already has it
   return (
-    <main className="lg:ml-64 min-h-screen min-w-0 overflow-x-hidden bg-gradient-to-br from-slate-50 to-slate-100">
+    <>
       {connectionBanner}
       <DynamicClientDashboard initialData={analysisData} />
-    </main>
+    </>
   );
 }
