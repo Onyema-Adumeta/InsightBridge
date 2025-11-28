@@ -81,15 +81,25 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     fetchTransactions();
   }, [userId]);
 
-  // ✅ NEW: Calculate advanced analytics when transactions change
+  // ✅ FIXED: Only calculate analytics when transactions exist AND after upload
   useEffect(() => {
-    if (transactions.length > 0) {
+    if (transactions.length > 0 && uploadResult) {
       calculateAnalytics();
+    } else {
+      // Clear analytics if no transactions
+      setAnalytics(null);
+      setShowAnalytics(false);
     }
-  }, [transactions]);
+  }, [transactions, uploadResult]);
 
-  // ✅ NEW: Advanced Analytics Calculation
+  // ✅ FIXED: Advanced Analytics Calculation with safety check
   const calculateAnalytics = () => {
+    // Don't calculate if no transactions
+    if (transactions.length === 0) {
+      setAnalytics(null);
+      return;
+    }
+    
     const totalInflow = transactions.filter(t => t.amount > 0).reduce((sum, t) => sum + t.amount, 0);
     const totalOutflow = transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);
     const netFlow = totalInflow - totalOutflow;
@@ -125,7 +135,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     });
 
     // Unusual transactions (3x average)
-    const avgTransaction = totalOutflow / transactions.filter(t => t.amount < 0).length;
+    const avgTransaction = totalOutflow / transactions.filter(t => t.amount < 0).length || 0;
     const unusualTransactions = transactions.filter(t => 
       t.amount < 0 && Math.abs(t.amount) > avgTransaction * 3
     );
@@ -382,12 +392,13 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     }
   };
 
-  // ✅ NEW: Reset/Clear function
-  const handleReset = () => {
+  // ✅ FIXED: Reset/Clear function that properly clears ALL state
+  const handleReset = async () => {
     if (transactions.length > 0 && !confirm('Are you sure you want to clear all data? This will remove all uploaded transactions.')) {
       return;
     }
     
+    // Clear ALL frontend state
     setUploadResult(null);
     setUploadError(null);
     setTransactions([]);
@@ -396,6 +407,16 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     setError(null);
     setAnalytics(null);
     setShowAnalytics(false);
+    setIsPdfFile(false);
+    
+    // Optional: Clear backend data if needed
+    try {
+      await fetch(`${apiUrl}/api/v1/reconciliation/clear_transactions?user_id=${userId}`, {
+        method: 'POST',
+      });
+    } catch (err) {
+      console.error('Failed to clear backend data:', err);
+    }
   };
 
   const getConfidenceColor = (confidence: number) => {
@@ -412,7 +433,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
 
   return (
     <div className="space-y-6">
-      {/* ✅ ENHANCED: Header with Reset Button */}
+      {/* ✅ FIXED: Header with Reset Button */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Auto-Reconciliation</h2>
@@ -423,6 +444,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
             onClick={handleReset}
             className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
             title="Clear all data and start fresh"
+            suppressHydrationWarning
           >
             <RefreshCw className="w-4 h-4" />
             <span className="hidden sm:inline">Reset</span>
@@ -431,6 +453,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
             onClick={runAutoMatch}
             disabled={isLoading || transactions.length === 0}
             className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            suppressHydrationWarning
           >
             {isLoading ? (
               <>
@@ -447,8 +470,8 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
         </div>
       </div>
 
-      {/* ✅ NEW: Advanced Analytics Section */}
-      {analytics && transactions.length > 0 && (
+      {/* ✅ FIXED: Advanced Analytics Section - Only show when data exists */}
+      {analytics && transactions.length > 0 && uploadResult && (
         <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl shadow-lg overflow-hidden">
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
@@ -464,6 +487,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
               <button
                 onClick={() => setShowAnalytics(!showAnalytics)}
                 className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                suppressHydrationWarning
               >
                 {showAnalytics ? 'Hide Details' : 'Show Details'}
               </button>
@@ -641,6 +665,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
           <button
             onClick={() => setShowUploadSection(!showUploadSection)}
             className="text-sm text-gray-500 hover:text-gray-900"
+            suppressHydrationWarning
           >
             {showUploadSection ? 'Hide' : 'Show'}
           </button>
@@ -659,6 +684,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
                   onChange={handleFileUpload}
                   disabled={uploading}
                   className="hidden"
+                  suppressHydrationWarning
                 />
               </label>
               {uploading && (
@@ -781,9 +807,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
         )}
       </div>
 
-      {/* Rest of the component continues... (Bank Transactions List, Summary, Matches, etc.) */}
-      {/* Copy the rest from the original component */}
-      
       {/* Bank Transactions List */}
       <div className="bg-white border border-gray-200 rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-4">
@@ -794,6 +817,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
             <button
               onClick={fetchTransactions}
               className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+              suppressHydrationWarning
             >
               <RefreshCw className="w-4 h-4" />
               Refresh
@@ -837,6 +861,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
                         onClick={() => deleteTransaction(txn.id)}
                         className="text-red-600 hover:text-red-700 p-1"
                         title="Delete transaction"
+                        suppressHydrationWarning
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -882,6 +907,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
             onClick={bulkApprove}
             disabled={isLoading}
             className="btn-primary text-sm"
+            suppressHydrationWarning
           >
             Approve All High Confidence (≥90%)
           </button>
@@ -933,6 +959,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
                     onClick={() => approveMatch(match.match_id)}
                     disabled={processingMatch === match.match_id}
                     className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                    suppressHydrationWarning
                   >
                     {processingMatch === match.match_id ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
@@ -945,6 +972,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
                     onClick={() => rejectMatch(match.match_id)}
                     disabled={processingMatch === match.match_id}
                     className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                    suppressHydrationWarning
                   >
                     <X className="w-4 h-4" />
                     Reject

@@ -266,7 +266,7 @@ export default function WorkflowsPage() {
 
     return (
         // REMOVED ml-64 hardcoded margin - MobileLayout handles this now
-        <div className="min-h-screen bg-slate-50">
+        <main className="lg:ml-64 min-h-screen min-w-0 overflow-x-hidden bg-slate-50">
             {/* Header - Mobile Responsive */}
             <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
@@ -431,9 +431,9 @@ export default function WorkflowsPage() {
                             required
                             value={newWorkflow.name}
                             onChange={handleWorkflowFormChange}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
+                            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base text-slate-900"
+
                             placeholder="e.g., Low Cash Flow Alert"
-                            style={{ fontSize: 'max(16px, 1rem)' }} // Prevent iOS zoom
                         />
                     </div>
 
@@ -449,8 +449,8 @@ export default function WorkflowsPage() {
                                     id="trigger_metric"
                                     value={newWorkflow.trigger_metric}
                                     onChange={handleWorkflowFormChange}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
-                                    style={{ fontSize: 'max(16px, 1rem)' }}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base text-slate-900"
+                                   
                                 >
                                     <option value="monthly_revenue">Monthly Revenue</option>
                                     <option value="cash_on_hand">Cash on Hand</option>
@@ -466,8 +466,8 @@ export default function WorkflowsPage() {
                                     id="trigger_condition"
                                     value={newWorkflow.trigger_condition}
                                     onChange={handleWorkflowFormChange}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
-                                    style={{ fontSize: 'max(16px, 1rem)' }}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base text-slate-900"
+                                    
                                 >
                                     <option value="drops_by_percent">Drops by %</option>
                                     <option value="falls_below">Falls Below</option>
@@ -485,8 +485,8 @@ export default function WorkflowsPage() {
                                     required
                                     value={newWorkflow.trigger_value}
                                     onChange={handleWorkflowFormChange}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
-                                    style={{ fontSize: 'max(16px, 1rem)' }}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base text-slate-900"
+                                    
                                 />
                             </div>
                         </div>
@@ -504,8 +504,8 @@ export default function WorkflowsPage() {
                                     id="action_type"
                                     value={newWorkflow.action_type}
                                     onChange={handleWorkflowFormChange}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
-                                    style={{ fontSize: 'max(16px, 1rem)' }}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base text-slate-900"
+                                    
                                 >
                                     <option value="email_notification">Send Email</option>
                                     <option value="slack_alert">Send Slack Alert</option>
@@ -522,9 +522,9 @@ export default function WorkflowsPage() {
                                     required
                                     value={newWorkflow.action_target}
                                     onChange={handleWorkflowFormChange}
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base"
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base text-slate-900"
                                     placeholder="#general or team@example.com"
-                                    style={{ fontSize: 'max(16px, 1rem)' }}
+                                    
                                 />
                             </div>
                         </div>
@@ -578,6 +578,6 @@ export default function WorkflowsPage() {
                     </div>
                 </div>
             </Modal>
-        </div>
+        </main>
     );
 }
