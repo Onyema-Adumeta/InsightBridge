@@ -113,6 +113,7 @@ const NavSection: React.FC<NavSectionProps> = ({
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition touch-target"
         aria-expanded={isOpen}
+        suppressHydrationWarning
       >
         <span>{title}</span>
         {isOpen ? (
@@ -413,6 +414,7 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
             <button
               className="w-full px-3 py-2 flex items-center gap-3 text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-all rounded-lg group"
               onClick={() => window.open('/help', '_blank')}
+              suppressHydrationWarning
             >
               <HelpCircle className="w-5 h-5 flex-shrink-0 opacity-80 group-hover:opacity-100" />
               <span>Help & Support</span>
@@ -423,6 +425,7 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
               onClick={handleSignOut}
               disabled={isSigningOut}
               className="w-full px-3 py-2.5 flex items-center gap-3 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all rounded-lg group border border-transparent hover:border-red-200 dark:hover:border-red-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              suppressHydrationWarning
             >
               <LogOut className="w-5 h-5 flex-shrink-0 transition-transform group-hover:translate-x-1" />
               <span>{isSigningOut ? 'Signing out...' : 'Sign Out'}</span>

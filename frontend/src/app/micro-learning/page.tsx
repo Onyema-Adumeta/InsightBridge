@@ -82,6 +82,8 @@ const FINANCIAL_TERMS: LiteracyTerm[] = [
 ];
 
 export default function MicroLearningPage() {
+  // ✅ FIX: Only render after client mount to avoid hydration errors
+  const [mounted, setMounted] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showAddForm, setShowAddForm] = useState(false);
@@ -104,9 +106,16 @@ export default function MicroLearningPage() {
     { id: 'profitability', name: 'Profitability', icon: BarChart3 }
   ];
 
+  // ✅ FIX: Set mounted after initial render
   useEffect(() => {
-    fetchCustomTerms();
-  }, [selectedCategory, searchTerm]);
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      fetchCustomTerms();
+    }
+  }, [mounted, selectedCategory, searchTerm]);
 
   const fetchCustomTerms = async () => {
     try {
@@ -174,80 +183,93 @@ export default function MicroLearningPage() {
       )
     : FINANCIAL_TERMS;
 
+  // ✅ FIX: Show loading state during hydration
+  if (!mounted) {
+    return (
+      <main className="lg:ml-64 min-h-screen min-w-0 overflow-x-hidden bg-slate-50 flex items-center justify-center">
+        <div className="text-slate-500">Loading...</div>
+      </main>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50">
+    <main className="lg:ml-64 min-h-screen min-w-0 overflow-x-hidden bg-slate-50">
       {/* Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-slate-900">Financial Literacy Center</h1>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Financial Literacy Center</h1>
                 <p className="text-sm text-slate-600">Learn key financial concepts and build your knowledge base</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="relative w-80">
+              <div className="relative flex-1 sm:w-80">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Search financial terms..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                  suppressHydrationWarning
                 />
               </div>
               <button
                 onClick={() => setShowAddForm(!showAddForm)}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition"
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2 transition text-sm whitespace-nowrap"
+                suppressHydrationWarning
               >
                 <Plus className="w-4 h-4" />
-                Add Custom Term
+                <span className="hidden sm:inline">Add Custom Term</span>
+                <span className="sm:hidden">Add</span>
               </button>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Financial Literacy Corner */}
-        <div className="mb-8 bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50 rounded-xl border border-indigo-200 p-6">
+        <section className="mb-6 sm:mb-8 bg-gradient-to-br from-indigo-50 via-blue-50 to-purple-50 rounded-xl border border-indigo-200 p-4 sm:p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center flex-shrink-0">
               <Lightbulb className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">Essential Financial Metrics</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900">Essential Financial Metrics</h2>
               <p className="text-sm text-slate-600">Click any term to learn more and see examples</p>
             </div>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredFinancialTerms.map((term, idx) => (
               <button
                 key={idx}
                 onClick={() => setSelectedTerm(term)}
-                className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all group"
+                className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-indigo-400 hover:shadow-md transition-all group text-left"
+                suppressHydrationWarning
               >
                 <span className="text-sm font-semibold text-slate-900 group-hover:text-indigo-600">
                   {term.term}
                 </span>
-                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+                <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-indigo-600 flex-shrink-0" />
               </button>
             ))}
           </div>
-        </div>
+        </section>
 
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Sidebar Categories */}
-          <div className="col-span-3">
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sticky top-24">
+          <aside className="lg:col-span-3">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 lg:sticky lg:top-24">
               <h3 className="text-sm font-semibold text-slate-900 mb-3 px-2">Custom Terms Categories</h3>
-              <div className="space-y-1">
+              <nav className="space-y-1">
                 {categories.map(category => {
                   const Icon = category.icon;
                   return (
@@ -259,24 +281,25 @@ export default function MicroLearningPage() {
                           ? 'bg-indigo-50 text-indigo-700 font-medium'
                           : 'text-slate-700 hover:bg-slate-50'
                       }`}
+                      suppressHydrationWarning
                     >
-                      <Icon className="w-4 h-4" />
+                      <Icon className="w-4 h-4 flex-shrink-0" />
                       <span className="text-sm">{category.name}</span>
                     </button>
                   );
                 })}
-              </div>
+              </nav>
             </div>
-          </div>
+          </aside>
 
           {/* Content Area */}
-          <div className="col-span-9 space-y-6">
+          <div className="lg:col-span-9 space-y-6">
             {/* Add Term Form */}
             {showAddForm && (
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6">
                 <h3 className="text-lg font-semibold text-slate-900 mb-4">Add Custom Financial Term</h3>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">
                         Term Name *
@@ -286,7 +309,8 @@ export default function MicroLearningPage() {
                         value={newTerm.term}
                         onChange={(e) => setNewTerm({...newTerm, term: e.target.value})}
                         placeholder="e.g., MRR, CAC, Churn Rate"
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                        suppressHydrationWarning
                       />
                     </div>
                     <div>
@@ -296,7 +320,8 @@ export default function MicroLearningPage() {
                       <select
                         value={newTerm.category}
                         onChange={(e) => setNewTerm({...newTerm, category: e.target.value})}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                        suppressHydrationWarning
                       >
                         <option value="revenue">Revenue Metrics</option>
                         <option value="customer">Customer Metrics</option>
@@ -314,7 +339,8 @@ export default function MicroLearningPage() {
                       onChange={(e) => setNewTerm({...newTerm, definition: e.target.value})}
                       placeholder="Clear, concise definition of the term"
                       rows={3}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm"
+                      suppressHydrationWarning
                     />
                   </div>
 
@@ -327,7 +353,8 @@ export default function MicroLearningPage() {
                       onChange={(e) => setNewTerm({...newTerm, example: e.target.value})}
                       placeholder="Practical example showing how to calculate or use this metric"
                       rows={2}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm"
+                      suppressHydrationWarning
                     />
                   </div>
 
@@ -340,21 +367,24 @@ export default function MicroLearningPage() {
                       onChange={(e) => setNewTerm({...newTerm, bestPractice: e.target.value})}
                       placeholder="Best practices, benchmarks, or tips for this metric"
                       rows={2}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none text-sm"
+                      suppressHydrationWarning
                     />
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+                  <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-slate-200">
                     <button
                       onClick={() => setShowAddForm(false)}
-                      className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition"
+                      className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition text-sm"
+                      suppressHydrationWarning
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleAddTerm}
                       disabled={!newTerm.term || !newTerm.definition}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition"
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition text-sm"
+                      suppressHydrationWarning
                     >
                       Add Term
                     </button>
@@ -364,7 +394,7 @@ export default function MicroLearningPage() {
             )}
 
             {/* Custom Terms Section */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 sm:p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-slate-900">Your Custom Terms</h3>
                 <span className="text-sm text-slate-500">{customTerms.length} terms</span>
@@ -377,16 +407,16 @@ export default function MicroLearningPage() {
               ) : customTerms.length > 0 ? (
                 <div className="space-y-4">
                   {customTerms.map(term => (
-                    <div key={term.id} className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
+                    <article key={term.id} className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
                       <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-3 mb-2">
                             <h4 className="text-lg font-semibold text-slate-900">{term.term}</h4>
-                            <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-full">
+                            <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-full whitespace-nowrap">
                               {categories.find(c => c.id === term.category)?.name}
                             </span>
                           </div>
-                          <p className="text-slate-700 mb-3">{term.definition}</p>
+                          <p className="text-slate-700 mb-3 text-sm sm:text-base">{term.definition}</p>
                           
                           {term.example && (
                             <div className="mb-3">
@@ -405,26 +435,29 @@ export default function MicroLearningPage() {
                         
                         <button 
                           onClick={() => handleDeleteTerm(term.id)}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition ml-4"
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition ml-4 flex-shrink-0"
+                          aria-label="Delete term"
+                          suppressHydrationWarning
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                    </div>
+                    </article>
                   ))}
                 </div>
               ) : (
                 <div className="text-center py-12">
                   <BookOpen className="w-16 h-16 mx-auto mb-4 text-slate-300" />
                   <h4 className="text-lg font-semibold text-slate-900 mb-2">No custom terms yet</h4>
-                  <p className="text-slate-600 mb-6">
+                  <p className="text-slate-600 mb-6 text-sm">
                     {searchTerm 
                       ? "No terms match your search. Try different keywords."
                       : "Add your first custom financial term to build your knowledge base."}
                   </p>
                   <button
                     onClick={() => setShowAddForm(true)}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 inline-flex items-center gap-2"
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 inline-flex items-center gap-2 text-sm"
+                    suppressHydrationWarning
                   >
                     <Plus className="w-4 h-4" />
                     Add Your First Term
@@ -438,24 +471,32 @@ export default function MicroLearningPage() {
 
       {/* Term Detail Modal */}
       {selectedTerm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-8 relative">
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedTerm(null)}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-8 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               onClick={() => setSelectedTerm(null)}
               className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-lg transition"
+              aria-label="Close modal"
+              suppressHydrationWarning
             >
               <X className="w-5 h-5 text-slate-400" />
             </button>
             
             <div className="mb-6">
-              <h2 className="text-3xl font-bold text-slate-900 mb-2">{selectedTerm.term}</h2>
-              <p className="text-slate-700 leading-relaxed">{selectedTerm.definition}</p>
+              <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2 pr-8">{selectedTerm.term}</h2>
+              <p className="text-slate-700 leading-relaxed text-sm sm:text-base">{selectedTerm.definition}</p>
             </div>
 
             {selectedTerm.formula && (
               <div className="mb-6 p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
                 <h3 className="text-sm font-semibold text-indigo-900 mb-2">Formula:</h3>
-                <code className="text-indigo-700 font-mono">{selectedTerm.formula}</code>
+                <code className="text-indigo-700 font-mono text-sm break-all">{selectedTerm.formula}</code>
               </div>
             )}
 
@@ -466,13 +507,14 @@ export default function MicroLearningPage() {
 
             <button
               onClick={() => setSelectedTerm(null)}
-              className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold transition"
+              className="w-full px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold transition text-sm sm:text-base"
+              suppressHydrationWarning
             >
               Got it!
             </button>
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
