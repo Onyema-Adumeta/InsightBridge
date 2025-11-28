@@ -148,7 +148,8 @@ export default function LearnFinancePage() {
   };
 
   return (
-    <div className="ml-64 min-h-screen bg-slate-50">
+    // ✅ FIXED: Removed ml-64, content will respect sidebar margin from parent layout
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4">
