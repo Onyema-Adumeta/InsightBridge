@@ -138,7 +138,7 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
   const router = useRouter();
   const { signOut } = useClerk();
   const { user, isLoaded } = useUser();
-  const { getToken } = useAuth(); // ✅ Added useAuth hook
+  const { getToken } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   // Hide sidebar on auth pages
@@ -146,18 +146,15 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
     return null;
   }
 
-  // ✅ UPDATED: Clear backend data before sign-out
   const handleSignOut = async () => {
-    if (isSigningOut) return; // Prevent double-clicks
+    if (isSigningOut) return;
     
     setIsSigningOut(true);
     
     try {
-      // Get authentication token
       const token = await getToken();
       
       if (token) {
-        // Clear backend storage before signing out
         console.log('[AppSidebar] Clearing user data before sign-out...');
         
         await fetch(`/api/v1/main/clear_storage`, {
@@ -171,19 +168,15 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
         console.log('[AppSidebar] ✓ User data cleared successfully');
       }
       
-      // Sign out from Clerk
       await signOut();
       
     } catch (error) {
       console.error('[AppSidebar] Error during sign-out:', error);
-      // Continue with sign-out even if data clearing fails
     } finally {
-      // Always redirect to sign-in, even if there's an error
       window.location.href = '/sign-in';
     }
   };
 
-  // ✅ IMPROVED: Auto-close sidebar on route change (mobile)
   useEffect(() => {
     if (onClose) {
       onClose();
@@ -320,7 +313,7 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
             />
           </NavSection>
 
-          {/* Insights & Learning */}
+          {/* ✅ FIXED: Updated Insights & Learning section */}
           <NavSection title="Insights" defaultOpen={false}>
             <NavItem
               href="#predictive-insights"
@@ -335,10 +328,11 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
               onClick={onClose}
             />
             <NavItem
-              href="/learn-finance"
+              href="/micro-learning"
               icon={BookOpen}
-              label="Learn Finance"
-              isActive={pathname === "/learn-finance"}
+              label="Micro-Learning"
+              badge="NEW"
+              isActive={pathname === "/micro-learning"}
               onClick={onClose}
             />
           </NavSection>
