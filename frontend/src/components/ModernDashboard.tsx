@@ -22,6 +22,7 @@ import AlertCenter from "./AlertCenter";
 import ActivityFeed from "./ActivityFeed";
 import KeyRatiosCard from "./KeyRatiosCard";
 import ComprehensiveAIInsights from '@/components/ComprehensiveAIInsights';
+import CashFlowForecast from '@/components/CashFlowForecast';
 
 interface ModernDashboardProps {
   analysisData: any;

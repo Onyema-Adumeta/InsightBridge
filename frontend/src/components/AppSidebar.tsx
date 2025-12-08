@@ -26,7 +26,8 @@ import {
   LogOut,
   User,
   Bell,
-  HelpCircle
+  HelpCircle,
+  DollarSign
 } from "lucide-react";
 
 interface NavItemProps {
@@ -272,6 +273,15 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
 
           {/* Analytics */}
           <NavSection title="Analytics">
+            {/* ✅ NEW: Cash Flow Forecasting */}
+            <NavItem
+              href="/cash-flow"
+              icon={DollarSign}
+              label="Cash Flow"
+              badge="HOT"
+              isActive={pathname === "/cash-flow"}
+              onClick={onClose}
+            />
             <NavItem
               href="/trend-analysis"
               icon={TrendingUp}
@@ -314,7 +324,7 @@ export default function AppSidebar({ isOpen = true, onClose }: AppSidebarProps) 
             />
           </NavSection>
 
-          {/* ✅ FIXED: Updated Insights & Learning section */}
+          {/* Insights & Learning */}
           <NavSection title="Insights" defaultOpen={false}>
             <NavItem
               href="#predictive-insights"
