@@ -59,13 +59,14 @@ const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
     if (!isOpen) return null;
     
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl border border-slate-200 max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200 sticky top-0 bg-white">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-[9999] p-4">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl border border-slate-200 max-h-[90vh] overflow-y-auto relative z-[10000]">
+                <div className="flex justify-between items-center p-4 sm:p-6 border-b border-slate-200 sticky top-0 bg-white z-[10001]">
                     <h2 className="text-lg sm:text-xl font-bold text-slate-900">{title}</h2>
                     <button 
                         onClick={onClose} 
                         className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded touch-target"
+                        suppressHydrationWarning
                     >
                         <X className="w-5 h-5" />
                     </button>
@@ -265,7 +266,6 @@ export default function WorkflowsPage() {
     }
 
     return (
-        // REMOVED ml-64 hardcoded margin - MobileLayout handles this now
         <main className="lg:ml-64 min-h-screen min-w-0 overflow-x-hidden bg-slate-50">
             {/* Header - Mobile Responsive */}
             <div className="bg-white border-b border-slate-200 sticky top-0 z-10">
@@ -292,7 +292,7 @@ export default function WorkflowsPage() {
                             <p className="font-semibold text-red-900 text-sm sm:text-base">Error</p>
                             <p className="text-red-700 text-xs sm:text-sm">{error}</p>
                         </div>
-                        <button onClick={() => setError('')} className="text-red-400 hover:text-red-600 flex-shrink-0 touch-target">
+                        <button onClick={() => setError('')} className="text-red-400 hover:text-red-600 flex-shrink-0 touch-target" suppressHydrationWarning>
                             <X className="w-4 h-4" />
                         </button>
                     </div>
@@ -317,6 +317,7 @@ export default function WorkflowsPage() {
                         onClick={handleOpenWorkflowModal}
                         className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm touch-target w-full sm:w-auto"
                         disabled={isSubmitting}
+                        suppressHydrationWarning
                     >
                         <Plus className="w-4 h-4" />
                         Create Workflow
@@ -336,6 +337,7 @@ export default function WorkflowsPage() {
                         <button 
                             onClick={handleOpenWorkflowModal}
                             className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg inline-flex items-center gap-2 transition-colors touch-target"
+                            suppressHydrationWarning
                         >
                             <Plus className="w-4 h-4" />
                             Create Workflow
@@ -392,6 +394,7 @@ export default function WorkflowsPage() {
                                                     : 'text-slate-400 hover:bg-slate-100'
                                             }`}
                                             title={workflow.is_active ? 'Deactivate' : 'Activate'}
+                                            suppressHydrationWarning
                                         >
                                             {workflow.is_active ? (
                                                 <Power className="w-5 h-5" />
@@ -406,6 +409,7 @@ export default function WorkflowsPage() {
                                             }}
                                             className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors touch-target"
                                             title="Delete"
+                                            suppressHydrationWarning
                                         >
                                             <Trash2 className="w-5 h-5" />
                                         </button>
@@ -432,8 +436,8 @@ export default function WorkflowsPage() {
                             value={newWorkflow.name}
                             onChange={handleWorkflowFormChange}
                             className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base text-slate-900"
-
                             placeholder="e.g., Low Cash Flow Alert"
+                            suppressHydrationWarning
                         />
                     </div>
 
@@ -450,11 +454,11 @@ export default function WorkflowsPage() {
                                     value={newWorkflow.trigger_metric}
                                     onChange={handleWorkflowFormChange}
                                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base text-slate-900"
-                                   
+                                    suppressHydrationWarning
                                 >
-                                    <option value="monthly_revenue">Monthly Revenue</option>
-                                    <option value="cash_on_hand">Cash on Hand</option>
-                                    <option value="burn_rate">Burn Rate</option>
+                                    <option value="monthly_revenue" className="text-slate-900">Monthly Revenue</option>
+                                    <option value="cash_on_hand" className="text-slate-900">Cash on Hand</option>
+                                    <option value="burn_rate" className="text-slate-900">Burn Rate</option>
                                 </select>
                             </div>
                             <div>
@@ -467,11 +471,11 @@ export default function WorkflowsPage() {
                                     value={newWorkflow.trigger_condition}
                                     onChange={handleWorkflowFormChange}
                                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base text-slate-900"
-                                    
+                                    suppressHydrationWarning
                                 >
-                                    <option value="drops_by_percent">Drops by %</option>
-                                    <option value="falls_below">Falls Below</option>
-                                    <option value="exceeds">Exceeds</option>
+                                    <option value="drops_by_percent" className="text-slate-900">Drops by %</option>
+                                    <option value="falls_below" className="text-slate-900">Falls Below</option>
+                                    <option value="exceeds" className="text-slate-900">Exceeds</option>
                                 </select>
                             </div>
                             <div>
@@ -486,7 +490,7 @@ export default function WorkflowsPage() {
                                     value={newWorkflow.trigger_value}
                                     onChange={handleWorkflowFormChange}
                                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base text-slate-900"
-                                    
+                                    suppressHydrationWarning
                                 />
                             </div>
                         </div>
@@ -505,10 +509,10 @@ export default function WorkflowsPage() {
                                     value={newWorkflow.action_type}
                                     onChange={handleWorkflowFormChange}
                                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base text-slate-900"
-                                    
+                                    suppressHydrationWarning
                                 >
-                                    <option value="email_notification">Send Email</option>
-                                    <option value="slack_alert">Send Slack Alert</option>
+                                    <option value="email_notification" className="text-slate-900">Send Email</option>
+                                    <option value="slack_alert" className="text-slate-900">Send Slack Alert</option>
                                 </select>
                             </div>
                             <div>
@@ -524,7 +528,7 @@ export default function WorkflowsPage() {
                                     onChange={handleWorkflowFormChange}
                                     className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-base text-slate-900"
                                     placeholder="#general or team@example.com"
-                                    
+                                    suppressHydrationWarning
                                 />
                             </div>
                         </div>
@@ -541,6 +545,7 @@ export default function WorkflowsPage() {
                             type="button"
                             onClick={() => setWorkflowModalOpen(false)}
                             className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors touch-target"
+                            suppressHydrationWarning
                         >
                             Cancel
                         </button>
@@ -548,6 +553,7 @@ export default function WorkflowsPage() {
                             type="submit"
                             disabled={isSubmitting}
                             className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors touch-target"
+                            suppressHydrationWarning
                         >
                             {isSubmitting ? 'Creating...' : 'Create Workflow'}
                         </button>
@@ -566,12 +572,14 @@ export default function WorkflowsPage() {
                         <button
                             onClick={() => setDeleteModalOpen(false)}
                             className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors touch-target"
+                            suppressHydrationWarning
                         >
                             Cancel
                         </button>
                         <button
                             onClick={handleDeleteWorkflow}
                             className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors touch-target"
+                            suppressHydrationWarning
                         >
                             Delete Workflow
                         </button>

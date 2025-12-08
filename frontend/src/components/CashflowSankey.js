@@ -24,7 +24,7 @@ const CashflowSankey = ({ userId }) => {
         const fetchData = async () => {
             try {
                 // Build URL with user_id if provided
-                const baseUrl = 'http://localhost:8000/api/v1/main/financial-flow';
+                const baseUrl = '/api/v1/cash-flow/financial-flow';
                 const url = userId ? `${baseUrl}?user_id=${userId}` : baseUrl;
                 
                 console.log('[CashflowSankey] Fetching data from:', url);
@@ -38,12 +38,8 @@ const CashflowSankey = ({ userId }) => {
                 const data = await response.json();
                 console.log('[CashflowSankey] Data received:', data);
 
-                if (!data || !data.nodes || !data.links) {
-                    throw new Error('Data from API is not in the expected format.');
-                }
-
-                // Check if we have actual data
-                if (data.nodes.length === 0 || data.links.length === 0) {
+                // Check if empty state
+                if (data.empty || !data.nodes || data.nodes.length === 0) {
                     console.warn('[CashflowSankey] No transaction data available');
                     setSankeyData(null);
                     setLoading(false);
@@ -63,15 +59,19 @@ const CashflowSankey = ({ userId }) => {
                         },
                         label: data.nodes.map(node => node.name),
                         color: data.nodes.map((node, idx) => {
-                            // Color nodes based on their type or position
+                            // Color nodes based on their type
                             if (node.name.toLowerCase().includes('revenue') || 
-                                node.name.toLowerCase().includes('income')) {
-                                return '#10b981'; // Green for income sources
+                                node.name.toLowerCase().includes('income') ||
+                                node.name.toLowerCase().includes('sales')) {
+                                return '#10b981'; // Green for income
                             } else if (node.name.toLowerCase().includes('expense') || 
-                                       node.name.toLowerCase().includes('cost')) {
+                                       node.name.toLowerCase().includes('cost') ||
+                                       node.name.toLowerCase().includes('payroll') ||
+                                       node.name.toLowerCase().includes('rent')) {
                                 return '#ef4444'; // Red for expenses
                             } else if (node.name.toLowerCase().includes('cash') || 
-                                       node.name.toLowerCase().includes('bank')) {
+                                       node.name.toLowerCase().includes('bank') ||
+                                       node.name.toLowerCase().includes('account')) {
                                 return '#3b82f6'; // Blue for cash/bank
                             }
                             return '#60a5fa'; // Default blue
@@ -81,10 +81,7 @@ const CashflowSankey = ({ userId }) => {
                         source: data.links.map(link => link.source),
                         target: data.links.map(link => link.target),
                         value: data.links.map(link => link.value),
-                        color: data.links.map((link, idx) => {
-                            // Make links semi-transparent
-                            return 'rgba(148, 163, 184, 0.4)'; // slate-400 with opacity
-                        })
+                        color: data.links.map(() => 'rgba(148, 163, 184, 0.4)')
                     }
                 };
                 
@@ -99,7 +96,7 @@ const CashflowSankey = ({ userId }) => {
         };
 
         fetchData();
-    }, [userId]); // Re-fetch when userId changes
+    }, [userId]);
 
     if (loading) {
         return (
@@ -149,15 +146,15 @@ const CashflowSankey = ({ userId }) => {
                 layout={{
                     font: {
                         size: 12,
-                        color: '#475569', // slate-600
+                        color: '#475569',
                         family: 'system-ui, -apple-system, sans-serif'
                     },
                     paper_bgcolor: 'rgba(0,0,0,0)',
                     plot_bgcolor: 'rgba(0,0,0,0)',
                     margin: { l: 20, r: 20, b: 20, t: 20, pad: 4 },
                     hoverlabel: {
-                        bgcolor: '#1e293b', // slate-800
-                        bordercolor: '#334155', // slate-700
+                        bgcolor: '#1e293b',
+                        bordercolor: '#334155',
                         font: {
                             color: '#ffffff',
                             family: 'system-ui, -apple-system, sans-serif',

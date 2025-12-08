@@ -10,7 +10,7 @@ const CashflowSankey = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await fetch('http://localhost:8000/financial-flow');
+                const baseUrl = '/api/v1/cash-flow/financial-flow';
                 
                 if (!response.ok) {
                     throw new Error(`Network response was not ok (Status: ${response.status})`);
