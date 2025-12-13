@@ -1,11 +1,12 @@
 """
-Main FastAPI Application
+Main FastAPI Application - SECURED VERSION
 """
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from routes.auth import get_current_user_id
-
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import RedirectResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # Configure logging
 logging.basicConfig(
@@ -13,6 +14,52 @@ logging.basicConfig(
     format='%(levelname)s:%(name)s:%(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# ==========================================
+# SECURITY MIDDLEWARE
+# ==========================================
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses"""
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        
+        # Security headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' data:; "
+            "connect-src 'self' https://insightbridge-frontend-test.azurewebsites.net; "
+            "frame-ancestors 'none';"
+        )
+        
+        return response
+
+class HTTPSRedirectMiddleware(BaseHTTPMiddleware):
+    """Force HTTPS in production"""
+    async def dispatch(self, request: Request, call_next):
+        # Check if request is HTTP and in production
+        if request.url.scheme == "http":
+            # Check for Azure's forwarded protocol header
+            forwarded_proto = request.headers.get("x-forwarded-proto")
+            if forwarded_proto == "http":
+                # Redirect to HTTPS
+                url = request.url.replace(scheme="https")
+                return RedirectResponse(url=url, status_code=301)
+        
+        return await call_next(request)
+
+# ==========================================
+# DATABASE SETUP
+# ==========================================
 
 # Try to import database (optional)
 try:
@@ -23,23 +70,58 @@ try:
 except Exception as e:
     logger.warning(f"⚠️ Database not available: {e}")
 
-# Create FastAPI app FIRST
+# ==========================================
+# CREATE FASTAPI APP
+# ==========================================
+
 app = FastAPI(
     title="InsightBridge API",
     description="Financial Analysis Platform",
-    version="1.0.0"
+    version="1.0.0",
+    docs_url="/api/docs",  # Move docs to /api/docs for security
+    redoc_url="/api/redoc"
 )
 
-# CORS configuration
+# ==========================================
+# APPLY SECURITY MIDDLEWARE
+# ==========================================
+
+# 1. HTTPS Redirect (must be first)
+app.add_middleware(HTTPSRedirectMiddleware)
+
+# 2. Security Headers
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 3. Trusted Host (prevent host header attacks)
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=[
+        "insightbridge-test-app-amgxawdbcxckdjfk.canadacentral-01.azurewebsites.net",
+        "localhost",
+        "127.0.0.1"
+    ]
+)
+
+# 4. CORS (must be last middleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000",  "https://insightbridge-frontend-test.azurewebsites.net", "https://insightbridge-test-app-amgxawdbcxckdjfk.canadacentral-01.azurewebsites.net"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://insightbridge-frontend-test.azurewebsites.net",
+        "https://insightbridge-test-app-amgxawdbcxckdjfk.canadacentral-01.azurewebsites.net"
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600  # Cache preflight requests for 1 hour
 )
 
-# NOW import and register routers AFTER app is created
+# ==========================================
+# IMPORT AND REGISTER ROUTERS
+# ==========================================
+
 from api.main import router as main_api_router
 from routes.simulations_router import router as simulations_router
 from routes.advisor_router import router as advisor_router
@@ -79,32 +161,53 @@ logger.info("✓ Company context router included")
 app.include_router(reconciliation_router, prefix="/api/v1/reconciliation", tags=["reconciliation"])
 logger.info("✓ Reconciliation router included at /api/v1/reconciliation")
 
-# ✅ NEW: Cash Flow Router
 app.include_router(cash_flow_router, prefix="/api/v1/cash-flow", tags=["cash-flow"])
 logger.info("✓ Cash Flow router included at /api/v1/cash-flow")
 
-# Root endpoints
+# ==========================================
+# ROOT ENDPOINTS
+# ==========================================
+
 @app.get("/")
 async def root():
     return {
         "message": "InsightBridge API",
         "version": "1.0.0",
-        "status": "running"
+        "status": "running",
+        "security": "enabled"
     }
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "https": "enforced",
+        "headers": "secured"
+    }
+
+# ==========================================
+# STARTUP EVENT
+# ==========================================
 
 @app.on_event("startup")
 async def startup_event():
     logger.info("🚀 Application starting up...")
+    logger.info("🔒 Security middleware enabled")
     logger.info("📍 Registered routes:")
     for route in app.routes:
         if hasattr(route, 'methods'):
             logger.info(f"  {route.methods} {route.path}")
 
+# ==========================================
+# RUN APPLICATION
+# ==========================================
+
 if __name__ == "__main__":
     import uvicorn
     logger.info("🚀 Starting InsightBridge API...")
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run(
+        "app:app",
+        host="0.0.0.0",  # Changed from 127.0.0.1 for Azure
+        port=8000,
+        reload=True
+    )
