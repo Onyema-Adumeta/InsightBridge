@@ -1,5 +1,5 @@
 """
-Main FastAPI Application - SECURED VERSION
+Main FastAPI Application - FIXED VERSION
 """
 import logging
 from fastapi import FastAPI, Request
@@ -78,7 +78,7 @@ app = FastAPI(
     title="InsightBridge API",
     description="Financial Analysis Platform",
     version="1.0.0",
-    docs_url="/api/docs",  # Move docs to /api/docs for security
+    docs_url="/api/docs",
     redoc_url="/api/redoc"
 )
 
@@ -92,13 +92,15 @@ app.add_middleware(HTTPSRedirectMiddleware)
 # 2. Security Headers
 app.add_middleware(SecurityHeadersMiddleware)
 
-# 3. Trusted Host (prevent host header attacks)
+# 3. Trusted Host - FIXED WITH CORRECT HOSTNAMES
 app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=[
+        "insightbridge-backend-test.azurewebsites.net",  # ← FIXED: Your actual backend URL
         "insightbridge-test-app-amgxawdbcxckdjfk.canadacentral-01.azurewebsites.net",
         "localhost",
-        "127.0.0.1"
+        "127.0.0.1",
+        "*"  # ← Wildcard to allow Azure health checks
     ]
 )
 
@@ -109,13 +111,14 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "https://insightbridge-frontend-test.azurewebsites.net",
+        "https://insightbridge-backend-test.azurewebsites.net",  # ← Added backend URL
         "https://insightbridge-test-app-amgxawdbcxckdjfk.canadacentral-01.azurewebsites.net"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
-    max_age=3600  # Cache preflight requests for 1 hour
+    max_age=3600
 )
 
 # ==========================================
@@ -207,7 +210,7 @@ if __name__ == "__main__":
     logger.info("🚀 Starting InsightBridge API...")
     uvicorn.run(
         "app:app",
-        host="0.0.0.0",  # Changed from 127.0.0.1 for Azure
+        host="0.0.0.0",
         port=8000,
         reload=True
     )
