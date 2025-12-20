@@ -1,5 +1,6 @@
 ﻿'use client';
-import { useEffect, useState } from 'react';
+
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { Lock } from 'lucide-react';
 import DynamicClientDashboard from '@/components/ClientDashboard';
@@ -40,114 +41,173 @@ interface AnalysisData {
 
 export default function DashboardPage() {
   const { user, isLoaded, isSignedIn } = useUser();
+
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'error'>('connecting');
   const [retryCount, setRetryCount] = useState(0);
+
   const isDevelopment = process.env.NODE_ENV === 'development';
 
-  const connectionBanner = connectionStatus === 'error' ? (
-    <div className="bg-red-50 border-b border-red-200 p-4">
-      <p className="text-sm text-red-800 text-center">
-        Unable to connect to the server. Please check your connection and try again.
-      </p>
-    </div>
-  ) : connectionStatus === 'connecting' ? (
-    <div className="bg-blue-50 border-b border-blue-200 p-4">
-      <p className="text-sm text-blue-800 text-center">
-        Connecting to server...
-      </p>
-    </div>
-  ) : null;
+  // ✅ Prevent parallel fetches + allow cleanup
+  const inFlightRef = useRef(false);
+  const controllerRef = useRef<AbortController | null>(null);
+  const retryTimeoutRef = useRef<number | null>(null);
 
-  const fetchData = async (isRetry = false) => {
-    if (!isLoaded) {
-      return;
-    }
+  const connectionBanner =
+    connectionStatus === 'error' ? (
+      <div className="bg-red-50 border-b border-red-200 p-4">
+        <p className="text-sm text-red-800 text-center">
+          Unable to connect to the server. Please check your connection and try again.
+        </p>
+      </div>
+    ) : connectionStatus === 'connecting' ? (
+      <div className="bg-blue-50 border-b border-blue-200 p-4">
+        <p className="text-sm text-blue-800 text-center">Connecting to server...</p>
+      </div>
+    ) : null;
 
-    if (!isSignedIn || !user) {
-      if (isDevelopment) console.log('🔐 User not signed in');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setConnectionStatus('connecting');
-      
-      const url = `/api/v1/main/analysis_summary?user_id=${user.id}`;
-      if (isDevelopment) {
-        console.log('🔍 Fetching from:', url);
-        console.log('🔑 User ID:', user.id);
-      }
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-      const response = await fetch(url, {
-        signal: controller.signal,
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (isDevelopment) {
-        console.log('✅ Analysis data received:', data);
-      }
-
-      setAnalysisData(data);
-      setConnectionStatus('connected');
-      setRetryCount(0);
-    } catch (err: any) {
-      if (isDevelopment) {
-        console.error('💥 Error:', err.message);
-      }
-      
-      setConnectionStatus('error');
-
-      if (!isRetry && retryCount < 3) {
-        if (isDevelopment) console.log(`🔄 Retrying... (${retryCount + 1}/3)`);
-        setRetryCount(retryCount + 1);
-        setTimeout(() => fetchData(true), 2000 * (retryCount + 1));
-        return;
-      }
-
-      if (isDevelopment) console.warn('⚠️ All retries exhausted, showing welcome screen');
-      setAnalysisData(null);
-    } finally {
-      setLoading(false);
+  const clearRetryTimeout = () => {
+    if (retryTimeoutRef.current) {
+      window.clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
     }
   };
 
+  const abortInFlight = () => {
+    if (controllerRef.current) {
+      controllerRef.current.abort();
+      controllerRef.current = null;
+    }
+  };
+
+  const fetchData = useCallback(
+    async (isRetry = false) => {
+      if (!isLoaded) return;
+
+      if (!isSignedIn || !user) {
+        if (isDevelopment) console.log('🔐 User not signed in');
+        setLoading(false);
+        return;
+      }
+
+      // ✅ Don’t start another request if one is already running
+      if (inFlightRef.current) {
+        if (isDevelopment) console.log('⏳ Fetch already in progress — skipping duplicate call');
+        return;
+      }
+
+      try {
+        inFlightRef.current = true;
+        setLoading(true);
+        setConnectionStatus('connecting');
+
+        // ✅ Abort any prior request before starting a new one
+        abortInFlight();
+
+        const url = `/api/v1/main/analysis_summary?user_id=${user.id}`;
+        if (isDevelopment) {
+          console.log('🔍 Fetching from:', url);
+          console.log('🔑 User ID:', user.id);
+        }
+
+        const controller = new AbortController();
+        controllerRef.current = controller;
+
+        // ✅ Timeout abort
+        const timeoutId = window.setTimeout(() => controller.abort(), 30000);
+
+        const response = await fetch(url, {
+          signal: controller.signal,
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store',
+        });
+
+        window.clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (isDevelopment) {
+          console.log('✅ Analysis data received:', data);
+        }
+
+        setAnalysisData(data);
+        setConnectionStatus('connected');
+        setRetryCount(0);
+      } catch (err: any) {
+        // ✅ IMPORTANT: AbortError is NOT a real error (happens during refresh/unmount/timeout)
+        const isAbort =
+          err?.name === 'AbortError' ||
+          String(err?.message || '').toLowerCase().includes('aborted');
+
+        if (isAbort) {
+          if (isDevelopment) console.log('ℹ️ Request aborted (expected). Not treating as error.');
+          return; // do NOT set status error, do NOT retry
+        }
+
+        if (isDevelopment) {
+          console.error('💥 Error:', err?.message || err);
+        }
+
+        setConnectionStatus('error');
+
+        // ✅ retry up to 3 times (not for abort)
+        if (!isRetry && retryCount < 3) {
+          if (isDevelopment) console.log(`🔄 Retrying... (${retryCount + 1}/3)`);
+          setRetryCount((prev) => prev + 1);
+
+          clearRetryTimeout();
+          retryTimeoutRef.current = window.setTimeout(() => {
+            fetchData(true);
+          }, 2000 * (retryCount + 1));
+
+          return;
+        }
+
+        if (isDevelopment) console.warn('⚠️ All retries exhausted, showing welcome screen');
+        setAnalysisData(null);
+      } finally {
+        inFlightRef.current = false;
+        setLoading(false);
+      }
+    },
+    [isLoaded, isSignedIn, user, retryCount, isDevelopment]
+  );
+
+  // ✅ Initial load + cleanup on dependency changes
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoaded, isSignedIn, user]);
 
+    return () => {
+      clearRetryTimeout();
+      abortInFlight();
+      inFlightRef.current = false;
+    };
+  }, [fetchData]);
+
+  // ✅ Listen for analysisUpdated event (and cleanup properly)
   useEffect(() => {
     const handleAnalysisUpdate = (event: any) => {
       if (isDevelopment) console.log('🔄 Analysis updated event received:', event.detail);
-      setTimeout(() => {
-        fetchData();
-      }, 500);
+      // slight delay so backend write finishes
+      clearRetryTimeout();
+      retryTimeoutRef.current = window.setTimeout(() => fetchData(), 500);
     };
 
     window.addEventListener('analysisUpdated', handleAnalysisUpdate as EventListener);
 
     return () => {
       window.removeEventListener('analysisUpdated', handleAnalysisUpdate as EventListener);
+      clearRetryTimeout();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isLoaded, isSignedIn]);
+  }, [fetchData, isDevelopment]);
 
   // LOADING STATE - NO <main> wrapper!
   if (!isLoaded || (loading && !analysisData)) {
@@ -166,12 +226,8 @@ export default function DashboardPage() {
           <div className="mb-6">
             <Lock className="mx-auto h-16 w-16 text-indigo-600" />
           </div>
-          <h2 className="mb-4 text-3xl font-bold text-slate-900">
-            Authentication Required
-          </h2>
-          <p className="mb-6 text-slate-600">
-            Please sign in to view your dashboard.
-          </p>
+          <h2 className="mb-4 text-3xl font-bold text-slate-900">Authentication Required</h2>
+          <p className="mb-6 text-slate-600">Please sign in to view your dashboard.</p>
           <a
             href="/sign-in"
             className="inline-block rounded-lg bg-indigo-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 shadow-sm"

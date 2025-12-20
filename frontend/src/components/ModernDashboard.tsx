@@ -641,88 +641,151 @@ export default function ModernDashboard({
     );
   }
 
+  // ============= UPDATED EMPTY STATE =============
   if (!analysisData || (!analysisData.kpiCardData && !analysisData.kpiChartData)) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 sm:p-8 lg:p-12">
-        <div className="max-w-4xl w-full mx-auto text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-6 shadow-xl">
-            <BarChart3 className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+        {/* Hero Header */}
+        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white py-16">
+          <div className="max-w-5xl mx-auto px-6 text-center">
+            <div className="inline-flex items-center justify-center w-24 h-24 bg-white/20 backdrop-blur-sm rounded-3xl shadow-2xl mb-8">
+              <BarChart3 className="w-12 h-12 text-white" />
+            </div>
+            <h1 className="text-5xl font-bold mb-4">Welcome to InsightBridge</h1>
+            <p className="text-xl text-indigo-100 max-w-2xl mx-auto">
+              Transform your financial data into actionable insights with AI-powered analysis
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-4xl font-bold text-slate-900 mb-4">
-            Welcome to InsightBridge
-          </h1>
-          <p className="text-base sm:text-lg text-slate-600 mb-8">
-            Transform your financial data into actionable insights with
-            AI-powered analysis
-          </p>
+        </div>
 
-          <div className="bg-white rounded-2xl border-2 border-dashed border-slate-300 hover:border-indigo-400 transition-all p-8 sm:p-12 mb-8 cursor-pointer">
-            <input
-              type="file"
-              id="empty-state-upload"
-              className="hidden"
-              accept=".xlsx,.xls,.csv,.pdf,.json"
-              onChange={onUpload}
-            />
-            <label
-              htmlFor="empty-state-upload"
-              className="cursor-pointer flex flex-col items-center"
-            >
-              <Upload className="w-12 h-12 sm:w-16 sm:h-16 text-indigo-500 mb-4" />
-              <span className="text-base sm:text-lg font-semibold text-slate-900 mb-2">
-                Upload Your Financial Statements
-              </span>
-              <span className="text-xs sm:text-sm text-slate-600">
-                Supports Excel, CSV, PDF • Maximum 10MB
-              </span>
-            </label>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-            {[
-              {
-                icon: Brain,
-                title: "AI-Powered Insights",
-                desc: "Advanced analysis with predictive forecasting",
-              },
-              {
-                icon: Target,
-                title: "Industry Benchmarks",
-                desc: "Compare against sector standards",
-              },
-              {
-                icon: Shield,
-                title: "Health Scoring",
-                desc: "Real-time financial health assessment",
-              },
-            ].map((feature, idx) => (
-              <div
-                key={idx}
-                className="bg-white rounded-xl p-5 sm:p-6 border border-slate-200 hover:border-indigo-300 transition-all hover:shadow-md"
+        {/* Main Content */}
+        <div className="max-w-5xl mx-auto px-6 py-12">
+          {/* Upload Card */}
+          <div className="bg-white rounded-3xl shadow-2xl border-2 border-slate-200 overflow-hidden mb-12">
+            <div className="p-12">
+              <input
+                type="file"
+                id="empty-state-upload"
+                className="hidden"
+                accept=".xlsx,.xls,.csv,.pdf,.json"
+                onChange={onUpload}
+                disabled={isUploading}
+              />
+              <label
+                htmlFor="empty-state-upload"
+                className="cursor-pointer flex flex-col items-center"
               >
-                <feature.icon className="w-10 h-10 sm:w-12 sm:h-12 text-indigo-500 mb-4" />
-                <h3 className="text-sm sm:text-base font-semibold text-slate-900 mb-2">
-                  {feature.title}
+                <div className="relative mb-8">
+                  <div className="w-32 h-32 bg-gradient-to-br from-indigo-100 via-purple-100 to-blue-100 rounded-3xl flex items-center justify-center shadow-xl">
+                    <Upload className="w-16 h-16 text-indigo-600" />
+                  </div>
+                  <div className="absolute -top-3 -right-3 w-12 h-12 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+                    <Sparkles className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+                
+                <h3 className="text-3xl font-bold text-slate-900 mb-3">
+                  Upload Your Financial Statements
                 </h3>
-                <p className="text-xs sm:text-sm text-slate-600">
-                  {feature.desc}
+                <p className="text-slate-600 text-lg mb-8">
+                  Supports Excel, CSV, PDF • Maximum 10MB
                 </p>
+                
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  className="inline-flex items-center gap-3 px-10 py-5 bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white text-xl font-bold rounded-2xl hover:shadow-2xl hover:scale-105 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Upload className="w-6 h-6" />
+                  {isUploading ? "Uploading..." : "Choose File to Upload"}
+                  <Sparkles className="w-5 h-5" />
+                </button>
+              </label>
+            </div>
+          </div>
+
+          {/* Feature Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white rounded-2xl border-2 border-purple-200 p-8 shadow-lg hover:shadow-2xl hover:scale-105 transition-all">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl flex items-center justify-center mb-6 shadow-md">
+                <Brain className="w-8 h-8 text-purple-600" />
               </div>
-            ))}
+              <h3 className="text-xl font-bold text-slate-900 mb-3">AI-Powered Insights</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Advanced analysis with predictive forecasting and intelligent recommendations
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl border-2 border-blue-200 p-8 shadow-lg hover:shadow-2xl hover:scale-105 transition-all">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center mb-6 shadow-md">
+                <Target className="w-8 h-8 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Industry Benchmarks</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Compare your performance against industry standards and top performers
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl border-2 border-green-200 p-8 shadow-lg hover:shadow-2xl hover:scale-105 transition-all">
+              <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-green-200 rounded-2xl flex items-center justify-center mb-6 shadow-md">
+                <Shield className="w-8 h-8 text-green-600" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-3">Health Scoring</h3>
+              <p className="text-slate-600 leading-relaxed">
+                Real-time financial health assessment with actionable recommendations
+              </p>
+            </div>
+          </div>
+
+          {/* How It Works */}
+          <div className="mt-12 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-3xl p-10 border-2 border-blue-200 shadow-xl">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <Lightbulb className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-3xl font-bold text-slate-900">How It Works</h3>
+            </div>
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border-2 border-blue-200 shadow-md">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-full flex items-center justify-center text-xl font-bold mb-4 shadow-lg">
+                  1
+                </div>
+                <h4 className="font-bold text-slate-900 mb-2 text-lg">Upload Data</h4>
+                <p className="text-slate-700">Select your financial statements in Excel, CSV, or PDF format</p>
+              </div>
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border-2 border-indigo-200 shadow-md">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-full flex items-center justify-center text-xl font-bold mb-4 shadow-lg">
+                  2
+                </div>
+                <h4 className="font-bold text-slate-900 mb-2 text-lg">AI Analysis</h4>
+                <p className="text-slate-700">Our AI extracts insights and generates forecasts automatically</p>
+              </div>
+              <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border-2 border-purple-200 shadow-md">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 text-white rounded-full flex items-center justify-center text-xl font-bold mb-4 shadow-lg">
+                  3
+                </div>
+                <h4 className="font-bold text-slate-900 mb-2 text-lg">View Insights</h4>
+                <p className="text-slate-700">Access forecasts, benchmarks, and actionable recommendations</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Security Badge */}
+          <div className="mt-8 flex items-center justify-center gap-3 text-slate-500">
+            <Shield className="w-5 h-5" />
+            <span className="font-semibold">🔒 Your data is encrypted and secure</span>
           </div>
         </div>
       </div>
     );
   }
+  // ============= END UPDATED EMPTY STATE =============
 
-  // Get microlearning explainers from backend (if available)
   const microLearningExplainers = analysisData?.related_explainers;
 
-  // ✅ Compatibility function: Builds AI insights data from current backend structure
   const prepareAIInsightsData = (data: any) => {
     if (!data) return null;
 
-    // If we already have the full structure, use it
     if (data?.predictiveAnalysis?.overview) {
       return {
         overview: data.predictiveAnalysis.overview,
@@ -735,7 +798,6 @@ export default function ModernDashboard({
       };
     }
 
-    // Build from current data structure
     const insights = data?.predictiveAnalysis?.insights || [];
     const overview = insights.length > 0
       ? `Financial Analysis Summary:\n\n${insights.map((i: any) => `• ${i.title}: ${i.summary}`).join('\n\n')}`
@@ -1097,17 +1159,14 @@ export default function ModernDashboard({
           )}
         </div>
 
-        {/* Main content grid: left column (AI insights, microlearning, benchmarks, comments) + right sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           <div className="lg:col-span-2 space-y-4 sm:space-y-6">
-            {/* ✅ UPDATED: Comprehensive AI Insights with compatibility layer */}
             {aiInsightsData && (
               <section id="predictive-insights" className="scroll-mt-20">
                 <ComprehensiveAIInsights analysisData={aiInsightsData} />
               </section>
             )}
 
-            {/* ✅ Microlearning with backend explainers */}
             <section id="microlearning" className="scroll-mt-20">
               <MicroLearningSection explainers={microLearningExplainers} />
             </section>
@@ -1123,7 +1182,6 @@ export default function ModernDashboard({
             <CommentsSection analysisData={analysisData} userId={userId} />
           </div>
 
-          {/* Right Sidebar */}
           <div className="space-y-4 sm:space-y-6">
             {analysisData?.health_score && (
               <section
