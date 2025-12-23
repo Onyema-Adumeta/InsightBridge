@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Check, X, Loader2, AlertCircle, Upload, FileText, Trash2, RefreshCw, AlertTriangle, Info, TrendingUp, TrendingDown, DollarSign, PieChart, BarChart3, Calendar, Tag, Brain } from 'lucide-react';
+import { Check, X, Loader2, AlertCircle, Upload, FileText, Trash2, RefreshCw, AlertTriangle, Info, TrendingUp, TrendingDown, DollarSign, PieChart, BarChart3, Calendar, Tag, Brain, Sparkles, Zap } from 'lucide-react';
 
 interface Match {
   match_id: number;
@@ -60,7 +60,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [processingMatch, setProcessingMatch] = useState<number | null>(null);
   
-  // Upload state
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -69,32 +68,45 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
   const [showUploadSection, setShowUploadSection] = useState(true);
   const [isPdfFile, setIsPdfFile] = useState(false);
   
-  // ✅ NEW: Analytics state
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [analytics, setAnalytics] = useState<any>(null);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
 
-  // Load pending matches and transactions on component mount
   useEffect(() => {
+    console.log('🧹 Reconciliation page loaded - clearing old data');
+    
+    setMatches([]);
+    setSummary(null);
+    setError(null);
+    setUploadResult(null);
+    setUploadError(null);
+    setTransactions([]);
+    setAnalytics(null);
+    setShowAnalytics(false);
+    setIsPdfFile(false);
+    setProcessingMatch(null);
+    
+    localStorage.removeItem('reconciliationData');
+    localStorage.removeItem('bankTransactions');
+    localStorage.removeItem('matches');
+    sessionStorage.removeItem('reconciliationData');
+    sessionStorage.removeItem('bankTransactions');
+    
     fetchPendingMatches();
     fetchTransactions();
   }, [userId]);
 
-  // ✅ FIXED: Only calculate analytics when transactions exist AND after upload
   useEffect(() => {
     if (transactions.length > 0 && uploadResult) {
       calculateAnalytics();
     } else {
-      // Clear analytics if no transactions
       setAnalytics(null);
       setShowAnalytics(false);
     }
   }, [transactions, uploadResult]);
 
-  // ✅ FIXED: Advanced Analytics Calculation with safety check
   const calculateAnalytics = () => {
-    // Don't calculate if no transactions
     if (transactions.length === 0) {
       setAnalytics(null);
       return;
@@ -104,7 +116,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     const totalOutflow = transactions.filter(t => t.amount < 0).reduce((sum, t) => sum + Math.abs(t.amount), 0);
     const netFlow = totalInflow - totalOutflow;
     
-    // Category detection (basic AI categorization)
     const categories: Record<string, { count: number; total: number }> = {};
     transactions.forEach(txn => {
       const category = detectCategory(txn.description);
@@ -115,14 +126,12 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
       categories[category].total += Math.abs(txn.amount);
     });
 
-    // Frequency analysis
     const merchants: Record<string, number> = {};
     transactions.forEach(txn => {
       const merchant = txn.description.split(' ')[0];
       merchants[merchant] = (merchants[merchant] || 0) + 1;
     });
 
-    // Spending patterns (by day of week)
     const dayOfWeekSpending: Record<string, number> = {
       'Mon': 0, 'Tue': 0, 'Wed': 0, 'Thu': 0, 'Fri': 0, 'Sat': 0, 'Sun': 0
     };
@@ -134,13 +143,11 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
       }
     });
 
-    // Unusual transactions (3x average)
     const avgTransaction = totalOutflow / transactions.filter(t => t.amount < 0).length || 0;
     const unusualTransactions = transactions.filter(t => 
       t.amount < 0 && Math.abs(t.amount) > avgTransaction * 3
     );
 
-    // Recurring transactions detection
     const descriptions = transactions.map(t => t.description.toLowerCase());
     const recurring = descriptions.filter((desc, idx) => 
       descriptions.indexOf(desc) !== idx
@@ -164,7 +171,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     });
   };
 
-  // ✅ NEW: AI Category Detection
   const detectCategory = (description: string): string => {
     const desc = description.toLowerCase();
     if (desc.includes('fee') || desc.includes('charge')) return 'Banking Fees';
@@ -208,7 +214,7 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
       }
     } catch (err) {
       console.error('Error fetching matches:', err);
-      setError('Failed to connect to server. Please check if the backend is running.');
+      setError('Failed to connect to server');
     } finally {
       setIsLoading(false);
     }
@@ -224,7 +230,6 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
       setTransactions(data.transactions || []);
     } catch (err) {
       console.error('Failed to fetch transactions:', err);
-      setError('Failed to fetch transactions. Please check if the backend is running.');
     } finally {
       setLoadingTransactions(false);
     }
@@ -392,13 +397,11 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     }
   };
 
-  // ✅ FIXED: Reset/Clear function that properly clears ALL state
   const handleReset = async () => {
-    if (transactions.length > 0 && !confirm('Are you sure you want to clear all data? This will remove all uploaded transactions.')) {
+    if (transactions.length > 0 && !confirm('Are you sure you want to clear all data?')) {
       return;
     }
     
-    // Clear ALL frontend state
     setUploadResult(null);
     setUploadError(null);
     setTransactions([]);
@@ -409,7 +412,10 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
     setShowAnalytics(false);
     setIsPdfFile(false);
     
-    // Optional: Clear backend data if needed
+    localStorage.removeItem('reconciliationData');
+    localStorage.removeItem('bankTransactions');
+    sessionStorage.removeItem('reconciliationData');
+    
     try {
       await fetch(`${apiUrl}/api/v1/reconciliation/clear_transactions?user_id=${userId}`, {
         method: 'POST',
@@ -420,596 +426,582 @@ export default function AutoReconciliation({ userId }: { userId: string }) {
   };
 
   const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 90) return 'text-green-600';
-    if (confidence >= 70) return 'text-yellow-600';
+    if (confidence >= 90) return 'text-emerald-600';
+    if (confidence >= 70) return 'text-amber-600';
     return 'text-orange-600';
   };
 
   const getConfidenceBgColor = (confidence: number) => {
-    if (confidence >= 90) return 'bg-green-50 border-green-200';
-    if (confidence >= 70) return 'bg-yellow-50 border-yellow-200';
+    if (confidence >= 90) return 'bg-emerald-50 border-emerald-200';
+    if (confidence >= 70) return 'bg-amber-50 border-amber-200';
     return 'bg-orange-50 border-orange-200';
   };
 
   return (
-    <div className="space-y-6">
-      {/* ✅ FIXED: Header with Reset Button */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Auto-Reconciliation</h2>
-          <p className="text-gray-500 mt-1">Upload bank statements and review suggested transaction matches</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleReset}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
-            title="Clear all data and start fresh"
-            suppressHydrationWarning
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span className="hidden sm:inline">Reset</span>
-          </button>
-          <button
-            onClick={runAutoMatch}
-            disabled={isLoading || transactions.length === 0}
-            className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            suppressHydrationWarning
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Running...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4" />
-                Run Auto-Match
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* ✅ FIXED: Advanced Analytics Section - Only show when data exists */}
-      {analytics && transactions.length > 0 && uploadResult && (
-        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 rounded-xl shadow-lg overflow-hidden">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-600 rounded-lg">
-                  <Brain className="w-6 h-6 text-white" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 rounded-2xl shadow-2xl p-8 text-white">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl">
+                  <Zap className="w-8 h-8" />
                 </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">AI-Powered Insights</h3>
-                  <p className="text-sm text-gray-600">Advanced analytics not available in standard banking apps</p>
-                </div>
+                <h1 className="text-3xl font-bold">Auto-Reconciliation</h1>
               </div>
+              <p className="text-indigo-100 text-lg">
+                Upload bank statements and review AI-suggested transaction matches
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
               <button
-                onClick={() => setShowAnalytics(!showAnalytics)}
-                className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
-                suppressHydrationWarning
+                onClick={handleReset}
+                className="flex items-center gap-2 px-5 py-3 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-xl font-medium transition-all border-2 border-white/30"
               >
-                {showAnalytics ? 'Hide Details' : 'Show Details'}
+                <RefreshCw className="w-5 h-5" />
+                <span className="hidden sm:inline">Reset</span>
+              </button>
+              <button
+                onClick={runAutoMatch}
+                disabled={isLoading || transactions.length === 0}
+                className="flex items-center gap-2 px-6 py-3 bg-white text-indigo-600 rounded-xl font-bold hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Running...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    Run Auto-Match
+                  </>
+                )}
               </button>
             </div>
-
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <div className="bg-white rounded-lg p-4 border border-gray-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-5 h-5 text-green-600" />
-                  <span className="text-sm text-gray-600">Total Inflow</span>
-                </div>
-                <p className="text-2xl font-bold text-green-600">
-                  ${analytics.totalInflow.toFixed(2)}
-                </p>
-              </div>
-              
-              <div className="bg-white rounded-lg p-4 border border-gray-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingDown className="w-5 h-5 text-red-600" />
-                  <span className="text-sm text-gray-600">Total Outflow</span>
-                </div>
-                <p className="text-2xl font-bold text-red-600">
-                  ${analytics.totalOutflow.toFixed(2)}
-                </p>
-              </div>
-              
-              <div className="bg-white rounded-lg p-4 border border-gray-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="w-5 h-5 text-blue-600" />
-                  <span className="text-sm text-gray-600">Net Flow</span>
-                </div>
-                <p className={`text-2xl font-bold ${analytics.netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  ${Math.abs(analytics.netFlow).toFixed(2)}
-                </p>
-              </div>
-            </div>
-
-            {/* Detailed Analytics */}
-            {showAnalytics && (
-              <div className="space-y-6">
-                {/* Spending by Category */}
-                <div className="bg-white rounded-lg p-5 border border-gray-200">
-                  <div className="flex items-center gap-2 mb-4">
-                    <PieChart className="w-5 h-5 text-indigo-600" />
-                    <h4 className="font-semibold text-gray-900">Spending by Category</h4>
-                  </div>
-                  <div className="space-y-3">
-                    {analytics.categories.map(([category, data]: [string, any], idx: number) => (
-                      <div key={idx} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-700 font-medium">{category}</span>
-                          <span className="text-gray-900 font-semibold">${data.total.toFixed(2)}</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-indigo-600 h-2 rounded-full transition-all"
-                            style={{ width: `${(data.total / analytics.totalOutflow) * 100}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-gray-500">{data.count} transactions</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Top Merchants */}
-                <div className="bg-white rounded-lg p-5 border border-gray-200">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Tag className="w-5 h-5 text-purple-600" />
-                    <h4 className="font-semibold text-gray-900">Top Merchants</h4>
-                  </div>
-                  <div className="space-y-2">
-                    {analytics.topMerchants.map(([merchant, count]: [string, number], idx: number) => (
-                      <div key={idx} className="flex justify-between items-center p-2 bg-gray-50 rounded">
-                        <span className="text-sm text-gray-700">{merchant}</span>
-                        <span className="text-sm font-semibold text-gray-900">{count} transactions</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Spending Patterns by Day */}
-                <div className="bg-white rounded-lg p-5 border border-gray-200">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                    <h4 className="font-semibold text-gray-900">Spending by Day of Week</h4>
-                  </div>
-                  <div className="flex items-end justify-between gap-2 h-32">
-                    {Object.entries(analytics.dayOfWeekSpending).map(([day, amount]: [string, number]) => {
-                      const maxAmount = Math.max(...Object.values(analytics.dayOfWeekSpending));
-                      const height = maxAmount > 0 ? (amount / maxAmount) * 100 : 0;
-                      return (
-                        <div key={day} className="flex-1 flex flex-col items-center gap-2">
-                          <div className="w-full bg-blue-100 hover:bg-blue-200 rounded-t transition-colors relative group" style={{ height: `${height}%` }}>
-                            <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                              ${amount.toFixed(0)}
-                            </div>
-                          </div>
-                          <span className="text-xs text-gray-600 font-medium">{day}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Unusual Transactions Alert */}
-                {analytics.unusualTransactions.length > 0 && (
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-5">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-amber-900 mb-2">
-                          {analytics.unusualTransactions.length} Unusual Transaction{analytics.unusualTransactions.length > 1 ? 's' : ''} Detected
-                        </h4>
-                        <p className="text-sm text-amber-700 mb-3">
-                          These transactions are 3x larger than your average transaction (${analytics.avgTransactionSize.toFixed(2)})
-                        </p>
-                        <div className="space-y-2">
-                          {analytics.unusualTransactions.slice(0, 3).map((txn: BankTransaction, idx: number) => (
-                            <div key={idx} className="bg-white rounded p-3 border border-amber-200">
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <p className="font-medium text-gray-900">{txn.description}</p>
-                                  <p className="text-xs text-gray-500">{txn.date}</p>
-                                </div>
-                                <p className="font-bold text-red-600">${Math.abs(txn.amount).toFixed(2)}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Smart Insights */}
-                <div className="bg-white rounded-lg p-5 border border-gray-200">
-                  <div className="flex items-center gap-2 mb-4">
-                    <BarChart3 className="w-5 h-5 text-green-600" />
-                    <h4 className="font-semibold text-gray-900">Smart Insights</h4>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <p className="text-xs text-blue-600 font-semibold mb-1">AVG TRANSACTION</p>
-                      <p className="text-lg font-bold text-gray-900">${analytics.avgTransactionSize.toFixed(2)}</p>
-                    </div>
-                    <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
-                      <p className="text-xs text-purple-600 font-semibold mb-1">LARGEST TRANSACTION</p>
-                      <p className="text-lg font-bold text-gray-900">${analytics.largestTransaction.toFixed(2)}</p>
-                    </div>
-                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                      <p className="text-xs text-green-600 font-semibold mb-1">RECURRING PAYMENTS</p>
-                      <p className="text-lg font-bold text-gray-900">{analytics.recurringCount}</p>
-                    </div>
-                    <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-                      <p className="text-xs text-orange-600 font-semibold mb-1">UNIQUE MERCHANTS</p>
-                      <p className="text-lg font-bold text-gray-900">{analytics.topMerchants.length}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
-      )}
 
-      {/* Upload Bank Statement Section */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Upload className="w-5 h-5" />
-            Upload Bank Statement
-          </h3>
-          <button
-            onClick={() => setShowUploadSection(!showUploadSection)}
-            className="text-sm text-gray-500 hover:text-gray-900"
-            suppressHydrationWarning
-          >
-            {showUploadSection ? 'Hide' : 'Show'}
-          </button>
-        </div>
+        {analytics && transactions.length > 0 && uploadResult && (
+          <div className="bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 border-2 border-indigo-200 rounded-2xl shadow-xl overflow-hidden">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl shadow-lg">
+                    <Brain className="w-7 h-7 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-900">AI-Powered Insights</h3>
+                    <p className="text-sm text-slate-600">Advanced analytics not available in standard banking apps</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowAnalytics(!showAnalytics)}
+                  className="px-4 py-2 bg-white border-2 border-indigo-300 text-indigo-600 rounded-xl font-semibold hover:bg-indigo-50 transition-colors"
+                >
+                  {showAnalytics ? 'Hide Details' : 'Show Details'}
+                </button>
+              </div>
 
-        {showUploadSection && (
-          <div className="space-y-4">
-            {/* File Input */}
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors">
-                <FileText className="w-4 h-4" />
-                Choose File
-                <input
-                  type="file"
-                  accept=".csv,.xlsx,.xls,.pdf"
-                  onChange={handleFileUpload}
-                  disabled={uploading}
-                  className="hidden"
-                  suppressHydrationWarning
-                />
-              </label>
-              {uploading && (
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Uploading and processing...</span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div className="bg-white rounded-xl p-5 border-2 border-green-200 shadow-md hover:shadow-xl transition-shadow">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <TrendingUp className="w-6 h-6 text-green-600" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-600">Total Inflow</span>
+                  </div>
+                  <p className="text-3xl font-bold text-green-600">
+                    ${analytics.totalInflow.toFixed(2)}
+                  </p>
+                </div>
+                
+                <div className="bg-white rounded-xl p-5 border-2 border-red-200 shadow-md hover:shadow-xl transition-shadow">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-red-100 rounded-lg">
+                      <TrendingDown className="w-6 h-6 text-red-600" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-600">Total Outflow</span>
+                  </div>
+                  <p className="text-3xl font-bold text-red-600">
+                    ${analytics.totalOutflow.toFixed(2)}
+                  </p>
+                </div>
+                
+                <div className="bg-white rounded-xl p-5 border-2 border-blue-200 shadow-md hover:shadow-xl transition-shadow">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <DollarSign className="w-6 h-6 text-blue-600" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-600">Net Flow</span>
+                  </div>
+                  <p className={`text-3xl font-bold ${analytics.netFlow >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ${Math.abs(analytics.netFlow).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+
+              {showAnalytics && (
+                <div className="space-y-6">
+                  <div className="bg-white rounded-xl p-6 border-2 border-slate-200 shadow-md">
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="p-2 bg-indigo-100 rounded-lg">
+                        <PieChart className="w-6 h-6 text-indigo-600" />
+                      </div>
+                      <h4 className="text-lg font-bold text-slate-900">Spending by Category</h4>
+                    </div>
+                    <div className="space-y-4">
+                      {analytics.categories.map(([category, data]: [string, any], idx: number) => (
+                        <div key={idx} className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-700 font-semibold">{category}</span>
+                            <span className="text-slate-900 font-bold">${data.total.toFixed(2)}</span>
+                          </div>
+                          <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                            <div 
+                              className="bg-gradient-to-r from-indigo-500 to-purple-500 h-3 rounded-full transition-all duration-500"
+                              style={{ width: `${(data.total / analytics.totalOutflow) * 100}%` }}
+                            />
+                          </div>
+                          <p className="text-xs text-slate-500">{data.count} transactions</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl p-6 border-2 border-slate-200 shadow-md">
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="p-2 bg-purple-100 rounded-lg">
+                        <Tag className="w-6 h-6 text-purple-600" />
+                      </div>
+                      <h4 className="text-lg font-bold text-slate-900">Top Merchants</h4>
+                    </div>
+                    <div className="space-y-3">
+                      {analytics.topMerchants.map(([merchant, count]: [string, number], idx: number) => (
+                        <div key={idx} className="flex justify-between items-center p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-200">
+                          <span className="text-sm font-semibold text-slate-700">{merchant}</span>
+                          <span className="px-3 py-1 bg-purple-600 text-white text-xs font-bold rounded-full">{count} txns</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-xl p-6 border-2 border-slate-200 shadow-md">
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <Calendar className="w-6 h-6 text-blue-600" />
+                      </div>
+                      <h4 className="text-lg font-bold text-slate-900">Spending by Day of Week</h4>
+                    </div>
+                    <div className="flex items-end justify-between gap-3 h-40">
+                      {Object.entries(analytics.dayOfWeekSpending).map(([day, amount]: [string, number]) => {
+                        const maxAmount = Math.max(...Object.values(analytics.dayOfWeekSpending));
+                        const height = maxAmount > 0 ? (amount / maxAmount) * 100 : 0;
+                        return (
+                          <div key={day} className="flex-1 flex flex-col items-center gap-2">
+                            <div 
+                              className="w-full bg-gradient-to-t from-blue-500 to-blue-300 hover:from-blue-600 hover:to-blue-400 rounded-t-lg transition-all relative group shadow-md" 
+                              style={{ height: `${height}%` }}
+                            >
+                              <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap font-semibold shadow-xl">
+                                ${amount.toFixed(0)}
+                              </div>
+                            </div>
+                            <span className="text-xs text-slate-600 font-bold">{day}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {analytics.unusualTransactions.length > 0 && (
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-6 shadow-lg">
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-amber-500 rounded-xl">
+                          <AlertTriangle className="w-7 h-7 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="text-xl font-bold text-amber-900 mb-2">
+                            {analytics.unusualTransactions.length} Unusual Transaction{analytics.unusualTransactions.length > 1 ? 's' : ''} Detected
+                          </h4>
+                          <p className="text-sm text-amber-700 mb-4 font-medium">
+                            These transactions are 3x larger than your average transaction (${analytics.avgTransactionSize.toFixed(2)})
+                          </p>
+                          <div className="space-y-3">
+                            {analytics.unusualTransactions.slice(0, 3).map((txn: BankTransaction, idx: number) => (
+                              <div key={idx} className="bg-white rounded-xl p-4 border-2 border-amber-200 shadow-md">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <p className="font-bold text-slate-900">{txn.description}</p>
+                                    <p className="text-xs text-slate-500 mt-1">{txn.date}</p>
+                                  </div>
+                                  <p className="text-xl font-bold text-red-600">${Math.abs(txn.amount).toFixed(2)}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="bg-white rounded-xl p-6 border-2 border-slate-200 shadow-md">
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <BarChart3 className="w-6 h-6 text-green-600" />
+                      </div>
+                      <h4 className="text-lg font-bold text-slate-900">Smart Insights</h4>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 shadow-sm hover:shadow-lg transition-shadow">
+                        <p className="text-xs text-blue-700 font-bold mb-1 uppercase tracking-wide">Avg Transaction</p>
+                        <p className="text-2xl font-bold text-slate-900">${analytics.avgTransactionSize.toFixed(2)}</p>
+                      </div>
+                      <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-2 border-purple-200 shadow-sm hover:shadow-lg transition-shadow">
+                        <p className="text-xs text-purple-700 font-bold mb-1 uppercase tracking-wide">Largest Transaction</p>
+                        <p className="text-2xl font-bold text-slate-900">${analytics.largestTransaction.toFixed(2)}</p>
+                      </div>
+                      <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 shadow-sm hover:shadow-lg transition-shadow">
+                        <p className="text-xs text-green-700 font-bold mb-1 uppercase tracking-wide">Recurring Payments</p>
+                        <p className="text-2xl font-bold text-slate-900">{analytics.recurringCount}</p>
+                      </div>
+                      <div className="p-4 bg-gradient-to-br from-orange-50 to-amber-50 rounded-xl border-2 border-orange-200 shadow-sm hover:shadow-lg transition-shadow">
+                        <p className="text-xs text-orange-700 font-bold mb-1 uppercase tracking-wide">Unique Merchants</p>
+                        <p className="text-2xl font-bold text-slate-900">{analytics.topMerchants.length}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
-
-            {/* Format Support Info */}
-            <div className="bg-gray-100 rounded-lg p-4 space-y-2">
-              <div className="flex items-start gap-2">
-                <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-gray-600">
-                  <p className="font-medium text-gray-900 mb-1">Supported formats:</p>
-                  <ul className="space-y-1">
-                    <li>• <span className="text-green-600">CSV, Excel (.xlsx, .xls)</span> - Recommended (95%+ accuracy)</li>
-                    <li>• <span className="text-yellow-600">PDF</span> - Experimental (70-80% accuracy)</li>
-                  </ul>
-                  <p className="mt-2 text-gray-500">Required columns: Date, Description, Amount (or Debit/Credit)</p>
-                </div>
-              </div>
-            </div>
-
-            {/* PDF Warning Banner */}
-            {isPdfFile && !uploadResult && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="font-medium text-yellow-700 mb-1">
-                      PDF Parsing is Experimental
-                    </p>
-                    <p className="text-sm text-yellow-600 mb-2">
-                      PDF statements have ~70-80% accuracy due to varying bank formats. 
-                      We recommend using CSV or Excel exports from your bank for best results.
-                    </p>
-                    <p className="text-xs text-yellow-700">
-                      <strong>After upload:</strong> Please carefully review all extracted transactions before running auto-match.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Success Message */}
-            {uploadResult && (
-              <div className={`${
-                uploadResult.details.accuracy_note 
-                  ? 'bg-yellow-50 border-yellow-200' 
-                  : 'bg-green-50 border-green-200'
-              } border rounded-lg p-4`}>
-                <div className="flex items-start gap-2">
-                  <Check className={`w-5 h-5 ${
-                    uploadResult.details.accuracy_note ? 'text-yellow-600' : 'text-green-600'
-                  } flex-shrink-0 mt-0.5`} />
-                  <div className="flex-1">
-                    <p className={`font-medium ${
-                      uploadResult.details.accuracy_note ? 'text-yellow-700' : 'text-green-700'
-                    }`}>
-                      {uploadResult.message}
-                    </p>
-                    <ul className={`mt-2 text-sm ${
-                      uploadResult.details.accuracy_note ? 'text-yellow-600' : 'text-green-600'
-                    } space-y-1`}>
-                      {uploadResult.details.total_rows && (
-                        <li>• Total rows: {uploadResult.details.total_rows}</li>
-                      )}
-                      {uploadResult.details.valid_rows && (
-                        <li>• Valid rows: {uploadResult.details.valid_rows}</li>
-                      )}
-                      <li>• Inserted: {uploadResult.details.inserted}</li>
-                      {uploadResult.details.duplicates_skipped > 0 && (
-                        <li>• Duplicates skipped: {uploadResult.details.duplicates_skipped}</li>
-                      )}
-                      {uploadResult.details.errors && uploadResult.details.errors > 0 && (
-                        <li className="text-red-600">• Parsing errors: {uploadResult.details.errors}</li>
-                      )}
-                    </ul>
-                    {uploadResult.details.accuracy_note && (
-                      <div className="mt-3 p-2 bg-yellow-100 rounded text-xs text-yellow-700">
-                        ⚠️ {uploadResult.details.accuracy_note}
-                      </div>
-                    )}
-                    {uploadResult.errors && uploadResult.errors.length > 0 && (
-                      <details className="mt-3">
-                        <summary className="text-xs text-yellow-600 cursor-pointer hover:text-yellow-700">
-                          View parsing errors ({uploadResult.errors.length})
-                        </summary>
-                        <ul className="mt-2 text-xs text-yellow-700 space-y-1 ml-4">
-                          {uploadResult.errors.map((err: string, i: number) => (
-                            <li key={i}>• {err}</li>
-                          ))}
-                        </ul>
-                      </details>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Error Message */}
-            {uploadError && (
-              <div className="bg-red-50 border-red-200 rounded-lg p-4">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm text-red-600">{uploadError}</p>
-                    {uploadError.toLowerCase().includes('pdf') && (
-                      <p className="text-xs text-red-500 mt-2">
-                        💡 Tip: Try downloading a CSV export from your bank's website for better accuracy.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
-      </div>
 
-      {/* Bank Transactions List */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Bank Transactions ({transactions.length})
-          </h3>
-          {transactions.length > 0 && (
+        <div className="bg-white border-2 border-slate-200 rounded-2xl shadow-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <Upload className="w-5 h-5 text-indigo-600" />
+              Upload Bank Statement
+            </h3>
             <button
-              onClick={fetchTransactions}
-              className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-              suppressHydrationWarning
+              onClick={() => setShowUploadSection(!showUploadSection)}
+              className="text-sm text-slate-600 hover:text-slate-900 font-medium"
             >
-              <RefreshCw className="w-4 h-4" />
-              Refresh
+              {showUploadSection ? 'Hide' : 'Show'}
             </button>
+          </div>
+
+          {showUploadSection && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl cursor-pointer transition-all shadow-md hover:shadow-xl font-semibold">
+                  <FileText className="w-5 h-5" />
+                  Choose File
+                  <input
+                    type="file"
+                    accept=".csv,.xlsx,.xls,.pdf"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
+                {uploading && (
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="text-sm font-medium">Uploading and processing...</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border-2 border-blue-200">
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-slate-700">
+                    <p className="font-semibold text-slate-900 mb-2">Supported formats:</p>
+                    <ul className="space-y-1">
+                      <li>• <span className="text-green-600 font-semibold">CSV, Excel (.xlsx, .xls)</span> - Recommended (95%+ accuracy)</li>
+                      <li>• <span className="text-amber-600 font-semibold">PDF</span> - Experimental (70-80% accuracy)</li>
+                    </ul>
+                    <p className="mt-2 text-slate-600 text-xs">Required columns: Date, Description, Amount (or Debit/Credit)</p>
+                  </div>
+                </div>
+              </div>
+
+              {isPdfFile && !uploadResult && (
+                <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-amber-900 mb-1">
+                        PDF Parsing is Experimental
+                      </p>
+                      <p className="text-sm text-amber-700 mb-2">
+                        PDF statements have ~70-80% accuracy due to varying bank formats. 
+                        We recommend using CSV or Excel exports from your bank for best results.
+                      </p>
+                      <p className="text-xs text-amber-800 font-medium">
+                        After upload: Please carefully review all extracted transactions before running auto-match.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {uploadResult && (
+                <div className={`${
+                  uploadResult.details.accuracy_note 
+                    ? 'bg-amber-50 border-amber-300' 
+                    : 'bg-emerald-50 border-emerald-300'
+                } border-2 rounded-xl p-4`}>
+                  <div className="flex items-start gap-3">
+                    <Check className={`w-6 h-6 ${
+                      uploadResult.details.accuracy_note ? 'text-amber-600' : 'text-emerald-600'
+                    } flex-shrink-0 mt-0.5`} />
+                    <div className="flex-1">
+                      <p className={`font-bold ${
+                        uploadResult.details.accuracy_note ? 'text-amber-900' : 'text-emerald-900'
+                      } mb-2`}>
+                        {uploadResult.message}
+                      </p>
+                      <ul className={`text-sm ${
+                        uploadResult.details.accuracy_note ? 'text-amber-700' : 'text-emerald-700'
+                      } space-y-1 font-medium`}>
+                        {uploadResult.details.total_rows && (
+                          <li>• Total rows: {uploadResult.details.total_rows}</li>
+                        )}
+                        {uploadResult.details.valid_rows && (
+                          <li>• Valid rows: {uploadResult.details.valid_rows}</li>
+                        )}
+                        <li>• Inserted: {uploadResult.details.inserted}</li>
+                        {uploadResult.details.duplicates_skipped > 0 && (
+                          <li>• Duplicates skipped: {uploadResult.details.duplicates_skipped}</li>
+                        )}
+                        {uploadResult.details.errors && uploadResult.details.errors > 0 && (
+                          <li className="text-red-600">• Parsing errors: {uploadResult.details.errors}</li>
+                        )}
+                      </ul>
+                      {uploadResult.details.accuracy_note && (
+                        <div className="mt-3 p-3 bg-amber-100 rounded-lg text-xs text-amber-800 font-medium">
+                          ⚠️ {uploadResult.details.accuracy_note}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {uploadError && (
+                <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm text-red-700 font-medium">{uploadError}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
-        {loadingTransactions ? (
-          <div className="text-center py-8 text-gray-500">
-            <Loader2 className="w-6 h-6 animate-spin mx-auto" />
+        <div className="bg-white border-2 border-slate-200 rounded-2xl shadow-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-900">
+              Bank Transactions ({transactions.length})
+            </h3>
+            {transactions.length > 0 && (
+              <button
+                onClick={fetchTransactions}
+                className="text-sm text-indigo-600 hover:text-indigo-700 flex items-center gap-1 font-medium"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
+            )}
           </div>
-        ) : transactions.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            No transactions yet. Upload a bank statement to get started.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Date</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Description</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">Amount</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Notes</th>
-                  <th className="w-20"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((txn) => (
-                  <tr key={txn.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-4 text-sm text-gray-600">{txn.date}</td>
-                    <td className="py-3 px-4 text-sm text-gray-900">{txn.description}</td>
-                    <td className={`py-3 px-4 text-sm text-right font-medium ${
-                      txn.amount >= 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      ${Math.abs(txn.amount).toFixed(2)}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-500">{txn.notes || '-'}</td>
-                    <td className="py-3 px-4">
-                      <button
-                        onClick={() => deleteTransaction(txn.id)}
-                        className="text-red-600 hover:text-red-700 p-1"
-                        title="Delete transaction"
-                        suppressHydrationWarning
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
+
+          {loadingTransactions ? (
+            <div className="text-center py-12 text-slate-500">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto" />
+            </div>
+          ) : transactions.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Upload className="w-8 h-8 text-slate-400" />
+              </div>
+              <p className="text-slate-600">No transactions yet. Upload a bank statement to get started.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b-2 border-slate-200">
+                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Date</th>
+                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Description</th>
+                    <th className="text-right py-3 px-4 font-semibold text-slate-700">Amount</th>
+                    <th className="text-left py-3 px-4 font-semibold text-slate-700">Notes</th>
+                    <th className="w-20"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {transactions.map((txn) => (
+                    <tr key={txn.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <td className="py-3 px-4 text-sm text-slate-600">{txn.date}</td>
+                      <td className="py-3 px-4 text-sm text-slate-900 font-medium">{txn.description}</td>
+                      <td className={`py-3 px-4 text-sm text-right font-bold ${
+                        txn.amount >= 0 ? 'text-emerald-600' : 'text-red-600'
+                      }`}>
+                        ${Math.abs(txn.amount).toFixed(2)}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-slate-500">{txn.notes || '-'}</td>
+                      <td className="py-3 px-4">
+                        <button
+                          onClick={() => deleteTransaction(txn.id)}
+                          className="text-red-600 hover:text-red-700 p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete transaction"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {summary && (
+          <div className="bg-white border-2 border-slate-200 rounded-2xl shadow-lg p-6">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Match Summary</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-5 border-2 border-slate-200">
+                <p className="text-slate-600 text-sm font-medium mb-1">Total Matches</p>
+                <p className="text-3xl font-bold text-slate-900">{summary.matches_found}</p>
+              </div>
+              <div className="bg-gradient-to-br from-emerald-50 to-green-100 rounded-xl p-5 border-2 border-emerald-200">
+                <p className="text-emerald-700 text-sm font-medium mb-1">High Confidence</p>
+                <p className="text-3xl font-bold text-emerald-600">{summary.high_confidence}</p>
+              </div>
+              <div className="bg-gradient-to-br from-amber-50 to-yellow-100 rounded-xl p-5 border-2 border-amber-200">
+                <p className="text-amber-700 text-sm font-medium mb-1">Need Review</p>
+                <p className="text-3xl font-bold text-amber-600">
+                  {summary.medium_confidence + summary.low_confidence}
+                </p>
+              </div>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Summary */}
-      {summary && (
-        <div className="bg-white border border-gray-200 rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Match Summary</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-gray-100 rounded-lg p-4">
-              <p className="text-gray-500 text-sm">Total Matches</p>
-              <p className="text-2xl font-bold text-gray-900">{summary.matches_found}</p>
+        {matches.length > 0 && (
+          <div className="flex items-center justify-between p-5 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border-2 border-indigo-200">
+            <div className="text-sm text-slate-700 font-medium">
+              {matches.filter(m => m.confidence >= 90).length} high-confidence matches ready to approve
             </div>
-            <div className="bg-gray-100 rounded-lg p-4">
-              <p className="text-gray-500 text-sm">High Confidence</p>
-              <p className="text-2xl font-bold text-green-600">{summary.high_confidence}</p>
-            </div>
-            <div className="bg-gray-100 rounded-lg p-4">
-              <p className="text-gray-500 text-sm">Need Review</p>
-              <p className="text-2xl font-bold text-yellow-600">
-                {summary.medium_confidence + summary.low_confidence}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Actions */}
-      {matches.length > 0 && (
-        <div className="flex items-center justify-between p-4 bg-gray-100 rounded-lg border border-gray-200">
-          <div className="text-sm text-gray-600">
-            {matches.filter(m => m.confidence >= 90).length} high-confidence matches ready to approve
-          </div>
-          <button
-            onClick={bulkApprove}
-            disabled={isLoading}
-            className="btn-primary text-sm"
-            suppressHydrationWarning
-          >
-            Approve All High Confidence (≥90%)
-          </button>
-        </div>
-      )}
-
-      {/* Error Display */}
-      {error && (
-        <div className="flex items-center gap-3 p-4 bg-red-50 border-red-200 rounded-lg">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-          <p className="text-red-600">{error}</p>
-        </div>
-      )}
-
-      {/* Matches List or Empty State */}
-      {!error && matches.length === 0 ? (
-        <div className="bg-white border border-gray-200 rounded-lg shadow text-center py-12">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-              <AlertCircle className="w-8 h-8 text-gray-400" />
-            </div>
-            <div>
-              <p className="text-gray-600 text-lg font-medium">No pending matches to review</p>
-              <p className="text-gray-400 text-sm mt-2">
-                {transactions.length === 0 
-                  ? 'Upload bank transactions first, then click "Run Auto-Match"'
-                  : 'Click "Run Auto-Match" to find transaction matches'}
-              </p>
-            </div>
-          </div>
-        </div>
-      ) : matches.length > 0 ? (
-        <div className="space-y-4">
-          {matches.map((match) => (
-            <div
-              key={match.match_id}
-              className={`bg-white shadow border-2 ${getConfidenceBgColor(match.confidence)} p-6 rounded-lg`}
+            <button
+              onClick={bulkApprove}
+              disabled={isLoading}
+              className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl font-bold shadow-md hover:shadow-xl transition-all disabled:opacity-50"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getConfidenceColor(match.confidence)}`}>
-                    {match.confidence.toFixed(0)}% Match
-                  </div>
-                  <span className="text-gray-500 text-sm">{match.reason}</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => approveMatch(match.match_id)}
-                    disabled={processingMatch === match.match_id}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                    suppressHydrationWarning
-                  >
-                    {processingMatch === match.match_id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Check className="w-4 h-4" />
-                    )}
-                    Accept
-                  </button>
-                  <button
-                    onClick={() => rejectMatch(match.match_id)}
-                    disabled={processingMatch === match.match_id}
-                    className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                    suppressHydrationWarning
-                  >
-                    <X className="w-4 h-4" />
-                    Reject
-                  </button>
-                </div>
+              Approve All High Confidence (≥90%)
+            </button>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-center gap-3 p-4 bg-red-50 border-2 border-red-300 rounded-xl">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <p className="text-red-700 font-medium">{error}</p>
+          </div>
+        )}
+
+        {!error && matches.length === 0 ? (
+          <div className="bg-white border-2 border-slate-200 rounded-2xl shadow-lg text-center py-16">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
+                <AlertCircle className="w-10 h-10 text-slate-400" />
               </div>
-
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-blue-600 uppercase">Bank Transaction</h4>
-                  <div className="space-y-1">
-                    <p className="text-gray-900 font-medium">{match.bank.description}</p>
-                    <p className="text-gray-500 text-sm">Date: {match.bank.date}</p>
-                    <p className="text-lg font-bold text-gray-900">
-                      ${Math.abs(match.bank.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-purple-600 uppercase">Ledger Entry</h4>
-                  <div className="space-y-1">
-                    <p className="text-gray-900 font-medium">{match.ledger.description}</p>
-                    {match.ledger.vendor && (
-                      <p className="text-gray-500 text-sm">Vendor: {match.ledger.vendor}</p>
-                    )}
-                    <p className="text-gray-500 text-sm">Date: {match.ledger.date}</p>
-                    <p className="text-lg font-bold text-gray-900">
-                      ${Math.abs(match.ledger.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                </div>
+              <div>
+                <p className="text-slate-700 text-lg font-semibold mb-2">No pending matches to review</p>
+                <p className="text-slate-500 text-sm">
+                  {transactions.length === 0 
+                    ? 'Upload bank transactions first, then click "Run Auto-Match"'
+                    : 'Click "Run Auto-Match" to find transaction matches'}
+                </p>
               </div>
             </div>
-          ))}
-        </div>
-      ) : null}
+          </div>
+        ) : matches.length > 0 ? (
+          <div className="space-y-4">
+            {matches.map((match) => (
+              <div
+                key={match.match_id}
+                className={`bg-white shadow-lg border-2 ${getConfidenceBgColor(match.confidence)} p-6 rounded-2xl`}
+              >
+                <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`px-4 py-2 rounded-xl text-sm font-bold shadow-md ${getConfidenceColor(match.confidence)} bg-white`}>
+                      {match.confidence.toFixed(0)}% Match
+                    </div>
+                    <span className="text-slate-600 text-sm font-medium">{match.reason}</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => approveMatch(match.match_id)}
+                      disabled={processingMatch === match.match_id}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-xl disabled:opacity-50"
+                    >
+                      {processingMatch === match.match_id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Check className="w-4 h-4" />
+                      )}
+                      Accept
+                    </button>
+                    <button
+                      onClick={() => rejectMatch(match.match_id)}
+                      disabled={processingMatch === match.match_id}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-xl disabled:opacity-50"
+                    >
+                      <X className="w-4 h-4" />
+                      Reject
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-blue-600 uppercase tracking-wider">Bank Transaction</h4>
+                    <div className="space-y-1">
+                      <p className="text-slate-900 font-semibold text-lg">{match.bank.description}</p>
+                      <p className="text-slate-500 text-sm">Date: {match.bank.date}</p>
+                      <p className="text-xl font-bold text-slate-900">
+                        ${Math.abs(match.bank.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-purple-600 uppercase tracking-wider">Ledger Entry</h4>
+                    <div className="space-y-1">
+                      <p className="text-slate-900 font-semibold text-lg">{match.ledger.description}</p>
+                      {match.ledger.vendor && (
+                        <p className="text-slate-500 text-sm">Vendor: {match.ledger.vendor}</p>
+                      )}
+                      <p className="text-slate-500 text-sm">Date: {match.ledger.date}</p>
+                      <p className="text-xl font-bold text-slate-900">
+                        ${Math.abs(match.ledger.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
